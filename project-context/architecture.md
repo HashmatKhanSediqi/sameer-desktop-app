@@ -48,14 +48,14 @@ This document defines the technology stack, module boundaries, and system design
 - RTL via CSS logical properties + `dir` attribute
 
 **Reports**
-- PDF: `@react-pdf/renderer` with embedded Noto Naskh Arabic / Vazirmatn / Noto Sans fonts; OR `pdf-lib` + `arabic-persian-reshaper` + `bidi-js` in main process for shaping
+- PDF (canonical): `pdfkit` + `arabic-persian-reshaper` + `bidi-js` in main process with embedded Noto Naskh Arabic / Vazirmatn / Noto Sans fonts
 - Excel: `exceljs` (read/write XLSX)
 
 **Import**
 - `exceljs` for parsing import files
 
 **Backup**
-- Custom `.cab` archive: `archiver` (zip-based internal format with manifest) or Windows CAB via bundled tool; manifest JSON + SQLite + assets
+- Custom `.cab` archive: ZIP-compatible format via `archiver` (`.cab` extension); manifest JSON + SQLite + assets
 
 **Updates**
 - `electron-updater` + code-signed releases on update server
@@ -203,6 +203,7 @@ All IPC channels must be typed in `src/shared/types/ipc.ts`.
 | `customers:update` | invoke | Update customer |
 | `customers:delete` | invoke | Delete customer (with confirmation in UI) |
 | `transactions:create` | invoke | Add transaction |
+| `transactions:update` | invoke | Edit transaction |
 | `transactions:delete` | invoke | Delete transaction |
 | `transactions:list` | invoke | Paginated transaction list |
 | `reports:generate` | invoke | Generate PDF or XLSX |

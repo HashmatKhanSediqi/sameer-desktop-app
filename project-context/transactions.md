@@ -134,7 +134,24 @@ transactions:list({ customerId, page, pageSize })
 
 ---
 
-## 6. Delete Transaction
+## 6. Edit Transaction
+
+1. User clicks Edit on transaction row (or edit action in detail view)
+2. Form opens pre-filled with type, amount, currency, date, and note
+3. User modifies fields and submits
+4. Main process validates (same rules as create) and updates the row
+5. Balances recalculated on read
+6. List, customer detail, and global totals refresh
+
+**Rules:**
+- Amount, currency, and type remain required
+- Note remains optional with unlimited length
+- Cash In / Cash Out color accents apply in the edit form as in create
+- UI must confirm destructive navigation away from unsaved edits (optional v1.0)
+
+---
+
+## 7. Delete Transaction
 
 1. User clicks Delete on transaction row
 2. **Confirmation required** — dialog with amount, type, date summary
@@ -146,7 +163,7 @@ transactions:list({ customerId, page, pageSize })
 
 ---
 
-## 7. Balance Impact
+## 8. Balance Impact
 
 Each transaction affects **one currency only**.
 
@@ -160,7 +177,7 @@ See `currencies.md` — never cross-currency math.
 
 ---
 
-## 8. Customer Detail Summary
+## 9. Customer Detail Summary
 
 Customer detail shows aggregated metrics per currency:
 
@@ -176,7 +193,7 @@ Customer detail shows aggregated metrics per currency:
 
 ---
 
-## 9. IPC API
+## 10. IPC API
 
 ### `transactions:create`
 
@@ -194,6 +211,25 @@ Customer detail shows aggregated metrics per currency:
 ```
 
 **Output:** `{ success: true, transactionId: number }` or validation errors
+
+### `transactions:update`
+
+**Input:**
+```typescript
+{
+  sessionId: string;
+  transactionId: number;
+  type: 'CASH_IN' | 'CASH_OUT';
+  amount: string;
+  currencyCode: string;
+  transactionDate?: string;  // ISO8601
+  note?: string;
+}
+```
+
+**Output:** `{ success: true }` or validation errors
+
+**Behavior:** Updates existing transaction row; recalculates balances on read.
 
 ### `transactions:delete`
 
@@ -225,7 +261,7 @@ Customer detail shows aggregated metrics per currency:
 
 ---
 
-## 10. Validation Error Codes
+## 11. Validation Error Codes
 
 | Code | Key |
 |------|-----|
@@ -237,7 +273,7 @@ Customer detail shows aggregated metrics per currency:
 
 ---
 
-## 11. Report and Export Inclusion
+## 12. Report and Export Inclusion
 
 Transactions included in reports with:
 - Customer name and number
@@ -251,7 +287,7 @@ See `reports.md`.
 
 ---
 
-## 12. Import
+## 13. Import
 
 Transactions may be bulk-imported from Excel — see `import-export.md`.
 
@@ -259,7 +295,7 @@ Imported transactions follow same validation rules as manual entry.
 
 ---
 
-## 13. Edge Cases
+## 14. Edge Cases
 
 | Case | Behavior |
 |------|----------|

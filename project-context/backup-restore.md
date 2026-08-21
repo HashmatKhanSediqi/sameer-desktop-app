@@ -88,7 +88,7 @@ CustomerAccounting_Backup_2025-08-21.cab
 
 ### Archive Implementation
 
-- Internal format: ZIP-compatible stream wrapped with `.cab` extension OR true CAB via Windows API
+- **Canonical (v1.0):** ZIP-compatible stream via `archiver`, using `.cab` file extension
 - Must be openable programmatically by the app
 - Compress for portability (zlib/deflate)
 

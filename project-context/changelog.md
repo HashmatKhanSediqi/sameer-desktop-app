@@ -40,6 +40,13 @@ MAJOR.MINOR.PATCH
 
 ## [Unreleased]
 
+### Added
+- Phase 1 application foundation: Electron + React + TypeScript shell
+- SQLite connection layer (`better-sqlite3`) with WAL mode and user-data paths
+- Secure IPC foundation (`contextBridge`, `nodeIntegration: false`, channel registry)
+- Development logging, configuration system, and Phase 1 unit/integration tests
+- Architecture updates: `transactions:update`, canonical PDF pipeline, ZIP-compatible `.cab` backups
+
 ### Planned
 - Application implementation (Electron + React + TypeScript + SQLite)
 - Windows installer (`CustomerAccounting-Setup.exe`)

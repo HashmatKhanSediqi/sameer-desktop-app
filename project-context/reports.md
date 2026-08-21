@@ -155,12 +155,11 @@ Required pipeline for RTL PDF:
 
 ### Recommended Implementation
 
-**Option A (Preferred):** Main process PDF generation with:
-- `@react-pdf/renderer` in Node context OR
+**Canonical (v1.0):** Main process PDF generation with:
 - `pdfkit` + `arabic-persian-reshaper` + `bidi-js`
-- Embedded TTF/OTF fonts in PDF
+- Embedded TTF/OTF fonts (Noto Naskh Arabic, Vazirmatn, Noto Sans) in PDF
 
-**Option B:** HTML → PDF via headless Chromium with proper `dir="rtl"` and web fonts (ensure shaping via browser engine)
+**Alternative (not used in v1.0):** HTML → PDF via headless Chromium
 
 ### English Reports
 
