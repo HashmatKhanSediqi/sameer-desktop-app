@@ -29,7 +29,9 @@ Security architecture for the offline Customer Accounting desktop application.
 | Algorithm | bcrypt, cost ≥ 10 |
 | Default password | `admin123` hashed at seed — never store plaintext |
 | No auto-change | Credentials unchanged unless admin explicitly changes |
-| No logging | Never log password, hash, or comparison result |
+| No logging | Never log password, hash, recovery answer, or comparison result |
+| Recovery answer | bcrypt hash of normalized answer; never plaintext |
+| Password change | Current password required; new password 8–128 characters; sessions cleared |
 
 ```typescript
 // Main process only

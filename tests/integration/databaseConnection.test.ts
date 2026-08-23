@@ -1,6 +1,6 @@
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadAppConfig } from '../../src/main/config/appConfig';
 import { DatabaseConnection } from '../../src/main/database/connection';
@@ -23,8 +23,11 @@ describe('DatabaseConnection', () => {
     const logger = new Logger(join(tempRoot, 'logs'), config);
     const connection = new DatabaseConnection(databasePath, logger);
 
+    expect(existsSync(dirname(databasePath))).toBe(false);
+
     const db = connection.connect();
 
+    expect(existsSync(dirname(databasePath))).toBe(true);
     expect(existsSync(databasePath)).toBe(true);
     expect(connection.isConnected()).toBe(true);
     expect(db.pragma('journal_mode', { simple: true })).toBe('wal');
@@ -43,9 +46,12 @@ describe('DatabaseConnection', () => {
 
     connection.connect();
     connection.close();
-    connection.connect();
+    const db = connection.connect();
 
     expect(connection.isConnected()).toBe(true);
+    expect(existsSync(databasePath)).toBe(true);
+    expect(db.pragma('journal_mode', { simple: true })).toBe('wal');
+    expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
     connection.close();
   });
 });

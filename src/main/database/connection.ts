@@ -4,6 +4,13 @@ import { dirname } from 'node:path';
 import type { Logger } from '../utils/logger';
 import { AppError } from '../utils/errors';
 
+function formatUnknownError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 export class DatabaseConnection {
   private db: Database.Database | null = null;
   private readonly databasePath: string;
@@ -30,11 +37,13 @@ export class DatabaseConnection {
       this.logger.info('Database opened', { path: this.databasePath });
       return this.db;
     } catch (error) {
+      const details = formatUnknownError(error);
       this.logger.error('Failed to open database', {
         path: this.databasePath,
-        error: error instanceof Error ? error.message : String(error),
+        error: details,
+        stack: error instanceof Error ? error.stack : undefined,
       });
-      throw new AppError('DATABASE_ERROR', 'Failed to open SQLite database');
+      throw new AppError('DATABASE_ERROR', `Failed to open SQLite database: ${details}`);
     }
   }
 
@@ -76,7 +85,8 @@ export class DatabaseConnection {
       this.logger.info('Database closed', { path: this.databasePath });
     } catch (error) {
       this.logger.error('Error closing database', {
-        error: error instanceof Error ? error.message : String(error),
+        error: formatUnknownError(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
     } finally {
       this.db = null;

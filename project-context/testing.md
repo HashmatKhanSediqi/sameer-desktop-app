@@ -47,6 +47,12 @@ Comprehensive test plan for Customer Accounting desktop application.
 | AUTH-T07 | Session expires after idle | Prompt re-login |
 | AUTH-T08 | Default admin exists on fresh install | admin/admin123 works |
 | AUTH-T09 | Password stored as hash | DB contains bcrypt hash, not plaintext |
+| AUTH-T10 | Change password with correct current password | New password works; old password fails; sessions cleared |
+| AUTH-T11 | Change password with wrong current password | Error; password unchanged |
+| AUTH-T12 | New password policy / mismatch / unchanged | Localized validation error |
+| AUTH-T13 | Recovery hint stored hashed | Answer is bcrypt, never plaintext |
+| AUTH-T14 | Recover with correct hint | Password reset; old password fails |
+| AUTH-T15 | Recover with wrong username or answer | Generic `RECOVERY_FAILED` |
 
 ---
 
@@ -84,6 +90,10 @@ Comprehensive test plan for Customer Accounting desktop application.
 | TXN-T10 | Delete transaction with confirmation | Removed, balance updated |
 | TXN-T11 | Delete transaction cancel | No change |
 | TXN-T12 | Transaction list newest first | Correct sort order |
+| TXN-T13 | Transfer A→B with sufficient balance | Source down, destination up; two ledger rows share `transfer_id` |
+| TXN-T14 | Transfer insufficient balance | Error; no rows written |
+| TXN-T15 | Transfer same customer | Error |
+| TXN-T16 | Transfer pair insert failure | Both legs rolled back |
 
 ---
 

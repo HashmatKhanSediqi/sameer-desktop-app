@@ -23,7 +23,7 @@ Transactions record money movement for a customer in a specific currency.
 | Type | Yes | Enum | CASH_IN or CASH_OUT |
 | Amount | **Yes** | Decimal | Must be > 0 |
 | Currency | **Yes** | Enum | AFN, USD, EUR (extensible) |
-| Date | Yes | DateTime | Default: now |
+| Date | Yes | DateTime | Default: current local date and time |
 | Note | No | Text | Unlimited length (SQLite TEXT) |
 
 ### Amount Validation
@@ -33,6 +33,9 @@ Transactions record money movement for a customer in a specific currency.
 - Max precision: 4 decimal places
 - Store as decimal string in database
 - Use decimal library for calculations — never raw float
+- Amount input accepts **English/Latin digits `0-9` only**, plus the application's decimal point (`.`)
+- Dari/Persian/Arabic numerals and letters are not accepted; invalid characters are blocked on input/paste, not only after submit
+- Amount field remains `dir="ltr"`; Notes and other text fields are unrestricted
 
 ### Currency Validation
 
@@ -64,8 +67,27 @@ Transactions record money movement for a customer in a specific currency.
 3. Selecting Cash Out → red accent on form
 4. Amount field focused after type selection
 5. Currency dropdown shows active currencies
-6. Date defaults to today (local)
+6. Date and time default to the current local date and time; the user does not enter them when creating a transaction
 7. Submit → validate → insert → refresh balances and list
+
+Stored value: SQLite `TEXT` datetime (`YYYY-MM-DD HH:MM:SS`, local wall-clock). The existing `transaction_date` column already holds date and time; no extra migration is required.
+
+Displayed value: locale-formatted date and time with Latin digits.
+
+### Customer-to-customer transfer
+
+A transfer is **two ledger rows** sharing one `transfer_id`:
+
+| Leg | Customer | Type | Role |
+|-----|----------|------|------|
+| Source | From customer | `CASH_OUT` | `OUT` |
+| Destination | To customer | `CASH_IN` | `IN` |
+
+Balances stay computed as Cash In − Cash Out. Transfers require sufficient source balance. Both legs are inserted in one SQLite transaction and rolled back together if either insert fails. Transfer legs are not individually editable; delete removes both legs.
+
+UI: Transfer action on the customer list and customer detail. History shows Transfer out / Transfer in plus the counterparty name.
+
+Reports use the same ledger rows and label transfer legs as Transfer in / Transfer out.
 
 ### Post-Create
 
@@ -83,7 +105,7 @@ Displayed on customer detail page.
 
 | Column | Notes |
 |--------|-------|
-| Date | Locale-formatted |
+| Date | Locale-formatted date and time |
 | Type | Badge: green "Cash In" / red "Cash Out" |
 | Currency | AFN / USD / EUR |
 | Amount | Formatted; color matches type |
@@ -137,8 +159,8 @@ transactions:list({ customerId, page, pageSize })
 ## 6. Edit Transaction
 
 1. User clicks Edit on transaction row (or edit action in detail view)
-2. Form opens pre-filled with type, amount, currency, date, and note
-3. User modifies fields and submits
+2. Form opens pre-filled with type, amount, currency, date and time, and note
+3. User may edit **both date and time** (as well as the other fields) and submits
 4. Main process validates (same rules as create) and updates the row
 5. Balances recalculated on read
 6. List, customer detail, and global totals refresh

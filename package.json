@@ -11,20 +11,41 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "build:win": "npm run build && electron-builder --win",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "node scripts/postinstall.mjs",
+    "rebuild:node": "node scripts/rebuild-node.mjs",
+    "rebuild:electron": "node scripts/rebuild-electron.mjs",
+    "ensure:electron": "node node_modules/electron/install.js",
+    "pretest": "npm run rebuild:node",
+    "predev": "npm run rebuild:electron",
+    "prebuild": "npm run rebuild:electron",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "fonts:fetch": "node scripts/fetch-fonts.mjs"
   },
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "better-sqlite3": "^11.8.1",
+    "decimal.js": "^10.4.3",
+    "exceljs": "^4.4.0",
+    "i18next": "^24.2.2",
+    "pdfkit": "^0.16.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-i18next": "^15.4.1",
+    "arabic-persian-reshaper": "^1.0.1",
+    "bidi-js": "^1.0.3"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
+    "@types/babel__generator": "^7.27.0",
+    "@types/babel__template": "^7.4.4",
+    "@types/babel__traverse": "^7.28.0",
+    "@types/bcrypt": "^5.0.2",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.13.4",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/pdfkit": "^0.13.9",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^34.2.0",
     "electron-builder": "^25.1.8",
@@ -42,6 +63,16 @@
     },
     "files": [
       "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "migrations",
+        "to": "migrations"
+      },
+      {
+        "from": "assets/fonts",
+        "to": "fonts"
+      }
     ],
     "win": {
       "target": [

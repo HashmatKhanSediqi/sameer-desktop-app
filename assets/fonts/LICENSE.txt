@@ -1,0 +1,13 @@
+These font files are licensed under the SIL Open Font License, Version 1.1:
+
+- Inter (https://github.com/rsms/inter)
+- Vazirmatn (https://github.com/rastikerdar/vazirmatn)
+- Noto Naskh Arabic (https://github.com/notofonts/arabic)
+
+Required files (Regular woff2 for UI, Regular ttf for PDF embedding):
+- Inter-Regular.woff2
+- Vazirmatn-Regular.woff2
+- NotoNaskhArabic-Regular.woff2
+- Inter-Regular.ttf
+- Vazirmatn-Regular.ttf
+- NotoNaskhArabic-Regular.ttf

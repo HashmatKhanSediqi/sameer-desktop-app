@@ -1,0 +1,83 @@
+{
+  "title": "واردول",
+  "selectFile": "د Excel فایل وټاکئ",
+  "downloadTemplate": "د واردولو قالب ښکته کړئ",
+  "templateSaved": "د واردولو قالب خوندي شو",
+  "fileLabel": "ټاکل شوی فایل",
+  "noFile": "هیڅ فایل نه دی ټاکل شوی",
+  "parsing": "د واردولو فایل کتل کېږي…",
+  "committing": "واردېږي…",
+  "preview": "د واردولو مخکتنه",
+  "previewTitle": "د واردولو مخکتنه",
+  "validRows": "{{count}} معتبرې کرښې",
+  "invalidRows": "{{count}} تېروتنې",
+  "totalRows": "{{count}} کرښې وکتل شوې",
+  "warningsCount": "{{count}} خبرداری",
+  "cancel": "پرېښودل",
+  "commit": "معتبرې کرښې واردې کړئ",
+  "commitCount": "{{count}} معتبرې کرښې واردې کړئ",
+  "success": "واردول بشپړ شول",
+  "successTitle": "واردول بشپړ شول",
+  "failure": "واردول ناکام شول. هیڅ معلومات نه دي بدل شوي.",
+  "emptyFile": "ټاکل شوی فایل تش دی.",
+  "structureError": "د Excel فایل جوړښت ناسم دی.",
+  "rowError": "کرښه {{row}}: {{message}}",
+  "confirmTitle": "معلومات وارد شي؟",
+  "confirmMessage": "{{validCount}} معتبرې کرښې واردې شي؟ {{errorCount}} ناسمې کرښې به پرېښودل شي. موجود پېرېدونکي او معاملې به نه ړنګېږي.",
+  "errorsTitle": "د اعتبار تېروتنې",
+  "warningsTitle": "خبرتیاوې",
+  "validPreviewTitle": "معتبرې کرښې (لومړۍ {{count}})",
+  "copyPath": "لار کاپي کړئ",
+  "copied": "کاپي شو",
+  "backToList": "پېرېدونکو ته ستنېدل",
+  "summary": {
+    "customersCreated": "جوړ شوي پېرېدونکي: {{count}}",
+    "customersMatched": "مطابق پېرېدونکي: {{count}}",
+    "transactionsImported": "واردې شوې معاملې: {{count}}",
+    "rowsSkipped": "پرېښودل شوې کرښې: {{count}}"
+  },
+  "previewTable": {
+    "sheet": "پاڼه",
+    "row": "کرښه",
+    "customer": "پېرېدونکی",
+    "number": "د پېرېدونکي شمېره",
+    "type": "ډول",
+    "currency": "اسعار",
+    "amount": "مقدار",
+    "date": "نېټه",
+    "note": "یادښت"
+  },
+  "sheet": {
+    "customers": "پېرېدونکي",
+    "transactions": "معاملې"
+  },
+  "error": {
+    "invalidFormat": "فایل د Excel (.xlsx) معتبر کتاب نه دی.",
+    "missingSheet": "د Transactions پاڼه نشته.",
+    "missingHeader": "اړین د ستون سرلیک نشته.",
+    "noData": "ټاکل شوي فایل کې د معلوماتو کرښې نشته.",
+    "invalidType": "د معاملې ډول باید نغدې دننه یا نغدې وتل وي.",
+    "invalidCurrency": "اسعار باید یو فعال کوډ وي.",
+    "invalidAmount": "مقدار باید مثبت عدد وي چې تر ۴ اعشاريو پورې وي.",
+    "missingCustomer": "هره معامله د پېرېدونکي شمېرې یا نوم ته اړتیا لري.",
+    "invalidDate": "نېټه باید یوه معتبره کلیزري نېټه وي.",
+    "duplicateCustomer": "دا د پېرېدونکي شمېره په Customers پاڼه کې تکرار شوې ده.",
+    "fileTooLarge": "فایل له ۵۰ مګابایټو لوی دی.",
+    "tooManyRows": "فایل له ۱۰۰٬۰۰۰ کرښو ډېرې لري.",
+    "invalidPhoto": "د پروفایل انځور لار معتبر انځور نه دی.",
+    "pathTraversal": "د انځور لار اجازه نه لري.",
+    "nameTooLong": "د پېرېدونکي نوم ډېر اوږد دی.",
+    "customerNumberTooLong": "د پېرېدونکي شمېره ډېره اوږده ده.",
+    "invalidCustomerNumber": "د پېرېدونکي شمېره ناسم توري لري.",
+    "invalidCharacters": "ارزښت ناسم توري لري.",
+    "parseTimeout": "د فایل کتل وخت پوره شو. کوچنی فایل وازمویئ."
+  },
+  "warning": {
+    "unknownColumn": "نامعلومه ستون \"{{column}}\" له پامه وغورځول شوه.",
+    "possibleDuplicate": "دا معامله د تکرار په څېر ښکاري او بیا هم واردېږي."
+  },
+  "template": {
+    "instructionsSheet": "لارښوونې",
+    "instructions": "د Customers پاڼه اختیاري ده او د Transactions پاڼه ډکه کړئ. د معاملې ډول باید CASH_IN یا CASH_OUT وي (Cash In / Cash Out هم منل کېږي). اسعار باید فعال کوډ وي لکه AFN، USD یا EUR. مقدارونه باید مثبت وي. نېټې YYYY-MM-DD دي. په هره د معاملې کرښه کې لږ تر لږه customer_number یا customer_name اړین دی. نشت پېرېدونکي په اوتومات ډول جوړېږي. اضافي ستونونه له پامه غورځول کېږي."
+  }
+}

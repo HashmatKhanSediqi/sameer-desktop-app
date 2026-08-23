@@ -151,6 +151,22 @@ CREATE INDEX idx_transactions_currency ON transactions(currency_code);
 CREATE INDEX idx_transactions_type ON transactions(type);
 ```
 
+Migration `004_admin_company_theme_transfers.sql` adds transfer ledger columns (do not rewrite `003`):
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `transfer_id` | TEXT | Shared UUID for both legs of a transfer |
+| `transfer_role` | TEXT | `OUT` (source Cash Out) or `IN` (destination Cash In) |
+| `counterparty_customer_id` | INTEGER | Other customer in the transfer |
+
+### 3.6a `company_profile`
+
+Single-row company identity (`id = 1`). Logo bytes stay on disk under `data/images/company/`; the table stores `logo_filename` only.
+
+### 3.6b Admin recovery columns
+
+`admin_users.recovery_question` (plaintext question) and `admin_users.recovery_answer_hash` (bcrypt hash of the normalized answer).
+
 ### 3.7 `settings`
 
 Key-value settings store.
@@ -171,6 +187,10 @@ CREATE TABLE settings (
 | `pagination_page_size` | `10` | Rows per page when pagination enabled |
 | `date_format` | `YYYY-MM-DD` | Display date format |
 | `backup_reminder_days` | `7` | Optional reminder interval (future) |
+| `exchange_enabled` | `false` | Show the main-page currency exchange calculator |
+| `theme_primary` | `#1f7a4d` | Application primary color |
+| `theme_accent` | `#258a58` | Application accent color |
+| `card_tones` | JSON | Main-page summary card background/accent colors |
 
 ---
 
@@ -251,6 +271,7 @@ See `update-system.md`. Summary:
 | Delete transaction | Single DELETE |
 | Import commit | Single SQLite transaction wrapping all valid rows |
 | Restore backup | Replace DB file atomically after safety backup |
+| Customer transfer | Single SQLite transaction: Cash Out source + Cash In destination |
 
 ---
 

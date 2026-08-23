@@ -20,6 +20,7 @@ describe('paths', () => {
     expect(paths.userData).toBe(tempRoot);
     expect(paths.database).toBe(join(tempRoot, 'data', 'accounting.db'));
     expect(paths.images).toBe(join(tempRoot, 'data', 'images', 'customers'));
+    expect(paths.companyImages).toBe(join(tempRoot, 'data', 'images', 'company'));
     expect(paths.logs).toBe(join(tempRoot, 'logs'));
     expect(paths.backups).toBe(join(tempRoot, 'backups'));
     expect(paths.cache).toBe(join(tempRoot, 'cache'));

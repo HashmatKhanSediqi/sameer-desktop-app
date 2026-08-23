@@ -1,0 +1,46 @@
+{
+  "appName": "حسابداری مشتریان",
+  "logout": "خروج",
+  "loading": "در حال بارگذاری…",
+  "signedInAs": "وارد شده به‌عنوان {{username}}",
+  "authenticatedShellTitle": "محیط برنامه پس از ورود",
+  "authenticatedShellSubtitle": "مدیریت مشتریان در مرحله‌های بعدی اضافه می‌شود.",
+  "cancel": "لغو",
+  "save": "ذخیره",
+  "delete": "حذف",
+  "confirm": "تأیید",
+  "back": "بازگشت",
+  "retry": "تلاش دوباره",
+  "close": "بستن",
+  "settings": "تنظیمات",
+  "reports": "گزارش‌ها",
+  "import": "وارد کردن",
+  "emptyValue": "—",
+  "language": {
+    "label": "زبان",
+    "en": "English",
+    "fa-AF": "دری",
+    "ps": "پښتو"
+  },
+  "currency": {
+    "afn": "افغانی افغانستان",
+    "usd": "دالر آمریکا",
+    "eur": "یورو"
+  },
+  "totalCurrency": "مجموع {{code}}",
+  "exchange": {
+    "title": "تبدیل اسعار",
+    "from": "از",
+    "to": "به",
+    "rate": "نرخ تبدیل",
+    "amount": "مبلغ",
+    "calculate": "محاسبه",
+    "invalid": "مبلغ و نرخ معتبر وارد کنید.",
+    "errors": {
+      "EXCHANGE_AMOUNT_INVALID": "مبلغ باید عدد مثبت با حداکثر ۴ رقم اعشار باشد.",
+      "EXCHANGE_RATE_INVALID": "نرخ تبدیل باید عدد مثبت با حداکثر ۴ رقم اعشار باشد.",
+      "EXCHANGE_CURRENCY_REQUIRED": "هر دو اسعار را انتخاب کنید.",
+      "EXCHANGE_SAME_CURRENCY": "دو اسعار متفاوت انتخاب کنید."
+    }
+  }
+}

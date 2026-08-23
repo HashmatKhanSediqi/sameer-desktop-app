@@ -32,11 +32,13 @@ All report types available in both PDF and XLSX unless noted.
 
 ### Header (All Reports)
 
-- Application name (localized)
+- Company logo (if configured) and company name, phone, email, address, website
+- Application name (localized) when company is not configured
 - Report title (localized)
 - Generation date/time
 - Date range (if applicable)
 - Language indicator
+- Transfer legs labeled Transfer in / Transfer out with counterparty name
 
 ### Customer Fields (Where Applicable)
 
@@ -47,7 +49,7 @@ All report types available in both PDF and XLSX unless noted.
 
 ### Transaction Fields (Where Applicable)
 
-- Date
+- Date (locale-formatted date and time)
 - Type (Cash In / Cash Out)
 - Currency
 - Amount
@@ -79,10 +81,16 @@ If no transactions exist for a currency in scope → display **0** for all three
 
 **Input:** customerId, optional date range, format, language
 
+**Entry points:** Reports screen; **Export PDF** on the Customer Details page (PDF, current UI language, that customer only)
+
 **Sections:**
 1. Customer information
 2. Per-currency summary (AFN, USD, EUR)
 3. Transaction list (all or filtered by date)
+
+Customers with no transactions still generate a report: customer info, zero balances per currency, and the localized empty-data message. Currencies are never combined.
+
+**Filename (individual customer):** `CustomerAccounting_Customer_{Name}_{Number}_{YYYY-MM-DD}.pdf` — number omitted when the customer has none.
 
 ### 4.2 All Customers Report
 
@@ -134,9 +142,13 @@ Per currency:
 ### PDF
 
 - Landscape orientation for wide reports (all customers, transactions)
-- Portrait for single customer summary (optional)
-- Page breaks between major sections if needed
-- Repeat header row on each page
+- Portrait for the individual customer accounting report
+- Every major section is a bordered table: report header, customer information, per-currency balances, transaction summary, transaction history, and period totals
+- Every table draws an outer border, horizontal row separators, and a vertical rule between every column, including wrapped multi-line rows
+- Customer PDFs show date and time as separate transaction columns
+- Page breaks keep a transaction row together where practical
+- Repeat the table header on each new page
+- AFN, USD, and EUR stay on separate rows; never combine balances
 
 ---
 
@@ -156,8 +168,14 @@ Required pipeline for RTL PDF:
 ### Recommended Implementation
 
 **Canonical (v1.0):** Main process PDF generation with:
-- `pdfkit` + `arabic-persian-reshaper` + `bidi-js`
-- Embedded TTF/OTF fonts (Noto Naskh Arabic, Vazirmatn, Noto Sans) in PDF
+- `pdfkit` + `bidi-js` + `arabic-persian-reshaper` (reshaper is **inspection/unit-test only**, not the draw path)
+- **Draw path:** logical Unicode → wrap in logical order → Arabic vs LTR-island runs (`AFN`/`USD`/`EUR`/`C-2`/dates/times/numbers) → bidi run placement → `doc.text(logicalRun, { lineBreak: false, features: [] })`. A truthy `features` value makes PDFKit layout the **whole run** so fontkit applies GSUB joining (`init`/`medi`/`fina`/`rlig`) and reverses those RTL glyphs once. Do not send presentation forms into PDFKit. Do not reverse the whole string. Do not draw Arabic one character at a time.
+- **fontkit GPOS:** Noto Naskh Arabic’s MarkToBase / MarkToMark tables contain spec-legal NULL anchors. fontkit 2.0.4 `getAnchor()` crashes on those (`xCoordinate` of null) during `widthOfString()` / `text()`, which `ReportsService` surfaces as `REPORT_WRITE_FAILED`. The renderer patches `applyAnchor` on PDFKit’s embedded-font GPOSProcessor so a missing anchor means “do not attach” (HarfBuzz behavior). Joining GSUB stays enabled.
+- **Fonts:** embed the **full** Noto Naskh Arabic TTF (must include Pashto U+06D0 `ې`). Vazirmatn is a fallback only. Inter for Latin/LTR runs. `scripts/fetch-fonts.mjs` rejects a Noto TTF that is too small or missing U+06D0.
+- **Inspection path:** `shapeRtlText` still produces presentation forms for joining tests; LTR islands are isolated so `2026-08-22` is not reordered to `22-08-2026`. The PDF inspector decodes each Identity-H `Tj`/`TJ` with **only** the active `/F#` ToUnicode map (never Noto’s CMap on Inter glyph IDs, or the reverse) and NFKC-normalizes presentation forms.
+- Tables use explicit column widths, in-cell wrapping, cell clipping, full outer/horizontal/**vertical** rules, and repeated headers on page breaks
+- Report files are written after `mkdir` of the destination directory; on-disk names are ASCII-safe
+- Missing Arabic font → `FONT_MISSING`; do not write a broken PDF
 
 **Alternative (not used in v1.0):** HTML → PDF via headless Chromium
 
@@ -261,7 +279,13 @@ Progress events for long reports via IPC event channel.
 CustomerAccounting_{ReportType}_{CustomerNameOrAll}_{YYYY-MM-DD}.{pdf|xlsx}
 ```
 
-Sanitize customer name for filesystem.
+Individual customer reports include the customer number when present:
+
+```
+CustomerAccounting_Customer_{CustomerName}_{CustomerNumber}_{YYYY-MM-DD}.{pdf|xlsx}
+```
+
+Sanitize customer name and number for filesystem.
 
 ---
 

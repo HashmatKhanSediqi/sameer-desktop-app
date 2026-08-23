@@ -148,6 +148,7 @@ See `transactions.md` — embedded table on this page.
 
 - Edit Customer
 - Add Transaction
+- Export PDF (individual customer report via existing Reports/PDF pipeline)
 - Back to list
 
 ---

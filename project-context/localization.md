@@ -73,6 +73,7 @@ const { t } = useTranslation('customers');
 - Persist in `settings.language` database key
 - Apply immediately without restart (preferred) or on next launch
 - Default: `en`
+- `settings:get` and language updates via `settings:update` are available before login so the login-screen selector can persist immediately. Other future settings remain session-protected when implemented.
 
 ### Login Screen
 
@@ -255,6 +256,16 @@ const dateFormatter = new Intl.DateTimeFormat(locale, {
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
+  numberingSystem: 'latn',
+});
+
+const dateTimeFormatter = new Intl.DateTimeFormat(locale, {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  numberingSystem: 'latn',
 });
 ```
 

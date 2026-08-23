@@ -1,14 +1,13 @@
-import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
+import { pathAliases } from './scripts/path-aliases';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@shared': resolve(__dirname, 'src/shared'),
-    },
+    alias: pathAliases,
   },
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    fileParallelism: false,
   },
 });

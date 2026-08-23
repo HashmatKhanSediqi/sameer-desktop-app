@@ -1,0 +1,46 @@
+{
+  "appName": "د پېرېدونکو حسابداری",
+  "logout": "وتل",
+  "loading": "بارېږي…",
+  "signedInAs": "د {{username}} په توګه ننوتلی",
+  "authenticatedShellTitle": "د ننوتلو وروسته د پروګرام چاپېریال",
+  "authenticatedShellSubtitle": "د پېرېدونکو مدیریت په وروستیو پړاوونو کې راځي.",
+  "cancel": "پرېښودل",
+  "save": "خوندي کول",
+  "delete": "ړنګول",
+  "confirm": "تأیید",
+  "back": "شاته",
+  "retry": "بیا هڅه",
+  "close": "تړل",
+  "settings": "تنظیمات",
+  "reports": "راپورونه",
+  "import": "واردول",
+  "emptyValue": "—",
+  "language": {
+    "label": "ژبه",
+    "en": "English",
+    "fa-AF": "دری",
+    "ps": "پښتو"
+  },
+  "currency": {
+    "afn": "افغانۍ",
+    "usd": "امریکايي ډالر",
+    "eur": "یورو"
+  },
+  "totalCurrency": "ټول {{code}}",
+  "exchange": {
+    "title": "د اسعارو تبادله",
+    "from": "له",
+    "to": "ته",
+    "rate": "د تبادلې نرخ",
+    "amount": "مبلغ",
+    "calculate": "حساب کړئ",
+    "invalid": "معتبر مبلغ او نرخ ولیکئ.",
+    "errors": {
+      "EXCHANGE_AMOUNT_INVALID": "مبلغ باید مثبت عدد وي او تر ۴ اعشاريو پورې وي.",
+      "EXCHANGE_RATE_INVALID": "د تبادلې نرخ باید مثبت عدد وي او تر ۴ اعشاريو پورې وي.",
+      "EXCHANGE_CURRENCY_REQUIRED": "دواړه اسعار وټاکئ.",
+      "EXCHANGE_SAME_CURRENCY": "دوه بېل اسعار وټاکئ."
+    }
+  }
+}

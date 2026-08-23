@@ -68,7 +68,7 @@ async function bootstrap(): Promise<void> {
 
   logger.info('Application starting', { version: config.version, isDev: config.isDev });
 
-  appContext = createApplicationContext(config, logger);
+  appContext = await createApplicationContext(config, logger);
   registerIpcHandlers(ipcMain, appContext);
 
   mainWindow = await createMainWindow(appContext);

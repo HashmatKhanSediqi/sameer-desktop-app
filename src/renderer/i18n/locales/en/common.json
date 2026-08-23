@@ -1,0 +1,46 @@
+{
+  "appName": "Customer Accounting",
+  "logout": "Logout",
+  "loading": "Loading…",
+  "signedInAs": "Signed in as {{username}}",
+  "authenticatedShellTitle": "Authenticated Application Shell",
+  "authenticatedShellSubtitle": "Phase 2 — customer management arrives in a later phase.",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "confirm": "Confirm",
+  "back": "Back",
+  "retry": "Retry",
+  "close": "Close",
+  "settings": "Settings",
+  "reports": "Reports",
+  "import": "Import",
+  "emptyValue": "—",
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "fa-AF": "دری",
+    "ps": "پښتو"
+  },
+  "currency": {
+    "afn": "Afghan Afghani",
+    "usd": "US Dollar",
+    "eur": "Euro"
+  },
+  "totalCurrency": "Total {{code}}",
+  "exchange": {
+    "title": "Currency exchange",
+    "from": "From",
+    "to": "To",
+    "rate": "Exchange rate",
+    "amount": "Amount",
+    "calculate": "Calculate",
+    "invalid": "Enter a valid amount and exchange rate.",
+    "errors": {
+      "EXCHANGE_AMOUNT_INVALID": "Amount must be a positive number with up to 4 decimal places.",
+      "EXCHANGE_RATE_INVALID": "Exchange rate must be a positive number with up to 4 decimal places.",
+      "EXCHANGE_CURRENCY_REQUIRED": "Select both currencies.",
+      "EXCHANGE_SAME_CURRENCY": "Choose two different currencies."
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "title": "وارد کردن",
+  "selectFile": "انتخاب فایل Excel",
+  "downloadTemplate": "دانلود قالب وارد کردن",
+  "templateSaved": "قالب وارد کردن ذخیره شد",
+  "fileLabel": "فایل انتخاب‌شده",
+  "noFile": "فایلی انتخاب نشده است",
+  "parsing": "در حال بررسی فایل وارداتی…",
+  "committing": "در حال وارد کردن…",
+  "preview": "پیش‌نمایش وارد کردن",
+  "previewTitle": "پیش‌نمایش وارد کردن",
+  "validRows": "{{count}} ردیف معتبر",
+  "invalidRows": "{{count}} خطا",
+  "totalRows": "{{count}} ردیف بررسی شد",
+  "warningsCount": "{{count}} هشدار",
+  "cancel": "لغو",
+  "commit": "وارد کردن ردیف‌های معتبر",
+  "commitCount": "وارد کردن {{count}} ردیف معتبر",
+  "success": "وارد کردن تکمیل شد",
+  "successTitle": "وارد کردن تکمیل شد",
+  "failure": "وارد کردن ناکام شد. هیچ داده‌ای تغییر نکرد.",
+  "emptyFile": "فایل انتخاب‌شده خالی است.",
+  "structureError": "ساختار فایل Excel نادرست است.",
+  "rowError": "ردیف {{row}}: {{message}}",
+  "confirmTitle": "داده‌ها وارد شوند؟",
+  "confirmMessage": "{{validCount}} ردیف معتبر وارد شود؟ {{errorCount}} ردیف نامعتبر رد می‌شود. مشتریان و معاملات موجود حذف نمی‌شوند.",
+  "errorsTitle": "خطاهای اعتبارسنجی",
+  "warningsTitle": "هشدارها",
+  "validPreviewTitle": "ردیف‌های معتبر ({{count}} تای نخست)",
+  "copyPath": "کپی مسیر",
+  "copied": "کپی شد",
+  "backToList": "بازگشت به مشتریان",
+  "summary": {
+    "customersCreated": "مشتریان ایجادشده: {{count}}",
+    "customersMatched": "مشتریان تطبیق‌شده: {{count}}",
+    "transactionsImported": "معاملات واردشده: {{count}}",
+    "rowsSkipped": "ردیف‌های ردشده: {{count}}"
+  },
+  "previewTable": {
+    "sheet": "ورق",
+    "row": "ردیف",
+    "customer": "مشتری",
+    "number": "شماره مشتری",
+    "type": "نوع",
+    "currency": "اسعار",
+    "amount": "مبلغ",
+    "date": "تاریخ",
+    "note": "یادداشت"
+  },
+  "sheet": {
+    "customers": "مشتریان",
+    "transactions": "معاملات"
+  },
+  "error": {
+    "invalidFormat": "فایل یک کتاب کار معتبر Excel (.xlsx) نیست.",
+    "missingSheet": "ورق Transactions موجود نیست.",
+    "missingHeader": "عنوان ستون لازم موجود نیست.",
+    "noData": "فایل انتخاب‌شده ردیف داده ندارد.",
+    "invalidType": "نوع معامله باید دریافت وجه یا پرداخت وجه باشد.",
+    "invalidCurrency": "اسعار باید یک کد فعال باشد.",
+    "invalidAmount": "مبلغ باید عدد مثبت با حداکثر ۴ رقم اعشار باشد.",
+    "missingCustomer": "هر معامله به شماره مشتری یا نام مشتری نیاز دارد.",
+    "invalidDate": "تاریخ باید یک تاریخ معتبر باشد.",
+    "duplicateCustomer": "این شماره مشتری در ورق Customers تکرار شده است.",
+    "fileTooLarge": "حجم فایل بیشتر از ۵۰ مگابایت است.",
+    "tooManyRows": "فایل بیش از ۱۰۰٬۰۰۰ ردیف دارد.",
+    "invalidPhoto": "مسیر عکس نمایه یک تصویر معتبر نیست.",
+    "pathTraversal": "مسیر عکس مجاز نیست.",
+    "nameTooLong": "نام مشتری خیلی طولانی است.",
+    "customerNumberTooLong": "شماره مشتری خیلی طولانی است.",
+    "invalidCustomerNumber": "شماره مشتری نویسه‌های نامعتبر دارد.",
+    "invalidCharacters": "مقدار شامل نویسه‌های نامعتبر است.",
+    "parseTimeout": "بررسی فایل طولانی شد. فایل کوچک‌تری امتحان کنید."
+  },
+  "warning": {
+    "unknownColumn": "ستون ناشناخته «{{column}}» نادیده گرفته شد.",
+    "possibleDuplicate": "این معامله شبیه یک مورد تکراری است و با این حال وارد می‌شود."
+  },
+  "template": {
+    "instructionsSheet": "رهنمایی",
+    "instructions": "ورق Customers اختیاری است و ورق Transactions را پر کنید. نوع معامله باید CASH_IN یا CASH_OUT باشد (Cash In / Cash Out نیز پذیرفته می‌شود). اسعار باید کد فعال مانند AFN، USD یا EUR باشد. مبالغ باید مثبت باشند. تاریخ‌ها به شکل YYYY-MM-DD هستند. در هر ردیف معامله حداقل یکی از customer_number یا customer_name لازم است. مشتریان ناموجود به‌صورت خودکار ایجاد می‌شوند. ستون‌های اضافی نادیده گرفته می‌شوند."
+  }
+}

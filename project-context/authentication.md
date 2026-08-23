@@ -158,14 +158,15 @@ After successful restore → redirect to login with restored admin credentials.
 
 Architecture must support future features without rewrite:
 
-| Future Feature | Hook |
-|----------------|------|
-| Change password | Settings → Account → new password form → bcrypt hash update |
+| Feature | Hook |
+|---------|------|
+| Change password | Settings → Account & Security → bcrypt hash update; all sessions invalidated |
+| Forgot password | Login → recovery with username + hashed security answer |
 | Multiple admins | Additional rows in `admin_users`; session includes userId |
 | Session timeout config | Setting key `session_timeout_minutes` |
 | Lock screen | Re-auth without full logout |
 
-v1.0 implements: login, logout, session check, default seed only.
+Implemented: login, logout, session check, default seed, password change, hashed security-hint recovery. Default `admin` / `admin123` is unchanged until the administrator changes it.
 
 ---
 
@@ -203,6 +204,20 @@ See `security.md` for comprehensive security documentation.
 **Input:** `{ sessionId: string }`
 
 **Output:** `{ valid: boolean, username?: string }`
+
+### `auth:changePassword`
+
+**Input:** `{ sessionId, currentPassword, newPassword, confirmPassword }`
+
+**Output success:** `{ success: true, sessionInvalidated: true }` — user must sign in again.
+
+### `auth:setRecovery` / `auth:recoveryStatus`
+
+Session required. The answer is bcrypt-hashed after trim/lowercase/whitespace collapse. Never stored or logged in plaintext.
+
+### `auth:recoveryPrompt` / `auth:recoverPassword`
+
+Public (no session). Failed recoveries always return `RECOVERY_FAILED`. New password must meet the same policy as password change.
 
 ---
 

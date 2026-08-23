@@ -197,6 +197,15 @@ All IPC channels must be typed in `src/shared/types/ipc.ts`.
 | `auth:login` | invoke | Authenticate admin |
 | `auth:logout` | invoke | End session |
 | `auth:checkSession` | invoke | Validate active session |
+| `auth:changePassword` | invoke | Change admin password (session required) |
+| `auth:setRecovery` | invoke | Set hashed security hint (session required) |
+| `auth:recoveryStatus` | invoke | Whether recovery is configured |
+| `auth:recoveryPrompt` | invoke | Public recovery question lookup (no leak of which field failed on submit) |
+| `auth:recoverPassword` | invoke | Reset password with security answer |
+| `company:get` | invoke | Read company profile |
+| `company:update` | invoke | Save company profile and logo |
+| `company:getLogo` | invoke | Read stored company logo bytes |
+| `transfers:create` | invoke | Atomic customer-to-customer transfer |
 | `customers:list` | invoke | List all customers with balances |
 | `customers:get` | invoke | Customer detail + transactions |
 | `customers:create` | invoke | Create customer |
@@ -224,7 +233,7 @@ All IPC channels must be typed in `src/shared/types/ipc.ts`.
 
 1. **Startup** — Main process initializes paths, opens SQLite, runs migrations, seeds default admin if missing, creates window.
 2. **Pre-login** — Show login OR "Import Existing System" (restore) screen.
-3. **Post-login** — Load settings (language, pagination), show customer list.
+3. **Post-login** — If company profile is not configured, show company setup. Then load settings (language, pagination, theme, exchange) and show customer list.
 4. **Shutdown** — Close SQLite cleanly; flush WAL.
 5. **Crash recovery** — SQLite WAL replay on next startup; log crash to log file.
 

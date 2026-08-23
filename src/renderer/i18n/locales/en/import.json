@@ -1,0 +1,83 @@
+{
+  "title": "Import",
+  "selectFile": "Select Excel file",
+  "downloadTemplate": "Download import template",
+  "templateSaved": "Import template saved",
+  "fileLabel": "Selected file",
+  "noFile": "No file selected",
+  "parsing": "Parsing import file…",
+  "committing": "Importing…",
+  "preview": "Import preview",
+  "previewTitle": "Import preview",
+  "validRows": "{{count}} valid rows",
+  "invalidRows": "{{count}} errors",
+  "totalRows": "{{count}} rows parsed",
+  "warningsCount": "{{count}} warnings",
+  "cancel": "Cancel",
+  "commit": "Import valid rows",
+  "commitCount": "Import {{count}} valid rows",
+  "success": "Import completed",
+  "successTitle": "Import completed",
+  "failure": "Import failed. No data was changed.",
+  "emptyFile": "The selected file is empty.",
+  "structureError": "The Excel file structure is invalid.",
+  "rowError": "Row {{row}}: {{message}}",
+  "confirmTitle": "Import data?",
+  "confirmMessage": "Import {{validCount}} valid rows? {{errorCount}} invalid rows will be skipped. Existing customers and transactions will not be deleted.",
+  "errorsTitle": "Validation errors",
+  "warningsTitle": "Warnings",
+  "validPreviewTitle": "Valid rows (first {{count}})",
+  "copyPath": "Copy path",
+  "copied": "Copied",
+  "backToList": "Back to customers",
+  "summary": {
+    "customersCreated": "Customers created: {{count}}",
+    "customersMatched": "Customers matched: {{count}}",
+    "transactionsImported": "Transactions imported: {{count}}",
+    "rowsSkipped": "Rows skipped: {{count}}"
+  },
+  "previewTable": {
+    "sheet": "Sheet",
+    "row": "Row",
+    "customer": "Customer",
+    "number": "Customer number",
+    "type": "Type",
+    "currency": "Currency",
+    "amount": "Amount",
+    "date": "Date",
+    "note": "Note"
+  },
+  "sheet": {
+    "customers": "Customers",
+    "transactions": "Transactions"
+  },
+  "error": {
+    "invalidFormat": "The file is not a valid Excel workbook (.xlsx).",
+    "missingSheet": "The Transactions sheet is missing.",
+    "missingHeader": "A required column header is missing.",
+    "noData": "The selected file has no data rows.",
+    "invalidType": "Transaction type must be Cash In or Cash Out.",
+    "invalidCurrency": "Currency must be an active currency code.",
+    "invalidAmount": "Amount must be a positive number with up to 4 decimal places.",
+    "missingCustomer": "Each transaction needs a customer number or customer name.",
+    "invalidDate": "Date must be a valid calendar date.",
+    "duplicateCustomer": "This customer number is duplicated in the Customers sheet.",
+    "fileTooLarge": "The file is larger than 50 MB.",
+    "tooManyRows": "The file has more than 100,000 rows.",
+    "invalidPhoto": "The profile photo path is not a valid image.",
+    "pathTraversal": "The photo path is not allowed.",
+    "nameTooLong": "Customer name is too long.",
+    "customerNumberTooLong": "Customer number is too long.",
+    "invalidCustomerNumber": "Customer number contains invalid characters.",
+    "invalidCharacters": "The value contains invalid characters.",
+    "parseTimeout": "Parsing timed out. Try a smaller file."
+  },
+  "warning": {
+    "unknownColumn": "Unknown column \"{{column}}\" was ignored.",
+    "possibleDuplicate": "This transaction looks like a duplicate and will still be imported."
+  },
+  "template": {
+    "instructionsSheet": "Instructions",
+    "instructions": "Fill the Customers sheet (optional) and the Transactions sheet. Transaction type must be CASH_IN or CASH_OUT (Cash In / Cash Out are also accepted). Currency must be an active code such as AFN, USD, or EUR. Amounts must be positive. Dates use YYYY-MM-DD. At least one of customer_number or customer_name is required on each transaction row. Missing customers are created automatically. Extra columns are ignored."
+  }
+}

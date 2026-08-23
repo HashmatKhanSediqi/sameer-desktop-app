@@ -34,8 +34,10 @@ Balance(EUR) = CashIn(EUR) - CashOut(EUR)
 
 **Forbidden operations:**
 - Adding AFN + USD balances
-- Converting between currencies inside the app (v1.0)
+- Converting between currencies inside the ledger (no automatic FX postings)
 - Showing a single "total balance" across currencies on main page
+
+A Settings-controlled **exchange calculator** on the main page may convert an amount using a **manually entered** rate (Decimal.js). It does not fetch rates from the internet and does not write transactions. Default: disabled.
 
 **Required display:**
 - Separate totals: Total AFN, Total USD, Total EUR

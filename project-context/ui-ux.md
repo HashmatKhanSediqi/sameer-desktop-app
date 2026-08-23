@@ -23,17 +23,28 @@ Visual design, layout patterns, and interaction guidelines.
 
 | Token | Usage | Example |
 |-------|-------|---------|
+| `--color-primary` | Primary buttons, links, login accent | `#1F7A4D` |
+| `--color-primary-hover` | Primary button hover | `#258A58` |
+| `--color-primary-pressed` | Primary button pressed | `#17653F` |
 | `--color-cash-in` | Cash In amounts, badges, icons | `#16A34A` (green-600) |
 | `--color-cash-out` | Cash Out amounts, badges, icons | `#DC2626` (red-600) |
-| `--color-primary` | Primary buttons, links | `#2563EB` (blue-600) |
+| `--color-balance-positive` | Positive customer balances on the list | `#15803D` |
+| `--color-balance-negative` | Negative customer balances on the list | `#B91C1C` |
 | `--color-danger` | Delete confirmations | `#DC2626` |
-| `--color-background` | App background | `#F8FAFC` |
+| `--color-background` | App background | `#F4F7F5` |
 | `--color-surface` | Cards, panels | `#FFFFFF` |
 | `--color-text` | Primary text | `#0F172A` |
 | `--color-text-muted` | Secondary text | `#64748B` |
-| `--color-border` | Dividers, table borders | `#E2E8F0` |
+| `--color-border` | Dividers, table borders | `#DCE6E0` |
+| `--summary-tone-1-*` | First currency total card (AFN by default) | Soft sage |
+| `--summary-tone-2-*` | Second currency total card (USD by default) | Soft blue-gray |
+| `--summary-tone-3-*` | Third currency total card (EUR by default) | Soft sand |
 
 **Non-negotiable:** Cash In = green, Cash Out = red, everywhere (lists, detail, reports color cues where applicable).
+
+**Customer list balances:** positive = green, negative = red, zero = default text color. This is display-only and must not change calculations.
+
+Summary card colors are CSS variables so an administrator color picker can later override `--summary-tone-N-*` without a schema change. Do not hardcode card colors in components.
 
 ### Typography
 
@@ -54,7 +65,7 @@ Visual design, layout patterns, and interaction guidelines.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  [Logo] Customer Accounting          [Lang ▼] [Settings] [Logout] │
+│  [Company logo] Company name          [Lang ▼] [Settings] [Logout] │
 ├────────────────────────────────────────────────────────────┤
 │  Total AFN: 125,000  │  Total USD: 3,500  │  Total EUR: 0 │
 ├────────────────────────────────────────────────────────────┤
@@ -91,10 +102,11 @@ Visual design, layout patterns, and interaction guidelines.
 
 ## 5. Login Screen
 
-- Centered card layout
+- Centered elevated card on a quiet green-tinted background with subtle depth (soft orbs, not a busy illustration)
 - Fields: Username, Password
 - **No autofill:** `autocomplete="off"`, `autoComplete="new-password"` on password field, no saved credential hints
-- Button: "Login"
+- Dimensional primary Login button with hover and pressed states
+- Language selector in the logical top-end corner
 - Link below form: **"Import Existing System"** → restore flow
 - Error message area (localized): invalid credentials
 - No "remember me" checkbox (single admin desktop app)
@@ -105,7 +117,7 @@ Visual design, layout patterns, and interaction guidelines.
 
 ### Summary Bar
 
-Three stat cards or inline values:
+Raised currency total cards (balance only — not a dashboard):
 
 ```
 Total AFN    1,250,000.00
@@ -115,6 +127,8 @@ Total EUR            0.00
 
 - Show `0` or `0.00` when no value
 - Format numbers per locale (see `localization.md`)
+- Soft per-currency tones via `--summary-tone-N-*` tokens
+- Do **not** show Cash In / Cash Out totals on the customer list
 
 ### Table Columns
 
@@ -123,12 +137,12 @@ Total EUR            0.00
 | Photo | center | Thumbnail 32×32 or initials avatar |
 | Name | start | — |
 | Customer Number | start | — |
-| AFN Balance | end | Color neutral; green/red only for transaction type rows |
-| USD Balance | end | — |
-| EUR Balance | end | — |
-| Cash In (#) | end | Count only |
-| Cash Out (#) | end | Count only |
-| Actions | end | Edit, Delete icons |
+| AFN Balance | end | Green if positive, red if negative, default if zero |
+| USD Balance | end | Same sign coloring |
+| EUR Balance | end | Same sign coloring |
+| Actions | end | View, Edit, Delete |
+
+Cash In / Cash Out counts remain on Customer Detail, transactions, and reports — not on the customer list.
 
 - Sortable by name, customer number (optional v1.0)
 - Empty state: illustration + "No customers yet" + Add Customer CTA
@@ -145,11 +159,29 @@ Confirmation dialog:
 
 ## 7. Customer Detail
 
+### Layout
+
+Two-column content row that follows document direction:
+
+- **English (LTR):** customer information card on the **left**; balances and history on the right
+- **Dari / Pashto (RTL):** customer information card on the **right**; balances and history on the left
+- Large desktop: information card occupies about **35–40%** of the content row; history keeps the remaining space
+- Implemented with flexbox and CSS logical properties (no language-specific layouts)
+- Below ~960px, the information card stacks above the remaining content
+- Desktop two-column: the details page fills the viewport; header, profile, and currency cards stay put; **only Transaction History scrolls**
+- Stacked (below ~960px): page scroll is allowed so the layout remains usable
+
 ### Header Section
 
-- Profile photo (large)
-- Name, customer number
-- Edit button
+- Back button at inline-start
+- Single primary **Add Transaction** button, plus **Export PDF**, Edit, and Delete at inline-end
+- Do not duplicate Add Transaction on the history card
+- Export PDF uses the existing `reports:generate` customer PDF path (current language, RTL/LTR as already implemented)
+
+### Customer information card
+
+- Profile photo (large), name, customer number, created/updated timestamps
+- Elevated card with start-edge accent; fields use existing customer data only
 
 ### Balance Cards (per currency)
 
@@ -157,38 +189,45 @@ For each active currency (AFN, USD, EUR):
 
 ```
 ┌─────────────────────────┐
-│ AFN                      │
-│ Cash In:    500,000  (12)│  ← green for Cash In label/value
-│ Cash Out:   200,000   (5)│  ← red for Cash Out label/value
-│ Balance:    300,000      │
+│ Balance                  │
+│ AFN ؋                    │
+│           300,000        │  ← green if positive, red if negative
+│ Cash In:  500,000  (12)  │  ← green
+│ Cash Out: 200,000   (5)  │  ← red
 └─────────────────────────┘
 ```
+
+- Soft tones, subtle elevation, same `--summary-tone-*` tokens as the customer list
+- Cash In / Cash Out remain on this page (not on the customer list)
 
 ### Transaction History
 
 | Date | Type | Currency | Amount | Note | Actions |
 |------|------|----------|--------|------|---------|
-| ... | Cash In (green badge) | AFN | 5,000 | ... | Delete |
+| ... | Cash In (green badge) | AFN | 5,000 | ... | Edit, Delete |
 
+- Date column shows locale-formatted date **and** time
 - Type column uses colored badge: green "Cash In", red "Cash Out"
 - Note column: truncate in table with tooltip/expand for long notes
 - Pagination controls at bottom when enabled and > page size
-- **[+ Add Transaction]** button prominent
+- Add Transaction remains a single page-header action (not duplicated on the history card)
 
 ---
 
 ## 8. Transaction Form (Modal)
 
+Elevated dialog matching the app surface (white card, rounded corners, soft shadow). Header shows Add/Edit title plus customer name. If the form is taller than the viewport, only the modal body scrolls; footer actions stay visible.
+
 | Field | Required | UI |
 |-------|----------|-----|
-| Type | Yes | Radio or toggle: Cash In / Cash Out |
-| Amount | Yes | Numeric input, decimal allowed |
-| Currency | Yes | Dropdown: AFN, USD, EUR |
+| Type | Yes | Segmented Cash In / Cash Out; green vs red selected state plus border |
+| Amount | Yes | Prominent LTR numeric input with currency affix |
+| Currency | Yes | Dropdown of active codes (untranslated) |
 | Date | Yes (default today) | Date picker |
 | Note | No | Multiline textarea, resizable, no max length indicator |
 
-- Cash In selection highlights green border/accent
-- Cash Out selection highlights red border/accent
+- Primary submit: Add Transaction (create) or Save (edit)
+- Cancel is secondary; Escape closes the modal
 - Validation errors inline below fields (localized)
 
 ---
@@ -199,9 +238,14 @@ Sections:
 
 1. **General** — Language (EN / Dari / Pashto)
 2. **Transactions** — Pagination enabled toggle, page size (if enabled)
-3. **Currencies** — List active currencies; add new (future extensibility hook)
-4. **Account** — Placeholder for password change (future); show username read-only
-5. **About** — App version, data directory path (read-only, copy button)
+3. **Currencies** — List active currencies; add / deactivate
+4. **Account & Security** — Change password; security question/answer (hashed)
+5. **Appearance** — Primary/accent colors and main-page card colors, with reset
+6. **Company Profile** — Name, logo, phone, email, address, website, notes
+7. **Currency Exchange** — Enable/disable the main-page calculator (default off)
+8. **About** — App version, data directory path (read-only, copy button)
+
+Theme colors persist in settings and apply through CSS variables (`--color-primary`, `--summary-tone-*`). The default green/white design remains until the administrator changes it.
 
 ---
 
@@ -268,11 +312,15 @@ See `localization.md` for full RTL specification.
 
 ## 14. Responsive Behavior
 
-Desktop window minimum size: **1024 × 600**
+Desktop window minimum size: **1024 × 600**. Layouts also adapt down toward tablet widths using flex/grid wrapping, CSS logical properties, and container queries.
 
-- Tables horizontally scroll on narrow widths
-- Modals max-width 560px
-- Summary bar stacks vertically below 768px internal width
+- No page-level horizontal scrolling for normal chrome (header, forms, cards, dialogs)
+- Header, page actions, and button groups wrap instead of overlapping
+- Customer details: two columns down to ~960px (information card ~38% at inline-start); stacked below that, information card first
+- Tables remain tables when the panel is wide; they switch to labeled stacked cards when the panel is narrower than ~840px
+- Modals stay within the viewport (`max-width: 560px`, `max-height: 90dvh`)
+- Summary cards use `auto-fit` grids and shrink with the container
+- Forms collapse to a single column where a two-column row would overflow
 
 ---
 
