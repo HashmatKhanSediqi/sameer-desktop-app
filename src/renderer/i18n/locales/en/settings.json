@@ -68,6 +68,7 @@
   "exchangeEnabled": "Enable currency exchange",
   "exchangeHint": "When enabled, a calculator appears on the main page. Rates are entered manually and are not fetched from the internet.",
   "about": "About",
+  "application": "Application",
   "version": "Version",
   "dataDirectory": "Data directory",
   "databasePath": "Database path",

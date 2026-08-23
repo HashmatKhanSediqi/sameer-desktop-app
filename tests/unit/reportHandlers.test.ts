@@ -121,7 +121,7 @@ describe('report IPC handlers', () => {
       })) as { ok: true; data: { filePath: string; fileName: string } };
 
       expect(result.ok).toBe(true);
-      expect(result.data.fileName).toMatch(/^CustomerAccounting_Customer_Noor_N-9_\d{4}-\d{2}-\d{2}\.pdf$/);
+      expect(result.data.fileName).toMatch(/^FMT_Customer_Noor_N-9_\d{4}-\d{2}-\d{2}\.pdf$/);
       expect(result.data.filePath.length).toBeGreaterThan(0);
     } finally {
       harness.cleanup();

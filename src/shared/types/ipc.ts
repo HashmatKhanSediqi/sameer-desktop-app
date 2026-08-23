@@ -7,6 +7,7 @@ import type {
   CreateCustomerInput,
   Customer,
   CustomerListItem,
+  CustomerListQuery,
   CustomerPhotoData,
   SearchCustomerInput,
   UpdateCustomerInput,
@@ -38,6 +39,7 @@ export type IpcErrorCode =
   | 'INTERNAL_ERROR'
   | 'INVALID_REQUEST'
   | 'DATABASE_ERROR'
+  | 'DATABASE_CORRUPTED'
   | 'NOT_AUTHENTICATED'
   | 'SESSION_EXPIRED'
   | 'INVALID_CREDENTIALS'
@@ -154,11 +156,15 @@ export interface AuthenticatedRequest {
   sessionId: string;
 }
 
-export type CustomersListRequest = AuthenticatedRequest;
+export type CustomersListRequest = AuthenticatedRequest & CustomerListQuery;
 
 export interface CustomersListData {
   customers: CustomerListItem[];
   totals: GlobalCurrencyTotal[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface CustomersListSuccessResponse {
@@ -168,7 +174,7 @@ export interface CustomersListSuccessResponse {
 
 export type CustomersListResult = CustomersListSuccessResponse | IpcErrorResponse;
 
-export type CustomersSearchRequest = AuthenticatedRequest & SearchCustomerInput;
+export type CustomersSearchRequest = AuthenticatedRequest & SearchCustomerInput & CustomerListQuery;
 
 export type CustomersSearchResult = CustomersListResult;
 

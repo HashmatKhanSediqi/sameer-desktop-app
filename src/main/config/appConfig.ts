@@ -14,7 +14,7 @@ export function loadAppConfig(): AppConfig {
   const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
 
   return {
-    appName: 'Customer Accounting',
+    appName: 'FMT',
     version: APP_VERSION,
     isDev,
     logLevel: isDev ? 'DEBUG' : 'INFO',

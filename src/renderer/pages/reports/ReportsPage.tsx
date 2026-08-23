@@ -35,7 +35,12 @@ export function ReportsPage({ onBack, initialCustomerId }: ReportsPageProps): JS
     setIsLoading(true);
     setError(null);
     try {
-      const result = await window.api.customers.list({ sessionId });
+      const result = await window.api.customers.list({
+        sessionId,
+        page: 1,
+        pageSize: 500,
+        includeAccounting: false,
+      });
       if (!result.ok) {
         setError(tErrors(result.errorCode) || t('errors.loadCustomers'));
         return;

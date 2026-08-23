@@ -22,8 +22,8 @@ All customer input fields are **optional** unless stated otherwise in this docum
 
 ### Profile Photo Storage
 
-- Saved to: `%APPDATA%/CustomerAccounting/data/images/customers/{customer_id}.{ext}`
-- Database stores relative filename only: `customers/123.jpg`
+- Saved to: `%APPDATA%/CustomerAccounting/data/images/customers/{customer_id}.{ext}` (compatibility path)
+- Database stores relative filename only
 - On customer delete: delete image file in same operation
 - Included in system backup
 
@@ -67,17 +67,24 @@ Displayed immediately after login at route `/`.
 | 1 | Photo | Thumbnail or placeholder |
 | 2 | Name | `customers.name` or fallback |
 | 3 | Customer Number | `customers.customer_number` |
-| 4 | AFN Balance | Computed from transactions |
-| 5 | USD Balance | Computed from transactions |
-| 6 | EUR Balance | Computed from transactions |
-| 7 | Cash In Count | COUNT where type = CASH_IN |
-| 8 | Cash Out Count | COUNT where type = CASH_OUT |
-| 9 | Actions | Edit, Delete |
+| 4 | Per-currency balances | Computed (dynamic active currencies) |
+| 5 | Actions | Edit, Delete |
+
+Cash In / Cash Out **counts are not shown on the main list** (removed from UI). Counts remain on customer detail and reports.
+
+### Pagination & Search
+
+- Customer list is **SQL-paginated** — do not load all customers into renderer memory
+- Search is SQL `LIKE` on name/number (paginated). **FTS5 is not implemented**
+- Empirically validated at 100,000 customers / 300,000 transactions
+- **1,000,000+ customers have not been empirically validated**
 
 ### Balance Display
 
 - Format per locale and currency
-- Show `0.00` (or locale equivalent) when no transactions for that currency
+- Show `0` when no transactions for that currency
+- Positive green / negative red / zero default (display only)
+- Cash-out may produce negative balances (no insufficient-balance gate on cash-out/edit; transfers do enforce)
 - Balance color: neutral (not green/red — colors reserved for transaction types)
 
 ### Global Totals (Top of Page)

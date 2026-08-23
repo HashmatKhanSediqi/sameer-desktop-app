@@ -1,3 +1,5 @@
+import type { GlobalCurrencyTotal } from './transaction';
+
 export interface Customer {
   id: number;
   name: string | null;
@@ -36,6 +38,21 @@ export interface UpdateCustomerInput {
 
 export interface SearchCustomerInput {
   query: string;
+}
+
+export interface CustomerListQuery {
+  page?: number;
+  pageSize?: number;
+  includeAccounting?: boolean;
+}
+
+export interface PaginatedCustomerListResult {
+  customers: CustomerListItem[];
+  totals: GlobalCurrencyTotal[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface CustomerPhotoData {

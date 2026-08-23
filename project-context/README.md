@@ -1,69 +1,101 @@
-# Customer Accounting — Project Context
+# FMT — Project Context
 
-This folder contains the complete specification for building a **professional offline desktop customer accounting application** for Windows. It is intended to be read by AI coding agents and human developers before writing any application code.
+This folder is the authoritative specification and maintenance context for **FMT**, a professional offline desktop customer accounting application for Windows.
 
-## What This Project Is
+Documentation must describe the **current implementation**, not historical product names or unfinished plans.
+
+## Product Identity
+
+| Attribute | Value |
+|-----------|-------|
+| Official product name | **FMT** |
+| Installer artifact | `FMT-Setup.exe` |
+| Application executable | `FMT.exe` |
+| Desktop / Start Menu shortcut | **FMT** |
+| Application version | `1.0.0` |
+| Backup extension | `.cab` (ZIP-compatible) |
+| Default backup filename | `FMT_Backup_YYYY-MM-DD.cab` |
+| Import template | `FMT_Import_Template.xlsx` |
+| Report filenames | `FMT_{ReportType}_...pdf\|xlsx` |
+
+### Intentional compatibility identifiers (do not rename casually)
+
+These remain for **backward compatibility** with existing user data and Electron/app identity. They are **not** user-facing product branding:
+
+| Identifier | Why it remains |
+|------------|----------------|
+| `%APPDATA%\CustomerAccounting\` | Existing installed databases, images, backups, and logs live here |
+| `%LOCALAPPDATA%\Programs\CustomerAccounting\` | Default electron-builder install directory for upgrades |
+| `com.customeraccounting.app` | Windows App User Model ID / electron-builder `appId` |
+| npm package name `customer-accounting` | Internal package identity; not shown to end users |
+| TypeScript name `CustomerAccountingStats` | Internal code symbol |
+
+**Do not reintroduce** “Customer Accounting” / “CustomerAccounting” as user-facing product names in UI, installer shortcuts, or documentation titles.
+
+---
+
+## What FMT Is
 
 A single-user, offline-first desktop application that lets an administrator:
 
-- Manage customers with multi-currency balances (AFN, USD, EUR)
-- Record Cash In and Cash Out transactions
+- Manage customers with multi-currency balances (AFN, USD, EUR + Settings-extensible)
+- Record Cash In, Cash Out, and customer-to-customer transfers
+- Paginate and search large customer lists (SQL-side; stress-tested at 100k customers / 300k transactions)
 - Generate PDF and Excel reports (including RTL Dari and Pashto)
 - Import data from Excel with validation and preview
-- Create full system backups and restore them on new installations
-- Receive application updates without losing local data
+- Create full-system backups (manual + automatic on application close)
+- Restore backups on new or existing installations (including pre-login restore)
+- Change admin password and use hashed security-question recovery
 
-The end customer receives **one installer file** (e.g. `CustomerAccounting-Setup.exe`) and uses the application immediately — no Node.js, MongoDB, Python, npm, Git, or command-line tools required.
+The end customer receives **one installer file** (`FMT-Setup.exe`) and uses the application immediately — no Node.js, MongoDB, Python, npm, Git, or command-line tools required.
 
-## What This Project Is Not
+## What FMT Is Not
 
 - Not a web application
 - Not a cloud/SaaS product (data stays local)
 - Not a multi-user server application
 - Not using MongoDB
 - **Does not include an Audit Log** (explicitly removed from scope)
+- Does **not** ship an in-app online update system in v1.0 (architecture documented; implementation deferred to v1.1+)
 
 ## Document Index
 
-Read documents in the order below when starting implementation.
+| # | File | Purpose | Status |
+|---|------|---------|--------|
+| 1 | [AI_INSTRUCTIONS.md](./AI_INSTRUCTIONS.md) | Mandatory rules for AI coding agents | CURRENT |
+| 2 | [requirements.md](./requirements.md) | Functional and non-functional requirements | CURRENT |
+| 3 | [architecture.md](./architecture.md) | Technology stack, modules, and system design | CURRENT |
+| 4 | [database.md](./database.md) | SQLite schema, migrations, and data rules | CURRENT |
+| 5 | [authentication.md](./authentication.md) | Admin login, sessions, and credential handling | CURRENT |
+| 6 | [ui-ux.md](./ui-ux.md) | Visual design, layout, and interaction patterns | CURRENT |
+| 7 | [customers.md](./customers.md) | Customer CRUD, list pagination, search | CURRENT |
+| 8 | [transactions.md](./transactions.md) | Cash In/Out, transfers, pagination | CURRENT |
+| 9 | [currencies.md](./currencies.md) | Multi-currency rules and extensibility | CURRENT |
+| 10 | [reports.md](./reports.md) | PDF/Excel generation, RTL, report types | CURRENT |
+| 11 | [import-export.md](./import-export.md) | Excel import format, validation, and export | CURRENT |
+| 12 | [backup-restore.md](./backup-restore.md) | Backup format, auto-close, restore, retention | CURRENT |
+| 13 | [update-system.md](./update-system.md) | Online update architecture (v1.1+) | RELEASE-RELEVANT |
+| 14 | [localization.md](./localization.md) | Dari, Pashto, English; RTL/LTR | CURRENT |
+| 15 | [security.md](./security.md) | Hashing, validation, known risks | CURRENT |
+| 16 | [desktop-app.md](./desktop-app.md) | Lifecycle, directories, logs, crash recovery | CURRENT |
+| 17 | [installer.md](./installer.md) | Windows installer and uninstall behavior | CURRENT |
+| 18 | [coding-rules.md](./coding-rules.md) | Code style, structure, and conventions | CURRENT |
+| 19 | [testing.md](./testing.md) | Test strategy and acceptance criteria | CURRENT |
+| 20 | [changelog.md](./changelog.md) | Versioning and release history | CURRENT |
+| 21 | [release-readiness.md](./release-readiness.md) | v1.0 release assessment and known risks | RELEASE-RELEVANT |
 
-| # | File | Purpose |
-|---|------|---------|
-| 1 | [AI_INSTRUCTIONS.md](./AI_INSTRUCTIONS.md) | Mandatory rules for AI coding agents |
-| 2 | [requirements.md](./requirements.md) | Functional and non-functional requirements |
-| 3 | [architecture.md](./architecture.md) | Technology stack, modules, and system design |
-| 4 | [database.md](./database.md) | SQLite schema, migrations, and data rules |
-| 5 | [authentication.md](./authentication.md) | Admin login, sessions, and credential handling |
-| 6 | [ui-ux.md](./ui-ux.md) | Visual design, layout, and interaction patterns |
-| 7 | [customers.md](./customers.md) | Customer CRUD and list behavior |
-| 8 | [transactions.md](./transactions.md) | Cash In/Out, pagination, and calculations |
-| 9 | [currencies.md](./currencies.md) | Multi-currency rules and extensibility |
-| 10 | [reports.md](./reports.md) | PDF/Excel generation, RTL, and report types |
-| 11 | [import-export.md](./import-export.md) | Excel import format, validation, and export |
-| 12 | [backup-restore.md](./backup-restore.md) | Backup format, restore flow, and safety |
-| 13 | [update-system.md](./update-system.md) | Online update architecture and data preservation |
-| 14 | [localization.md](./localization.md) | Dari, Pashto, English; RTL/LTR |
-| 15 | [security.md](./security.md) | Hashing, validation, and threat mitigation |
-| 16 | [desktop-app.md](./desktop-app.md) | Lifecycle, directories, logs, crash recovery |
-| 17 | [installer.md](./installer.md) | Windows installer and uninstall behavior |
-| 18 | [coding-rules.md](./coding-rules.md) | Code style, structure, and conventions |
-| 19 | [testing.md](./testing.md) | Test strategy and acceptance criteria |
-| 20 | [changelog.md](./changelog.md) | Versioning format and release history |
+## Implementation Status (v1.0)
 
-## Recommended Implementation Order
+Core v1.0 scope is **implemented**. See [release-readiness.md](./release-readiness.md) for the honest VERIFIED / LIMITATION / BLOCKER matrix.
 
-1. **Foundation** — Project scaffold, architecture modules, SQLite, migrations
-2. **Authentication** — Login screen, session, default admin account
-3. **Localization** — i18n system with EN / Dari / Pashto and RTL layout
-4. **Customers** — Main page customer list, CRUD, profile photos
-5. **Transactions** — Cash In/Out, balances, pagination setting
-6. **Reports** — PDF and Excel with proper RTL rendering
-7. **Import/Export** — Excel import with preview; export utilities
-8. **Backup/Restore** — Full system backup; pre-login restore flow
-9. **Settings** — Admin extensibility, pagination toggle, future currencies
-10. **Update system** — Version check, download, verify, install (can ship in v1.1+)
-11. **Installer** — NSIS/electron-builder packaging, shortcuts, data separation
-12. **Testing** — Full test pass per `testing.md`
+### Empirically validated scale
+
+- **100,000 customers**
+- **300,000 transactions**
+
+**1,000,000+ customer capacity has not been empirically validated.**
+
+Architecture (SQL-side pagination, aggregation indexes, no full-table load into the renderer) is expected to scale further; remaining bottlenecks include all-customer report memory use, backup time/size growth, and `LIKE` search (FTS5 not implemented).
 
 ## Key Defaults (Do Not Change Without Explicit Instruction)
 
@@ -74,18 +106,18 @@ Read documents in the order below when starting implementation.
 | Database | SQLite (local file) |
 | Initial currencies | AFN, USD, EUR |
 | Supported languages | English (LTR), Dari (RTL), Pashto (RTL) |
-| Installer name | `CustomerAccounting-Setup.exe` |
-| Backup extension | `.cab` (custom archive format) |
+| Installer name | `FMT-Setup.exe` |
+| Backup extension | `.cab` |
 
 ## Assumptions
 
 1. **Single administrator** — One admin account with full access; no role-based access control in v1.0.
 2. **Single computer** — One SQLite database on one machine; no sync between devices.
 3. **Windows 10/11 x64** — Primary target platform for v1.0.
-4. **Internet optional** — Required only for checking/downloading application updates, not for daily use.
+4. **Internet optional** — Not required for daily use. In-app updates are deferred to v1.1+.
 5. **Customer profile photos** — Stored as local image files referenced by database; included in backups.
-6. **Timestamps** — All transaction dates stored in UTC; displayed in local timezone with locale-appropriate formatting.
-7. **Amount precision** — Monetary amounts stored as integers in minor units OR as DECIMAL(18,4); see `database.md` for the canonical choice (DECIMAL recommended for accounting clarity).
+6. **Timestamps** — Transaction dates stored as local wall-clock `TEXT`; displayed with locale-appropriate formatting and Latin digits.
+7. **Amount precision** — Monetary amounts stored as decimal `TEXT` strings; business logic uses `decimal.js`. Aggregation SQL may use `CAST(amount AS REAL)` — see known risks in `security.md` / `release-readiness.md`.
 
 ## Cross-Reference Map
 
@@ -97,12 +129,15 @@ requirements.md ──► architecture.md ──► database.md
         │                  │
         ├─ customers.md    ├─ installer.md
         ├─ transactions.md ├─ backup-restore.md
-        ├─ currencies.md   ├─ update-system.md
+        ├─ currencies.md   ├─ update-system.md (v1.1+)
         ├─ reports.md      └─ security.md
         ├─ import-export.md
         └─ localization.md
+                 │
+                 ▼
+         release-readiness.md
 ```
 
 ## Version
 
-Documentation package version: **1.0.0** (specification only — no application code yet).
+Documentation package version: **1.0.0** (synchronized with application release readiness audit — STEP 9).

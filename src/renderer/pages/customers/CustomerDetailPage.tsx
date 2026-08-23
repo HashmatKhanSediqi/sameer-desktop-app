@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Customer, CustomerListItem } from '@shared/types/customer';
+import type { Customer } from '@shared/types/customer';
 import type { Currency } from '@shared/types/currency';
 import type { CustomerTransactionSummary, Transaction, TransactionType } from '@shared/types/transaction';
 import { normalizeLocale } from '@shared/types/locale';
@@ -47,7 +47,7 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
-  const [allCustomers, setAllCustomers] = useState<CustomerListItem[]>([]);
+  const [totalCustomerCount, setTotalCustomerCount] = useState(0);
 
   const load = useCallback(async (): Promise<void> => {
     if (!sessionId) {
@@ -58,12 +58,12 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
     setError(null);
 
     try {
-      const [customerResult, summaryResult, listResult, currencyResult, customersResult] = await Promise.all([
+      const [customerResult, summaryResult, listResult, currencyResult, countResult] = await Promise.all([
         window.api.customers.get({ sessionId, id: customerId }),
         window.api.transactions.summary({ sessionId, customerId }),
         window.api.transactions.list({ sessionId, customerId, page }),
         window.api.currencies.list({ sessionId }),
-        window.api.customers.list({ sessionId }),
+        window.api.customers.list({ sessionId, page: 1, pageSize: 1, includeAccounting: false }),
       ]);
 
       if (!customerResult.ok) {
@@ -92,8 +92,8 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
         setPage(listResult.data.page);
       }
       setCurrencies(currencyResult.data.currencies);
-      if (customersResult.ok) {
-        setAllCustomers(customersResult.data.customers);
+      if (countResult.ok) {
+        setTotalCustomerCount(countResult.data.totalCount);
       }
     } catch {
       setError(t('loadError'));
@@ -212,7 +212,7 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
               type="button"
               className="button button-secondary"
               onClick={() => setShowTransfer(true)}
-              disabled={allCustomers.length < 2}
+              disabled={totalCustomerCount < 2}
             >
               {tTx('transfer.title')}
             </button>
@@ -370,7 +370,6 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
 
       {showTransfer && customer && currencies.length > 0 ? (
         <TransferForm
-          customers={allCustomers}
           currencies={currencies}
           defaultFromCustomerId={customer.id}
           onCancel={() => setShowTransfer(false)}

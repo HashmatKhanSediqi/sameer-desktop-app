@@ -1,6 +1,8 @@
 # UI/UX Design Specification
 
-Visual design, layout patterns, and interaction guidelines.
+Visual design, layout patterns, and interaction guidelines for **FMT**.
+
+Brand: green primary (`#1F7A4D` family), Cash In green / Cash Out red, FMT logo/icon.
 
 ---
 

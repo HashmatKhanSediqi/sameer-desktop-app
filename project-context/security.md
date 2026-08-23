@@ -1,6 +1,6 @@
 # Security
 
-Security architecture for the offline Customer Accounting desktop application.
+Security architecture for the offline **FMT** desktop application.
 
 ---
 
@@ -12,10 +12,12 @@ Security architecture for the offline Customer Accounting desktop application.
 | SQL injection | IPC → SQLite queries | High |
 | Malicious import file | Excel upload | Medium |
 | Malicious backup file | Restore flow | High |
-| Malicious update package | Update server compromise | Critical |
+| Malicious update package | Update server (v1.1+) | Critical |
 | Path traversal | Backup/archive extraction | High |
 | XSS in renderer | React app | Medium |
-| Data loss | Failed migration/import | High |
+| Data loss | Failed migration/import/restore | High |
+| Unencrypted backup theft | `.cab` file copied off machine | Medium |
+| Pre-login restore misuse | Physical access to PC | Medium |
 
 **Out of scope v1.0:** Network attacks on cloud (no cloud data), multi-user privilege escalation.
 
@@ -33,10 +35,10 @@ Security architecture for the offline Customer Accounting desktop application.
 | Recovery answer | bcrypt hash of normalized answer; never plaintext |
 | Password change | Current password required; new password 8–128 characters; sessions cleared |
 
-```typescript
-// Main process only
-const valid = await bcrypt.compare(inputPassword, storedHash);
-```
+Default credentials for v1.0 (must not change without explicit request):
+
+- Username: `admin`
+- Password: `admin123`
 
 ---
 
@@ -45,12 +47,12 @@ const valid = await bcrypt.compare(inputPassword, storedHash);
 | Aspect | v1.0 Design |
 |--------|-------------|
 | Storage | In-memory in main process (Map) |
-| Token | UUID v4 session ID |
+| Token | UUID session ID |
 | Transmission | IPC only — not in URL |
-| Expiry | 8 hours idle |
-| Invalidation | Logout, app quit, expiry |
+| Expiry | Idle timeout (configured; default 8 hours) |
+| Invalidation | Logout, app quit, expiry, password change, successful restore |
 
-Protected IPC handlers **must** validate session before any operation.
+Protected IPC handlers **must** validate session before mutating accounting data.
 
 ---
 
@@ -58,200 +60,127 @@ Protected IPC handlers **must** validate session before any operation.
 
 | Setting | Value |
 |---------|-------|
-| `nodeIntegration` | `false` in renderer |
+| `nodeIntegration` | `false` |
 | `contextIsolation` | `true` |
-| `sandbox` | `true` (preload only) |
+| `sandbox` | `true` |
 | Remote module | Disabled |
 | `webSecurity` | `true` |
-| Preload | Minimal exposed API via `contextBridge` |
-
-### IPC Validation
-
-- Whitelist channels only
-- Validate all input types and ranges in main process
-- Reject unexpected fields
+| Preload | Minimal API via `contextBridge` |
 
 ---
 
 ## 5. SQL Injection Prevention
 
-- **Parameterized queries only** — never string concatenation
-- Use prepared statements via `better-sqlite3`
-
-```typescript
-// CORRECT
-db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
-
-// WRONG
-db.prepare(`SELECT * FROM customers WHERE id = ${id}`).get();
-```
+- Parameterized queries only via `better-sqlite3` prepared statements
+- Dynamic SQL limited to fixed clause fragments + `?` placeholders
 
 ---
 
 ## 6. Input Validation
 
-### General Rules
-
 | Input | Validation |
 |-------|------------|
-| Amount | Positive decimal, max 4 places, max magnitude |
+| Amount | Positive decimal, max 4 places; Latin digits only in UI |
 | Currency | Whitelist from `currencies` table |
-| Customer name | Max length, strip control characters |
-| Customer number | Max length, alphanumeric + common punctuation |
+| Customer name / number | Max length, strip control characters |
 | Note | Allow Unicode; strip null bytes |
-| Dates | Valid ISO date, reasonable range |
+| Dates | Valid datetime strings |
 | IDs | Positive integers |
 
-### Sanitization
+---
 
-- Trim whitespace on text fields
-- Reject null bytes in all strings
-- Normalize currency codes to uppercase
+## 7. File Upload Validation
+
+### Profile photos / company logo
+
+- Magic-byte type checks
+- Size limits
+- Path must remain inside intended images directories
+- Sanitized filenames
+
+### Import
+
+- XLSX/ZIP magic, 50 MB limit, 100k row limit, path-traversal rejection
+- Formula results only (no VBA/macro execution)
+
+### Backups
+
+- Entry allow-list, zip-bomb limits, checksum/signature, SQLite magic + integrity
+- See `backup-restore.md`
 
 ---
 
-## 7. File Upload Validation (Profile Photos)
+## 8. Backup Confidentiality
 
-| Check | Rule |
-|-------|------|
-| File type | Magic bytes verification (JPEG, PNG, WebP) — not extension only |
-| Max size | 5 MB |
-| Dimensions | Optional max 4096×4096 |
-| Filename | Sanitize; store as `{customer_id}.{ext}` |
-| Path | Must stay within `data/images/customers/` |
-
-Reject executable content disguised as images.
+**v1.0 backups are unencrypted.** Document this to operators. Password-protected / encrypted backups are a future improvement and must preserve `.cab` compatibility or provide a migration.
 
 ---
 
-## 8. Import Validation
-
-See `import-export.md`. Security additions:
-
-| Check | Purpose |
-|-------|---------|
-| Max rows | 100,000 — prevent DoS |
-| Max file size | 50 MB |
-| Parse timeout | 60 seconds |
-| No macro execution | XLSX parsing only |
-| String length limits on parse | Note field exempt (but max row count limits total) |
-
----
-
-## 9. Backup Protection
-
-### Creation
-
-- Backup contains sensitive financial data — user responsible for storage security
-- Optional future: password-protected backup (not v1.0)
-
-### Restore Validation
-
-| Check | Purpose |
-|-------|---------|
-| Archive structure | Valid manifest and files |
-| Checksum verification | Detect tampering/corruption |
-| Path traversal rejection | Block `../` in entry paths |
-| Max uncompressed size | 500 MB — zip bomb prevention |
-| SQLite magic header | Verify file is SQLite before replace |
-| `PRAGMA integrity_check` | After restore |
-
-**Never execute** any file from backup archive.
-
----
-
-## 10. Update Verification
-
-| Layer | Method |
-|-------|--------|
-| Transport | HTTPS only |
-| Integrity | SHA512 checksum vs manifest |
-| Authenticity | Authenticode signature on Windows installer |
-| Downgrade | Optional policy block |
-
-Reject update if any verification fails.
-
----
-
-## 11. Local Database Protection
-
-SQLite file on local disk — protected by OS file permissions (user scope).
-
-| Measure | v1.0 |
-|---------|------|
-| Encryption at rest | Optional future (SQLCipher) — not required v1.0 |
-| File permissions | Default `%APPDATA%` user-only access |
-| WAL mode | Enabled for integrity |
-
-Document in user-facing docs: physical access to machine = access to data.
-
----
-
-## 12. Renderer XSS Prevention
-
-- React auto-escapes by default
-- Never use `dangerouslySetInnerHTML` for user content
-- Sanitize if rendering rich text (not planned v1.0)
-
----
-
-## 13. Error Handling Security
-
-- Do not expose stack traces to user
-- Log detailed errors to file only (`logs/app.log`)
-- Generic user messages for auth failures
-
----
-
-## 14. Dependency Security
-
-- Lock file (`package-lock.json`) committed
-- Periodic `npm audit` in development
-- Pin major dependency versions
-
----
-
-## 15. Sensitive Data in Logs
-
-**Never log:**
-- Passwords
-- Password hashes
-- Session tokens
-- Full database contents
-
-**May log:**
-- Operation type
-- Error codes
-- Timestamps
-- Non-sensitive IDs
-
----
-
-## 16. IPC Authorization Matrix
+## 9. Pre-Login Restore Authorization
 
 | Channel | Auth Required |
 |---------|---------------|
 | `auth:login` | No |
-| `auth:logout` | Yes |
-| `backup:validate` | No (pre-login restore) |
-| `restore:execute` | No (pre-login) — but requires UI confirmation |
-| All other channels | Yes |
+| `auth:recoveryPrompt` / `auth:recoverPassword` | No (no username/answer leak differentiation beyond generic failure) |
+| `backup:validate` | **No** (intentional pre-login recovery) |
+| `restore:execute` | **No** (intentional; requires `confirmed: true`) |
+| `backup:create` | Yes |
+| Accounting / settings / import / reports mutations | Yes |
+
+This is a **known accepted risk** for local disaster recovery when the database prevents login.
 
 ---
 
-## 17. Compliance Notes
+## 10. Database Integrity
 
-This is local business accounting software — no GDPR cloud processing. User controls their own data and backups.
+| Measure | Status |
+|---------|--------|
+| WAL mode | Enabled |
+| `foreign_keys = ON` | Enabled |
+| `busy_timeout = 5000` | Enabled |
+| `synchronous = NORMAL` | Enabled |
+| `integrity_check` on connect | Enabled — fails with `DATABASE_CORRUPTED` |
+| Crash sentinel (`.crash`) | Warns on unclean previous shutdown |
+| Auto-overwrite corrupt DB | **Never** |
 
 ---
 
-## 18. Security Testing
+## 11. Accounting Integrity Notes
 
-See `testing.md`:
-- [ ] SQL injection attempt in customer name fails safely
-- [ ] Invalid session rejected on protected IPC
-- [ ] Corrupted backup rejected
-- [ ] Path traversal archive rejected
-- [ ] Oversized import rejected
-- [ ] Invalid image file rejected
-- [ ] Unsigned update rejected (when update feature active)
+| Topic | Status |
+|-------|--------|
+| Transfer atomicity | Both legs in one SQLite transaction; balance check inside transaction |
+| Cash-out / edit negative balances | **Allowed** unless business later requires a gate |
+| Monetary writes | `decimal.js` / decimal TEXT |
+| Aggregate SQL | May use `CAST(amount AS REAL)` — theoretical precision risk at extreme values |
+
+---
+
+## 12. Update Verification (v1.1+)
+
+When updates ship: HTTPS, checksum, Authenticode. **Not active in v1.0.**
+
+---
+
+## 13. Local Database Protection
+
+| Measure | v1.0 |
+|---------|------|
+| Encryption at rest | Not required / not implemented |
+| File permissions | Default `%APPDATA%` user-scope |
+| Physical access | Physical access ≈ data access |
+
+---
+
+## 14. Sensitive Data in Logs
+
+**Never log:** passwords, hashes, session tokens, recovery answers, full DB dumps.  
+**May log:** operation type, error codes, paths (non-secret), timings.
+
+---
+
+## 15. Security Testing Coverage
+
+Automated coverage includes (non-exhaustive): session rejection, backup traversal/corruption rejection, auth recovery hashing, migration failure safety, database corruption rejection, path containment for photos.
+
+Optional gap: dedicated zip-bomb unit test (limits exist).

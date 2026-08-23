@@ -1,148 +1,136 @@
 # AI Development Instructions
 
-**Read this file completely before writing any application code.**
+**Read this file completely before writing application code.**
 
-This document defines mandatory rules for AI coding agents implementing the Customer Accounting desktop application. Violating these rules can cause data loss, security failures, or broken user experience.
+Mandatory rules for AI coding agents implementing **FMT**. Violating these rules can cause data loss, security failures, or broken user experience.
 
 ---
 
 ## 1. Before You Code
 
-1. **Read the relevant context files** in `project-context/` before implementing any feature. Start with `README.md`, then `requirements.md`, `architecture.md`, and the feature-specific document(s).
-2. **Never guess requirements** when documentation already defines them. If something is ambiguous, document your assumption in code comments and update the relevant `.md` file.
-3. **Follow the recommended implementation order** in `README.md` unless the user explicitly directs otherwise.
+1. **Read the relevant context files** in `project-context/` — start with `README.md`, `release-readiness.md`, then feature-specific docs.
+2. **Never guess requirements** when documentation already defines them.
+3. Prefer the current implementation and tests over outdated historical notes.
 
 ---
 
-## 2. Scope and Change Discipline
+## 2. Branding
 
-4. **Never delete existing features** without explicit user approval.
-5. **Never modify unrelated features** when implementing a requested change. Keep diffs focused.
-6. **Never introduce MongoDB** or any cloud database for customer accounting data.
-7. **Do not add an Audit Log system.** It has been explicitly removed from requirements.
-8. **Do not add cloud dependencies** for normal application operation (auth, storage, sync). The update server is the only permitted online endpoint.
-9. **Preserve backward compatibility** for backups, database schema, and import formats whenever possible.
+4. Official product name is **FMT**.
+5. Do **not** reintroduce user-facing names “Customer Accounting” / “CustomerAccounting”.
+6. Compatibility identifiers (`%APPDATA%\CustomerAccounting\`, `com.customeraccounting.app`, npm name `customer-accounting`) may remain — document why; do not casually rename.
 
 ---
 
-## 3. Data Safety (Critical)
+## 3. Scope and Change Discipline
 
-10. **Never destroy customer data** — not during migrations, imports, updates, or uninstalls.
-11. **Never perform destructive database migrations** without a backup step and explicit migration plan documented in `database.md`.
-12. **Preserve existing backups** — do not invalidate or overwrite user backup files.
-13. **Never silently overwrite existing data** during import, restore, or update operations.
-14. **Never silently discard failed Excel import rows** — all failures must be reported to the user.
-15. **Use atomic transactions** for multi-row database writes (import commit, restore, bulk delete).
-16. **Create a safety backup** before any destructive restore operation.
-
----
-
-## 4. Authentication and Security
-
-17. **Never change admin credentials automatically** — default username `admin` and password `admin123` must remain unless the user explicitly requests a change.
-18. **Never store plaintext passwords** in the database or configuration files.
-19. **Disable browser-style autofill** on the login form (`autocomplete="off"`, appropriate input attributes).
-20. **Validate all external input** — Excel imports, backup files, uploaded images, update packages.
+7. **Never delete existing features** without explicit user approval.
+8. **Never modify unrelated features** when implementing a requested change.
+9. **Never introduce MongoDB** or any cloud database for accounting data.
+10. **Do not add an Audit Log system.**
+11. **Do not add cloud dependencies** for normal operation. In-app updates are v1.1+.
+12. **Preserve backward compatibility** for backups, database schema, and import formats whenever possible.
 
 ---
 
-## 5. Localization and RTL
+## 4. Data Safety (Critical)
 
-21. **Never hardcode localized text** into UI components. Use the centralized localization system defined in `localization.md`.
-22. **Never assume Arabic-script PDF rendering works** by merely selecting a Unicode font. Dari and Pashto require proper text shaping, bidi (RTL) handling, and appropriate fonts — see `reports.md` and `localization.md`.
-
----
-
-## 6. Application Architecture
-
-23. **Keep application files and user data separate** — see `desktop-app.md` and `installer.md`.
-24. **The application must remain offline-first** — all core features work without network access.
-25. **Use SQLite** as the sole database. Do not replace it with another engine.
-26. **Maintain modular separation** — UI, business logic, database, auth, reports, backup, restore, import, export, update system, and localization must remain decoupled per `architecture.md`.
-27. **Never mix currencies mathematically** — AFN, USD, and EUR balances are calculated independently.
+13. **Never destroy customer data** during migrations, imports, updates, or uninstalls.
+14. **Never perform destructive database migrations** without a backup step and documented plan.
+15. **Preserve existing manual backups** — never silently delete user-chosen backup files.
+16. **Never silently overwrite existing data** during import, restore, or update.
+17. **Never silently discard failed Excel import rows.**
+18. **Use atomic transactions** for multi-row writes (import commit, transfers, restore).
+19. **Create and validate a safety backup** before destructive restore.
+20. **Never auto-overwrite a corrupted database** — fail closed and allow restore.
 
 ---
 
-## 7. UI/UX Rules
+## 5. Authentication and Security
 
-28. **Cash In must always be GREEN.** Cash Out must always be RED. This is non-negotiable.
-29. **Destructive actions require explicit confirmation** — delete customer, delete transaction, restore backup, commit import.
-30. **The main page after login shows the customer list**, not a traditional dashboard.
-31. **Do not show total amounts mixed across currencies** — show separate totals for AFN, USD, and EUR.
-
----
-
-## 8. Testing and Documentation
-
-32. **Test every major change** according to `testing.md`.
-33. **Update documentation** when architecture or behavior changes.
-34. **Update `changelog.md`** after implementing features or releasing versions.
-35. **Follow `coding-rules.md`** for naming, structure, and conventions.
+21. Default username `admin` and password `admin123` must remain unless the user explicitly requests a change.
+22. **Never store plaintext passwords** or recovery answers.
+23. Disable browser-style autofill on the login form.
+24. Validate all external input — Excel, backups, images, paths.
+25. Do not claim backups are encrypted — they are not in v1.0.
+26. Pre-login restore without session is intentional; do not “fix” it without a replacement recovery path.
 
 ---
 
-## 9. What to Build vs. What Not to Build
+## 6. Localization and RTL
 
-### Must Build (v1.0 scope)
+27. **Never hardcode localized text** — use i18n namespaces.
+28. Dari/Pashto PDF require proper shaping + bidi + embedded fonts — see `reports.md`.
 
-- Admin login with default credentials
-- Customer list as main page with currency totals
-- Customer CRUD with optional fields and profile photo
-- Cash In / Cash Out transactions (AFN, USD, EUR)
-- Customer detail view with transaction history
-- Settings (pagination toggle, language, future currency extensibility)
-- PDF and Excel reports with RTL support
-- Excel import with validation and preview
-- Full system backup and restore (including pre-login restore)
-- Windows installer with data separation
+---
+
+## 7. Application Architecture
+
+29. Keep application files and user data separate.
+30. Remain offline-first for core features.
+31. Use SQLite as the sole database.
+32. Maintain modular separation per `architecture.md`.
+33. **Never mix currencies mathematically.**
+34. Do not load entire customer/transaction tables into the renderer — use SQL pagination/aggregation.
+
+---
+
+## 8. UI/UX Rules
+
+35. **Cash In = GREEN. Cash Out = RED.** Non-negotiable.
+36. Destructive actions require explicit confirmation.
+37. Main page after login is the customer list.
+38. Show separate totals per currency — never a mixed grand total.
+
+---
+
+## 9. Testing and Documentation
+
+39. Test major changes per `testing.md`.
+40. Update documentation when behavior changes.
+41. Update `changelog.md` and `release-readiness.md` when release posture changes.
+42. Follow `coding-rules.md`.
+43. Be precise about scale: do not claim 1M+ customers without an empirical test.
+
+---
+
+## 10. What to Build vs Not
+
+### Implemented in v1.0
+
+- Admin login, password change, security-question recovery
+- Customer CRUD, pagination, search, photos
+- Cash In / Cash Out / transfers
+- Settings (language, pagination, currencies, company, theme, exchange toggle)
+- PDF/Excel reports with RTL support
+- Excel import with preview
+- Full-system backup, auto-close backup, pre-login restore
+- Windows installer (`FMT-Setup.exe`) with FMT branding/icon
 - Localization: English, Dari, Pashto
 
-### May Defer (document in changelog if deferred)
+### Deferred (v1.1+)
 
-- Online update system (architecture must be ready; implementation can ship in v1.1+)
+- Online in-app update system
+- Backup encryption
+- FTS5 search
+- Code signing (operational)
 
 ### Must NOT Build
 
 - Audit Log
-- MongoDB or cloud database
-- Multi-user / role-based access (v1.0)
+- MongoDB / cloud accounting DB
+- Multi-user RBAC (v1.0)
 - Cloud sync of accounting data
-- Browser-based deployment as primary interface
 
 ---
 
-## 10. When Stuck
+## 11. Success Criteria
 
-1. Re-read the feature-specific document in `project-context/`.
-2. Check `requirements.md` for the authoritative requirement.
-3. Check `architecture.md` for the approved technology and module boundaries.
-4. If still ambiguous, implement the safest option (preserve data, ask for confirmation, fail loudly on errors) and document the decision.
+Implementation is correct when:
 
----
-
-## 11. File Reference Quick Guide
-
-| Task | Read First |
-|------|------------|
-| Project setup | `architecture.md`, `coding-rules.md`, `desktop-app.md` |
-| Login | `authentication.md`, `security.md` |
-| Customer list / main page | `customers.md`, `ui-ux.md`, `currencies.md` |
-| Transactions | `transactions.md`, `currencies.md`, `database.md` |
-| Reports | `reports.md`, `localization.md` |
-| Excel import | `import-export.md` |
-| Backup / restore | `backup-restore.md` |
-| Updates | `update-system.md` |
-| Installer | `installer.md`, `desktop-app.md` |
-| Tests | `testing.md` |
-
----
-
-## 12. Success Criteria
-
-The implementation is correct when:
-
-- A non-technical user can install from `CustomerAccounting-Setup.exe` and use the app immediately
-- All data persists across app restarts, updates, and backup/restore cycles
+- A non-technical user can install from `FMT-Setup.exe` and use the app
+- Data persists across restarts, backups, and restores
 - Dari and Pashto PDFs render readable RTL text
-- Import errors are visible; no silent data corruption
-- Application works fully offline except optional update checks
+- Import errors are visible; no silent corruption
+- App works fully offline for core features
+- Automated `typecheck` / `test` / `build:win` pass before release claims

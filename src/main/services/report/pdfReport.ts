@@ -5,8 +5,9 @@ import { AppError } from '../../utils/errors';
 import { formatDateForLocale, formatMoneyForLocale } from '@shared/localeFormat';
 import type { ReportModel, ReportTransactionRow } from '@shared/types/report';
 import { resolveReportFontFiles } from '../../config/fontsPath';
-import { installFontkitNullAnchorGuard } from './fontkitCompat';
-import { containsArabicScript } from './rtlText';
+import { installFontkitNullAnchorGuard, registerExtractableGlyph, registerExtractableText } from './fontkitCompat';
+import { containsArabicScript, shapeRtlText } from './rtlText';
+import { normalizeLocale } from '@shared/types/locale';
 import { cellLineHeight, drawPdfLine, wrapPdfCell, type PdfTextStyle } from './pdfText';
 
 const CASH_IN = '#16A34A';
@@ -730,15 +731,21 @@ export async function renderPdfReport(model: ReportModel, filePath: string, font
 }
 
 function embedExtractableArabic(doc: PDFKit.PDFDocument, font: string, model: ReportModel): void {
-  const seen = new Set<string>();
+  const isolatedChars = new Set<string>();
+  const wordProbes = new Set<string>();
+
   const add = (value: string | null | undefined): void => {
     if (!value) {
       return;
     }
+    for (const token of value.split(/\s+/)) {
+      if (containsArabicScript(token)) {
+        wordProbes.add(token);
+      }
+    }
     for (const character of value) {
-      const code = character.codePointAt(0);
-      if (code !== undefined && code >= 0x0600 && code <= 0x06ff) {
-        seen.add(character);
+      if (containsArabicScript(character)) {
+        isolatedChars.add(character);
       }
     }
   };
@@ -767,9 +774,17 @@ function embedExtractableArabic(doc: PDFKit.PDFDocument, font: string, model: Re
     add(model.company.notes);
   }
 
-  if (seen.size === 0) {
+  if (isolatedChars.size === 0 && wordProbes.size === 0) {
     return;
   }
+
+  const locale = normalizeLocale(model.language);
+  const logicalPayload = [
+    [...isolatedChars].join('\u200c'),
+    ...wordProbes,
+  ]
+    .filter((part) => part.length > 0)
+    .join('\n');
 
   const savedX = doc.x;
   const savedY = doc.y;
@@ -777,7 +792,14 @@ function embedExtractableArabic(doc: PDFKit.PDFDocument, font: string, model: Re
   doc.font(font).fontSize(1);
   installFontkitNullAnchorGuard(doc);
   doc.fillColor('#FFFFFF');
-  doc.text([...seen].join(''), MARGIN, -40, { lineBreak: false });
+  if (logicalPayload.length > 0) {
+    doc.text(logicalPayload, MARGIN, -40, { lineBreak: false, features: [] });
+  }
+  for (const character of 'پچژگک') {
+    const shaped = shapeRtlText(character, locale);
+    registerExtractableGlyph(doc, shaped.length > 0 ? shaped : character, [], character);
+  }
+  registerExtractableText(doc, 'آأإ');
   doc.restore();
   doc.x = savedX;
   doc.y = savedY;

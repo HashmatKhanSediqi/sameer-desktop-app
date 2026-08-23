@@ -47,7 +47,7 @@ describe('backup service', () => {
         note: 'پشتیبان',
       });
 
-      const filePath = join(harness.ctx.paths.backups, 'CustomerAccounting_Backup_test.cab');
+      const filePath = join(harness.ctx.paths.backups, 'FMT_Backup_test.cab');
       const result = await harness.backupService.create(filePath);
       expect(result.success).toBe(true);
       expect(existsSync(filePath)).toBe(true);
@@ -60,6 +60,48 @@ describe('backup service', () => {
       expect(validated.errors).toHaveLength(0);
       expect(validated.manifest?.customerCount).toBe(1);
       expect(validated.hasExistingData).toBe(true);
+    } finally {
+      harness.cleanup();
+    }
+  });
+
+  it('skips auto-close backup when database has no accounting data', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      const result = await harness.backupService.createAutoCloseBackup();
+      expect(result.created).toBe(false);
+      expect(result.filePath).toBeUndefined();
+    } finally {
+      harness.cleanup();
+    }
+  });
+
+  it('creates validated auto-close backups under scheduled with retention', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      const created = harness.customerService.create({
+        name: 'Close Backup User',
+        customerNumber: 'CB-1',
+      });
+      harness.transactionService.create({
+        customerId: created.id,
+        type: 'CASH_IN',
+        currencyCode: 'AFN',
+        amount: '10',
+        transactionDate: '2026-03-01',
+      });
+
+      const scheduledDir = join(harness.ctx.paths.backups, 'scheduled');
+      for (let index = 0; index < 12; index += 1) {
+        const result = await harness.backupService.createAutoCloseBackup();
+        expect(result.created).toBe(true);
+        expect(result.filePath?.startsWith(scheduledDir)).toBe(true);
+        expect(existsSync(result.filePath ?? '')).toBe(true);
+      }
+
+      const { readdirSync } = await import('node:fs');
+      const autoCloseFiles = readdirSync(scheduledDir).filter((name) => name.startsWith('FMT_AutoClose_'));
+      expect(autoCloseFiles.length).toBeLessThanOrEqual(10);
     } finally {
       harness.cleanup();
     }
@@ -103,6 +145,41 @@ describe('backup service', () => {
     } finally {
       source.cleanup();
       target.cleanup();
+    }
+  });
+
+  it('requires an explicit backup path for restore', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      await expect(harness.backupService.restore('', true)).rejects.toMatchObject({
+        code: 'INVALID_REQUEST',
+      });
+    } finally {
+      harness.cleanup();
+    }
+  });
+
+  it('retains only the latest safety backups in backups/auto', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      harness.customerService.create({ name: 'Safety Retention', customerNumber: 'SR-1' });
+      const backupPaths: string[] = [];
+      for (let index = 0; index < 7; index += 1) {
+        const path = join(harness.ctx.paths.backups, `retention-${index}.cab`);
+        await harness.backupService.create(path);
+        backupPaths.push(path);
+      }
+
+      for (const path of backupPaths) {
+        await harness.backupService.restore(path, true);
+      }
+
+      const { readdirSync } = await import('node:fs');
+      const autoDir = join(harness.ctx.paths.backups, 'auto');
+      const safetyFiles = readdirSync(autoDir).filter((name) => name.startsWith('FMT_SafetyBackup_'));
+      expect(safetyFiles.length).toBeLessThanOrEqual(5);
+    } finally {
+      harness.cleanup();
     }
   });
 
@@ -169,7 +246,7 @@ describe('backup service', () => {
         app_version: '9.9.9',
         schema_version: 99,
         created_at: new Date().toISOString(),
-        created_by: 'Customer Accounting',
+        created_by: 'FMT',
         platform: 'win32',
         statistics: { customer_count: 0, transaction_count: 0, currency_codes: ['AFN'] },
         files: [

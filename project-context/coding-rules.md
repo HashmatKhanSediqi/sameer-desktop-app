@@ -1,6 +1,8 @@
 # Coding Rules
 
-Code style, project structure, and development conventions.
+Code style, project structure, and development conventions for **FMT**.
+
+Product brand is **FMT**. Do not reintroduce user-facing “Customer Accounting” naming. Compatibility identifiers (`CustomerAccounting` paths, `com.customeraccounting.app`, npm `customer-accounting`) may remain.
 
 ---
 

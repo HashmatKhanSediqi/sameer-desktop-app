@@ -32,6 +32,8 @@ describe('DatabaseConnection', () => {
     expect(connection.isConnected()).toBe(true);
     expect(db.pragma('journal_mode', { simple: true })).toBe('wal');
     expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
+    expect(db.pragma('busy_timeout', { simple: true })).toBe(5000);
+    expect(db.pragma('synchronous', { simple: true })).toBe(1);
 
     connection.close();
     expect(connection.isConnected()).toBe(false);

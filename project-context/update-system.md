@@ -1,6 +1,8 @@
 # Update System
 
-Online application update architecture with local data preservation.
+Online application update architecture with local data preservation for **FMT**.
+
+> **v1.0 status:** In-app updates are **not shipped**. This document remains RELEASE-RELEVANT for v1.1+. Manual install of a newer `FMT-Setup.exe` over an existing install must still preserve `%APPDATA%\CustomerAccounting\` user data.
 
 ---
 
@@ -8,10 +10,13 @@ Online application update architecture with local data preservation.
 
 | Attribute | Value |
 |-----------|-------|
+| Product | FMT |
 | Normal operation | Fully offline |
-| Update server | Online endpoint for app updates ONLY |
+| Update server | Online endpoint for app updates ONLY (future) |
 | Customer data | Always local (SQLite) — never cloud |
-| Update tool | `electron-updater` (recommended) |
+| Update tool | `electron-updater` (planned) |
+| Installer artifact | `FMT-Setup.exe` |
+| Compatibility paths | `%LOCALAPPDATA%\Programs\CustomerAccounting\`, `%APPDATA%\CustomerAccounting\` |
 
 The update system distributes **application binaries** — not customer accounting data.
 
@@ -71,10 +76,10 @@ Compare semver with current version
 ```yaml
 version: 1.1.0
 files:
-  - url: CustomerAccounting-Setup-1.1.0.exe
+  - url: FMT-Setup-1.1.0.exe
     sha512: ...
     size: ...
-path: CustomerAccounting-Setup-1.1.0.exe
+path: FMT-Setup-1.1.0.exe
 sha512: ...
 releaseDate: '2025-09-01T00:00:00.000Z'
 releaseNotes: |
@@ -199,7 +204,7 @@ SQLite `ALTER TABLE` limitations: use table-rebuild pattern for complex changes.
 
 Before applying update that includes schema changes:
 
-1. Create `%APPDATA%/CustomerAccounting/backups/pre-update/CustomerAccounting_PreUpdate_{version}_{timestamp}.cab`
+1. Create `%APPDATA%/CustomerAccounting/backups/pre-update/FMT_PreUpdate_{version}_{timestamp}.cab`
 2. Proceed with update only if backup succeeds
 3. Retain last 3 pre-update backups; prune older
 

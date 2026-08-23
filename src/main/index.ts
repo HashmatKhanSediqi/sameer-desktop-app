@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { join } from 'node:path';
 import { loadAppConfig } from './config/appConfig';
+import { resolveAppIconPath } from './config/appIconPath';
 import { resolveAppPaths } from './config/paths';
 import { registerIpcHandlers } from './ipc/registerHandlers';
 import {
@@ -12,6 +13,9 @@ import { Logger } from './utils/logger';
 
 let mainWindow: BrowserWindow | null = null;
 let appContext: ApplicationContext | null = null;
+let isQuitting = false;
+
+const AUTO_CLOSE_BACKUP_TIMEOUT_MS = 120_000;
 
 const APP_USER_DATA_NAME = 'CustomerAccounting';
 const isDev = !app.isPackaged;
@@ -31,6 +35,7 @@ async function createMainWindow(ctx: ApplicationContext): Promise<BrowserWindow>
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
+    icon: resolveAppIconPath(),
     title: ctx.config.appName,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -114,10 +119,32 @@ if (!gotSingleInstanceLock) {
     }
   });
 
-  app.on('before-quit', () => {
-    if (appContext) {
-      shutdownApplicationContext(appContext);
-      appContext = null;
+  app.on('before-quit', (event) => {
+    if (!appContext || isQuitting) {
+      return;
     }
+
+    event.preventDefault();
+    isQuitting = true;
+    const ctx = appContext;
+
+    void (async () => {
+      try {
+        await Promise.race([
+          ctx.backupService.createAutoCloseBackup(),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Auto-close backup timed out')), AUTO_CLOSE_BACKUP_TIMEOUT_MS);
+          }),
+        ]);
+      } catch (error) {
+        ctx.logger.warn('Auto-close backup skipped or failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      shutdownApplicationContext(ctx);
+      appContext = null;
+      app.quit();
+    })();
   });
 }

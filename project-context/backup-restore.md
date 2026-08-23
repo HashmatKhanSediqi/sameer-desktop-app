@@ -1,6 +1,6 @@
 # Backup and Restore
 
-Full system backup, portable restore, and safety mechanisms.
+Full system backup, portable restore, automatic close backup, and safety mechanisms for **FMT**.
 
 ---
 
@@ -10,10 +10,16 @@ Backup/restore is **critical infrastructure**. The system must allow complete re
 
 | Attribute | Value |
 |-----------|-------|
-| Backup extension | `.cab` |
-| Filename pattern | `CustomerAccounting_Backup_YYYY-MM-DD.cab` |
+| Product name in manifests | `FMT` |
+| Backup extension | `.cab` (ZIP-compatible archive) |
+| Manual filename pattern | `FMT_Backup_YYYY-MM-DD.cab` |
+| Safety backup pattern | `FMT_SafetyBackup_YYYY-MM-DD_HH-mm-ss.cab` |
+| Auto-close backup pattern | `FMT_AutoClose_YYYY-MM-DD_HH-mm-ss.cab` |
 | Portability | Restorable on fresh install |
 | Pre-login restore | Yes — "Import Existing System" |
+| Encryption | **None in v1.0** — backups are unencrypted |
+
+User data directory (compatibility path): `%APPDATA%\CustomerAccounting\`
 
 ---
 
@@ -22,14 +28,11 @@ Backup/restore is **critical infrastructure**. The system must allow complete re
 | Component | Source | Required |
 |-----------|--------|----------|
 | SQLite database | `data/accounting.db` | Yes |
-| WAL/SHM files | If present at backup time | Yes (or checkpoint first) |
+| WAL checkpoint | Before copy (`PRAGMA wal_checkpoint(FULL)`) | Yes |
 | Customer profile images | `data/images/customers/` | Yes |
-| Settings | In database `settings` table | Yes |
-| Currencies | In database `currencies` table | Yes |
-| Admin account | In database `admin_users` table | Yes |
-| Localization preference | In `settings.language` | Yes |
-| App metadata | `app_metadata` table | Yes |
-| Schema version | `schema_migrations` table | Yes |
+| Company logo images | `data/images/company/` | Yes |
+| Settings / currencies / admin / metadata | Inside SQLite | Yes |
+| Schema version | `schema_migrations` | Yes |
 
 **Everything necessary to recreate the customer's system.**
 
@@ -37,296 +40,171 @@ Backup/restore is **critical infrastructure**. The system must allow complete re
 
 ## 3. Backup Format (`.cab`)
 
-Custom archive format — not raw SQLite exposed to users.
-
 ### Internal Structure
 
 ```
-CustomerAccounting_Backup_2025-08-21.cab
-├── manifest.json          # Metadata and checksums
+FMT_Backup_2026-08-23.cab
+├── manifest.json
+├── signature.sha256
 ├── database/
-│   └── accounting.db      # SQLite file (WAL checkpointed before copy)
-├── images/
-│   └── customers/
-│       ├── 1.jpg
-│       └── 2.png
-└── signature.sha256       # Optional integrity hash of manifest + files
+│   └── accounting.db
+└── images/
+    ├── customers/
+    └── company/
 ```
 
-### manifest.json Schema
+### Manifest
 
-```json
-{
-  "format_version": "1.0",
-  "app_version": "1.0.0",
-  "schema_version": 1,
-  "created_at": "2025-08-21T18:30:00.000Z",
-  "created_by": "Customer Accounting",
-  "platform": "win32",
-  "statistics": {
-    "customer_count": 42,
-    "transaction_count": 1337,
-    "currency_codes": ["AFN", "USD", "EUR"]
-  },
-  "files": [
-    {
-      "path": "database/accounting.db",
-      "sha256": "abc123...",
-      "size_bytes": 1048576
-    },
-    {
-      "path": "images/customers/1.jpg",
-      "sha256": "def456...",
-      "size_bytes": 204800
-    }
-  ],
-  "settings_snapshot": {
-    "language": "fa-AF"
-  }
-}
-```
+- `format_version`: `1.0`
+- `created_by`: `FMT`
+- Includes app version, schema version, statistics, per-file SHA-256, settings snapshot
 
 ### Archive Implementation
 
-- **Canonical (v1.0):** ZIP-compatible stream via `archiver`, using `.cab` file extension
-- Must be openable programmatically by the app
-- Compress for portability (zlib/deflate)
-
-**User sees:** single `.cab` file — not individual DB files.
+- In-process ZIP writer/reader (not shell extraction)
+- Path allow-list, CRC checks, zip-bomb size/entry limits before inflate
+- User sees a single `.cab` file
 
 ---
 
 ## 4. Backup Creation Flow
 
 ```
-User clicks Backup → Save dialog (.cab default name)
+User: Settings → Backup → Save dialog
         │
         ▼
 BackupService.create(destinationPath):
-  1. WAL checkpoint: PRAGMA wal_checkpoint(FULL)
-  2. Create temp staging directory
-  3. Copy accounting.db to staging/database/
-  4. Copy all customer images to staging/images/
-  5. Query statistics (counts)
-  6. Write manifest.json with checksums
-  7. Write signature.sha256 (hash of all content)
-  8. Compress to .cab
-  9. Cleanup temp
-  10. Update app_metadata.last_backup_at
-        │
-        ▼
-Success dialog with path, size, counts
+  1. WAL checkpoint
+  2. Stage DB + images
+  3. Write manifest + signature
+  4. Compress to .cab (atomic rename from staging)
+  5. Validate success (file must be a valid backup)
 ```
+
+A backup is **not** reported successful unless validation succeeds.
 
 ### Progress UI
 
-- Indeterminate or determinate progress bar
-- Cancel not recommended mid-write (disable cancel during final compress)
+- Progress stages sent via `backup:progress`
+- Session required for `backup:create`
 
 ---
 
-## 5. Restore Flow (Pre-Login)
+## 5. Automatic Backup on Application Close
 
-Accessible from login screen → **"Import Existing System"**
+Implemented in v1.0.
+
+| Attribute | Value |
+|-----------|-------|
+| Trigger | `before-quit` (single-flight; second quit cannot bypass) |
+| Location | `%APPDATA%\CustomerAccounting\backups\scheduled\` |
+| Filename | `FMT_AutoClose_*.cab` |
+| Retention | Keep latest **10** matching prefix |
+| Skip when | No accounting data |
+| On failure | Log warning; **application still quits** (does not corrupt DB) |
+| Timeout | 120 seconds |
+| Validation | Create then validate; invalid file deleted |
+
+Database remains open during backup; shutdown/checkpoint occurs after auto-close backup attempt.
+
+---
+
+## 6. Safety Backups Before Restore
+
+| Attribute | Value |
+|-----------|-------|
+| Location | `%APPDATA%\CustomerAccounting\backups\auto\` |
+| Filename | `FMT_SafetyBackup_*.cab` |
+| Retention | Keep latest **5** matching prefix |
+| Validation | Must validate after create; invalid → abort restore |
+| Manual backups | Never auto-deleted |
+
+---
+
+## 7. Restore Flow
 
 ```
-User selects .cab file
-        │
-        ▼
-BackupService.validate(filePath):
-  1. Verify file structure
-  2. Parse manifest.json
-  3. Verify format_version compatible
-  4. Verify checksums of all files
-  5. Optionally open DB read-only to verify SQLite integrity
-  6. Return metadata for display
-        │
-        ▼
-Restore Preview UI:
-  - Backup date (created_at)
-  - App version
-  - Customer count
-  - Transaction count
-  - Language setting
-  - Warning if app version mismatch
-        │
-        ▼
-User checks "I understand..." checkbox
-User clicks Restore
-        │
-        ▼
-If existing data detected:
-  Create SAFETY BACKUP of current data first
-  → CustomerAccounting_SafetyBackup_YYYY-MM-DD_HH-mm.cab
-        │
-        ▼
-RestoreService.execute():
-  1. Stop database connection
-  2. Replace accounting.db
-  3. Replace images directory
-  4. Restart database connection
-  5. Run migrations if app schema newer than backup
-  6. Verify integrity
-        │
-        ▼
-Redirect to Login (use restored admin credentials)
+current DB
+   ↓
+create + validate safety backup
+   ↓
+validate incoming backup
+   ↓
+extract to temporary location
+   ↓
+validate SQLite database
+   ↓
+atomically replace database + images
+   ↓
+reopen database + run migrations if needed
+   ↓
+verify integrity
+   ↓
+invalidate all sessions
+   ↓
+only then report success
 ```
 
----
+Any failure leaves the original database recoverable (rollback / no commit of replace).
 
-## 6. Safety Backup Before Destructive Restore
+### Pre-login vs post-login
 
-**Mandatory** when restoring over existing non-empty database.
+| Channel | Session required | Why |
+|---------|------------------|-----|
+| `backup:create` | Yes | Authenticated admin action |
+| `backup:validate` | **No** | Pre-login disaster recovery |
+| `restore:execute` | **No** | Pre-login disaster recovery; requires `confirmed: true` |
 
-| Condition | Action |
-|-----------|--------|
-| Fresh install (empty DB) | No safety backup needed |
-| Existing customers or transactions | Create safety backup automatically before overwrite |
-| Safety backup failure | Abort restore; show error |
+**Known risk:** restore/validate without a normal authenticated session is intentional for locked-out / corrupted-DB recovery. Physical machine access can invoke these IPC channels. UI confirmation remains mandatory for restore.
 
-Safety backup saved to: `%APPDATA%/CustomerAccounting/backups/auto/`
-
-Notify user of safety backup location in success dialog.
+Restore requires an **explicit file path** (no silent last-validated-path fallback).
 
 ---
 
-## 7. Validation Rules
+## 8. Validation Rules
 
 | Check | Failure Action |
 |-------|----------------|
-| File not valid archive | Reject: "Invalid backup file" |
-| Missing manifest.json | Reject |
-| format_version unsupported | Reject with version message |
-| Checksum mismatch | Reject: "Backup file corrupted" |
-| SQLite integrity check fails | Reject |
-| manifest statistics mismatch | Warning (proceed if DB valid) |
-
-### Malicious Backup Protection
-
-- Do not execute any content from backup
-- Validate all paths in archive — reject path traversal (`../`)
-- Max uncompressed size limit (e.g., 500 MB) to prevent zip bomb
-- Verify SQLite file magic header before replace
-
-See `security.md`.
+| Invalid archive | Reject |
+| Missing / invalid manifest | Reject |
+| Signature mismatch | Reject |
+| Path traversal / disallowed entry | Reject |
+| Over size / entry / uncompressed limits | Reject |
+| SQLite magic / integrity_check fails | Reject |
+| Unsupported format_version | Reject |
 
 ---
 
-## 8. Version Compatibility
+## 9. Retention Policy Summary
 
-| Scenario | Behavior |
-|----------|----------|
-| Backup from older app version | Restore DB; run forward migrations on startup |
-| Backup from newer app version | Warn "Backup from newer version"; block or attempt read-only preview |
-| format_version 1.x | Current reader must support all 1.x |
+| Category | Directory | Prefix | Keep | Deletes manual backups? |
+|----------|-----------|--------|------|-------------------------|
+| Manual | User-chosen | `FMT_Backup_` (typical) | Unlimited | N/A — never pruned by app |
+| Auto-close | `backups/scheduled/` | `FMT_AutoClose_` | 10 | No |
+| Safety | `backups/auto/` | `FMT_SafetyBackup_` | 5 | No |
 
-Document format_version bumps in `changelog.md`.
-
----
-
-## 9. In-App Restore (Post-Login, Optional)
-
-v1.0 primary restore is pre-login. Optional Settings → Restore from Backup:
-
-- Same validation and safety backup flow
-- Requires admin confirmation
-- Logs out after restore (session invalidated)
+Pruning only deletes files whose names match the **exact category prefix** and `.cab` extension. Unrelated files are never deleted. Newest valid backups are retained.
 
 ---
 
-## 10. Automatic Backups (Future)
+## 10. Confidentiality
 
-Architecture should allow scheduled auto-backup to `%APPDATA%/CustomerAccounting/backups/scheduled/`.
-
-Not required v1.0 — document hook in Settings.
+**v1.0 backups are unencrypted.** Treat `.cab` files as sensitive accounting data. Encryption is a candidate for v1.1+ and must not break the existing format without a migration plan.
 
 ---
 
-## 11. IPC API
+## 11. Scale Note
 
-### `backup:create`
-
-**Input:** `{ sessionId, destinationPath? }` — if no path, open save dialog from main
-
-**Output:**
-```typescript
-{
-  success: boolean;
-  filePath?: string;
-  manifest?: ManifestSummary;
-  error?: string;
-}
-```
-
-### `backup:validate`
-
-**Input:** `{ filePath }` — no session required (pre-login)
-
-**Output:**
-```typescript
-{
-  valid: boolean;
-  manifest?: {
-    createdAt: string;
-    appVersion: string;
-    customerCount: number;
-    transactionCount: number;
-    language: string;
-  };
-  errors?: string[];
-  warnings?: string[];
-}
-```
-
-### `restore:execute`
-
-**Input:** `{ filePath, confirmed: true }`
-
-**Output:**
-```typescript
-{
-  success: boolean;
-  safetyBackupPath?: string;
-  error?: string;
-}
-```
+At ~100k customers / ~300k transactions, automated tests observed backup create ≈ **2.2s** and archive size ≈ **18 MB** (DB-dominant; images add more).
 
 ---
 
-## 12. User Data Locations
+## 12. Testing Checklist
 
-| Path | Content |
-|------|---------|
-| `%APPDATA%/CustomerAccounting/data/` | Database, images |
-| `%APPDATA%/CustomerAccounting/backups/auto/` | Safety backups |
-| User-chosen path | Manual backups |
-
-Manual backups are portable — user may store on USB, network drive, etc.
-
----
-
-## 13. Error Messages (Localized)
-
-```
-backup.success
-backup.error.writeFailed
-restore.invalidFile
-restore.corrupted
-restore.versionMismatch
-restore.confirmRequired
-restore.safetyBackupCreated
-restore.success
-```
-
----
-
-## 14. Testing Checklist
-
-- [ ] Backup creates valid .cab with all components
-- [ ] Restore on fresh install works via pre-login flow
-- [ ] Restored data matches original (customers, transactions, images, settings)
-- [ ] Safety backup created before overwrite
-- [ ] Corrupted backup rejected
-- [ ] Cancel before restore leaves data unchanged
-- [ ] Admin credentials work after restore
-- [ ] Path traversal in archive rejected
+- [x] Backup creates valid `.cab` with DB + images (automated)
+- [x] Restore restores customers, transactions, photos, admin login (automated)
+- [x] Safety backup before overwrite (automated)
+- [x] Corrupted / traversal archives rejected (automated)
+- [x] Auto-close backup + retention (automated)
+- [x] Safety retention ≤ 5 (automated)
+- [ ] Manual clean-VM restore smoke test (operator)

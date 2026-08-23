@@ -83,7 +83,7 @@ export function SettingsAccountSection({
         return;
       }
       setRecoveryConfigured(true);
-      setQuestion(result.data.question);
+      setQuestion(result.data.question ?? '');
       onSuccess(t('recoverySaved'));
     } finally {
       setIsSavingRecovery(false);

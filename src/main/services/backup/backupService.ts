@@ -26,6 +26,11 @@ import {
   MAX_BACKUP_ARCHIVE_BYTES,
   MAX_BACKUP_ENTRIES,
   MAX_BACKUP_UNCOMPRESSED_BYTES,
+  AUTO_CLOSE_BACKUP_FILE_PREFIX,
+  AUTO_CLOSE_BACKUP_RETENTION,
+  SAFETY_BACKUP_FILE_PREFIX,
+  SAFETY_BACKUP_RETENTION,
+  defaultAutoCloseBackupFileName,
   defaultSafetyBackupFileName,
   type BackupCreateData,
   type BackupManifest,
@@ -74,6 +79,43 @@ export class BackupService {
 
   hasExistingData(): boolean {
     return hasExistingAccountingData(this.deps.getDatabase());
+  }
+
+  async createAutoCloseBackup(): Promise<{ created: boolean; filePath?: string }> {
+    if (!this.hasExistingData()) {
+      this.deps.logger.debug('Skipping auto-close backup: no accounting data');
+      return { created: false };
+    }
+
+    const scheduledDir = join(this.deps.paths.backups, 'scheduled');
+    mkdirSync(scheduledDir, { recursive: true });
+
+    let fileName = defaultAutoCloseBackupFileName();
+    let destination = join(scheduledDir, fileName);
+    let attempt = 0;
+    while (existsSync(destination)) {
+      attempt += 1;
+      fileName = defaultAutoCloseBackupFileName(new Date(Date.now() + attempt * 1000));
+      destination = join(scheduledDir, fileName);
+    }
+
+    try {
+      await this.create(destination);
+      const validated = await this.validate(destination);
+      if (!validated.valid) {
+        unlinkIfExists(destination);
+        throw new Error('Auto-close backup failed validation');
+      }
+      this.pruneBackupFiles(scheduledDir, AUTO_CLOSE_BACKUP_FILE_PREFIX, AUTO_CLOSE_BACKUP_RETENTION);
+      this.deps.logger.info('Auto-close backup created', { path: destination });
+      return { created: true, filePath: destination };
+    } catch (error) {
+      unlinkIfExists(destination);
+      this.deps.logger.error('Auto-close backup failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return { created: false };
+    }
   }
 
   async create(destinationPath: string, onProgress?: (progress: BackupProgress) => void): Promise<BackupCreateData> {
@@ -170,7 +212,7 @@ export class BackupService {
       throw new AppError('RESTORE_CONFIRM_REQUIRED', 'confirmRequired');
     }
 
-    const restorePath = filePath.trim() || this.lastValidatedPath;
+    const restorePath = filePath.trim();
     if (!restorePath) {
       throw new AppError('INVALID_REQUEST', 'INVALID_REQUEST');
     }
@@ -412,7 +454,7 @@ export class BackupService {
       app_version: this.deps.appVersion ?? APP_VERSION,
       schema_version: getAppliedSchemaVersion(db),
       created_at: new Date().toISOString(),
-      created_by: 'Customer Accounting',
+      created_by: 'FMT',
       platform: process.platform,
       statistics: {
         customer_count: customerCount,
@@ -475,6 +517,12 @@ export class BackupService {
       destination = join(autoDir, fileName);
     }
     await this.create(destination);
+    const validated = await this.validate(destination);
+    if (!validated.valid) {
+      unlinkIfExists(destination);
+      throw new AppError('BACKUP_WRITE_FAILED', 'writeFailed');
+    }
+    this.pruneBackupFiles(autoDir, SAFETY_BACKUP_FILE_PREFIX, SAFETY_BACKUP_RETENTION);
     return destination;
   }
 
@@ -582,6 +630,31 @@ export class BackupService {
       return trimmed;
     }
     return `${trimmed}.${BACKUP_FILE_EXTENSION}`;
+  }
+
+  private pruneBackupFiles(dir: string, prefix: string, retention: number): void {
+    const files = readdirSync(dir)
+      .filter(
+        (name) => name.startsWith(prefix) && name.toLowerCase().endsWith(`.${BACKUP_FILE_EXTENSION}`),
+      )
+      .map((name) => {
+        const path = join(dir, name);
+        return { path, mtimeMs: statSync(path).mtimeMs };
+      })
+      .sort((left, right) => right.mtimeMs - left.mtimeMs);
+
+    for (const file of files.slice(retention)) {
+      try {
+        unlinkSync(file.path);
+        this.deps.logger.debug('Pruned old backup file', { path: file.path, prefix });
+      } catch (error) {
+        this.deps.logger.warn('Failed to prune backup file', {
+          path: file.path,
+          prefix,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
   }
 
   private recordLastBackupAt(iso: string): void {

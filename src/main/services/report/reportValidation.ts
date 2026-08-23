@@ -113,5 +113,5 @@ export function buildReportFileName(
   const yyyy = String(generatedDate.getFullYear());
   const mm = String(generatedDate.getMonth() + 1).padStart(2, '0');
   const dd = String(generatedDate.getDate()).padStart(2, '0');
-  return `CustomerAccounting_${reportTypeFileLabel(type)}_${sanitizeFilePart(customerLabel)}_${yyyy}-${mm}-${dd}.${format}`;
+  return `FMT_${reportTypeFileLabel(type)}_${sanitizeFilePart(customerLabel)}_${yyyy}-${mm}-${dd}.${format}`;
 }

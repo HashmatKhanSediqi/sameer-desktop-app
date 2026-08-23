@@ -7,7 +7,7 @@ import { importT } from './importI18n';
 
 export async function buildImportTemplateBuffer(locale: SupportedLocale): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Customer Accounting';
+  workbook.creator = 'FMT';
   workbook.created = new Date();
   const rtl = getDocumentDirection(locale) === 'rtl';
 

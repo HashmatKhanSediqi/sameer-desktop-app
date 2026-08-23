@@ -3,6 +3,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { Logger } from '../utils/logger';
 import { AppError } from '../utils/errors';
+import { verifyConnectedDatabaseIntegrity } from '../services/backup/sqliteIntegrity';
 
 function formatUnknownError(error: unknown): string {
   if (error instanceof Error) {
@@ -33,10 +34,28 @@ export class DatabaseConnection {
       this.db.pragma('journal_mode = WAL');
       this.db.pragma('foreign_keys = ON');
       this.db.pragma('busy_timeout = 5000');
+      this.db.pragma('synchronous = NORMAL');
+
+      if (!verifyConnectedDatabaseIntegrity(this.db)) {
+        this.db.close();
+        this.db = null;
+        throw new AppError('DATABASE_CORRUPTED', 'DATABASE_CORRUPTED');
+      }
 
       this.logger.info('Database opened', { path: this.databasePath });
       return this.db;
     } catch (error) {
+      if (this.db) {
+        try {
+          this.db.close();
+        } catch {
+          // Ignore close failures while recovering from a failed connect.
+        }
+        this.db = null;
+      }
+      if (error instanceof AppError) {
+        throw error;
+      }
       const details = formatUnknownError(error);
       this.logger.error('Failed to open database', {
         path: this.databasePath,

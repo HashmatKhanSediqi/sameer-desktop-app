@@ -74,9 +74,15 @@ describe('customer IPC handlers', () => {
 
       const listed = (await fakeIpc.invoke(IPC_CHANNELS.CUSTOMERS_LIST, {
         sessionId: login.sessionId,
-      })) as { ok: true; data: { customers: Array<{ id: number }> } };
+      })) as {
+        ok: true;
+        data: { customers: Array<{ id: number }>; totalCount: number; page: number; pageSize: number; totalPages: number };
+      };
       expect(listed.ok).toBe(true);
       expect(listed.data.customers).toHaveLength(1);
+      expect(listed.data.totalCount).toBe(1);
+      expect(listed.data.page).toBe(1);
+      expect(listed.data.totalPages).toBe(1);
 
       const searched = (await fakeIpc.invoke(IPC_CHANNELS.CUSTOMERS_SEARCH, {
         sessionId: login.sessionId,

@@ -1,6 +1,6 @@
 # Testing Strategy
 
-Comprehensive test plan for Customer Accounting desktop application.
+Comprehensive test plan for **FMT**.
 
 ---
 
@@ -8,13 +8,13 @@ Comprehensive test plan for Customer Accounting desktop application.
 
 | Level | Tool | Scope |
 |-------|------|-------|
-| Unit | Vitest | Services, validators, calculations |
-| Integration | Vitest + in-memory SQLite | Repositories, migrations |
-| Component | React Testing Library | UI components |
-| E2E | Playwright (Electron) | Full user flows |
-| Manual | Checklist | Installer, RTL PDF, OS integration |
+| Unit | Vitest | Services, validators, calculations, backup, auth |
+| Integration | Vitest + temp SQLite | Migrations, connection, scale fixtures |
+| Component | Limited / not primary | Prefer service + handler tests |
+| E2E | Playwright (Electron) | **Not implemented in v1.0** — future |
+| Manual | Checklist | Installer VM, RTL PDF visual QA |
 
-**Test every major change** per `AI_INSTRUCTIONS.md`.
+**Current automated suite:** 198 tests (as of STEP 8/9 baseline). Always re-run `npm test` before claiming pass.
 
 ---
 
@@ -70,7 +70,9 @@ Comprehensive test plan for Customer Accounting desktop application.
 | CUST-T08 | Delete customer cancel | No change |
 | CUST-T09 | Delete customer cascades transactions | Transactions gone |
 | CUST-T10 | Customer detail shows all currency balances | Correct values |
-| CUST-T11 | Main list shows all required columns | Name, number, 3 balances, 2 counts |
+| CUST-T11 | Main list shows name, number, balances, actions | Counts not required on list |
+| CUST-T12 | Paginated list at large N | Does not load all rows into renderer |
+| CUST-T13 | Search paginated | Returns matching page only |
 
 ---
 
@@ -200,7 +202,10 @@ Comprehensive test plan for Customer Accounting desktop application.
 | BAK-T08 | Invalid archive rejected | Error message |
 | BAK-T09 | Path traversal in archive | Rejected |
 | BAK-T10 | Admin login works after restore | Credentials from backup |
-| BAK-T11 | Cancel restore | No changes |
+| BAK-T12 | Auto-close backup + retention 10 | Latest kept; prefix-only prune |
+| BAK-T13 | Safety backup retention 5 | Prefix-only prune |
+| BAK-T14 | Scale backup 100k/300k | Creates and validates |
+| BAK-T15 | Corrupt DB on connect | `DATABASE_CORRUPTED` |
 
 ---
 
@@ -318,21 +323,21 @@ tests/
 
 ## 21. Release Acceptance Criteria
 
-Before v1.0 release, ALL test categories must pass:
+Before claiming a controlled v1.0 release:
 
-- [ ] Authentication (100%)
-- [ ] Customer CRUD (100%)
-- [ ] Transactions (100%)
-- [ ] Currency calculations (100%)
-- [ ] Main page (100%)
-- [ ] Reports including Dari/Pashto PDF (100%)
-- [ ] Import (100%)
-- [ ] Backup/Restore (100%)
-- [ ] Installer on clean VM (100%)
-- [ ] Localization RTL/LTR (100%)
-- [ ] No audit log present (verified)
+- [x] Authentication automated tests
+- [x] Customer CRUD / pagination / search automated tests
+- [x] Transactions + transfers automated tests
+- [x] Currency calculations automated tests
+- [x] Reports PDF/Excel automated tests (Dari/Pashto pipeline covered; visual QA recommended)
+- [x] Import automated tests
+- [x] Backup/Restore + auto-close + integrity automated tests
+- [x] `npm run typecheck` / `npm test` / `npm run build:win`
+- [ ] Clean Windows VM install smoke (Desktop/Start Menu/uninstall keep data) — **not performed in STEP 9**
+- [ ] Code signing — **not configured**
+- [x] No audit log present
 
-Update tests may be deferred to v1.1 if update feature not shipped — document in changelog.
+See `release-readiness.md` for the honest matrix.
 
 ---
 

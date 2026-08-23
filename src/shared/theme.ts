@@ -88,7 +88,12 @@ export function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
-export function applyThemeToDocument(theme: ThemeAppearance, root: CSSStyleDeclaration): void {
+/** Minimal CSS custom-property target (works in Node and browser TypeScript projects). */
+export interface ThemeStyleTarget {
+  setProperty(name: string, value: string): void;
+}
+
+export function applyThemeToDocument(theme: ThemeAppearance, root: ThemeStyleTarget): void {
   const primary = theme.primary;
   const accent = theme.accent;
   root.setProperty('--color-primary', primary);

@@ -3,7 +3,7 @@ import { createZipBuffer, listZipIndex, readZipEntries } from '../../src/main/se
 
 describe('zip archive', () => {
   it('round-trips deflated entries', () => {
-    const payload = Buffer.from('Customer Accounting backup', 'utf8');
+    const payload = Buffer.from('FMT backup', 'utf8');
     const zip = createZipBuffer([
       { name: 'manifest.json', data: Buffer.from('{"ok":true}') },
       { name: 'database/accounting.db', data: payload },

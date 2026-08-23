@@ -37,11 +37,71 @@ interface FontkitFont {
 }
 
 interface PdfKitEmbeddedFont {
+  encode: (text: string, features?: PDFKit.Mixins.OpenTypeFeatures[]) => [string[], unknown[]];
+  unicode: number[][];
   font?: FontkitFont;
 }
 
 interface PdfKitWithFont {
   _font?: PdfKitEmbeddedFont;
+}
+
+/**
+ * PDFKit records the first code point for each subset glyph ID in ToUnicode.
+ * Alef (U+0627) often claims the same glyph ID before Alef Madda (U+0622),
+ * so composed letters disappear from text extraction. Register the logical code
+ * points explicitly after layout so both remain extractable.
+ */
+export function registerExtractableGlyph(
+  doc: PDFKit.PDFDocument,
+  text: string,
+  features: PDFKit.Mixins.OpenTypeFeatures[] = [],
+  logicalCharacter: string = text,
+): void {
+  if (text.length === 0) {
+    return;
+  }
+  const font = getEmbeddedFont(doc);
+  if (!font) {
+    return;
+  }
+  const codePoint = logicalCharacter.codePointAt(0);
+  if (codePoint === undefined) {
+    return;
+  }
+  const [hexCodes] = font.encode(text, features);
+  for (const hex of hexCodes) {
+    const gid = Number.parseInt(hex, 16);
+    if (!Number.isFinite(gid)) {
+      continue;
+    }
+    mergeExtractableCodePoint(font, gid, codePoint);
+  }
+}
+
+export function registerExtractableText(
+  doc: PDFKit.PDFDocument,
+  text: string,
+  features: PDFKit.Mixins.OpenTypeFeatures[] = [],
+): void {
+  for (const character of text) {
+    registerExtractableGlyph(doc, character, features);
+  }
+}
+
+function mergeExtractableCodePoint(font: PdfKitEmbeddedFont, gid: number, codePoint: number): void {
+  const existing = font.unicode[gid];
+  if (existing == null) {
+    font.unicode[gid] = [codePoint];
+    return;
+  }
+  if (!existing.includes(codePoint)) {
+    font.unicode[gid] = [...existing, codePoint];
+  }
+}
+
+function getEmbeddedFont(doc: PDFKit.PDFDocument): PdfKitEmbeddedFont | undefined {
+  return (doc as PdfKitWithFont)._font;
 }
 
 export function installFontkitNullAnchorGuard(doc: PDFKit.PDFDocument): void {

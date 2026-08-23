@@ -1,6 +1,8 @@
 # Currencies
 
-Multi-currency support, calculation rules, and extensibility.
+Multi-currency support, calculation rules, and extensibility for **FMT**.
+
+Settings supports adding currencies and deactivating / reactivating them without rewriting core balance logic.
 
 ---
 

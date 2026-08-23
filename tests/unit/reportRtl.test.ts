@@ -120,7 +120,7 @@ describe('report validation and filenames', () => {
     expect(sanitizeFilePart('Ahmad/Khan:*?')).toBe('AhmadKhan');
     expect(sanitizeFilePart('   ')).toBe('All');
     const name = buildReportFileName('customer', 'pdf', 'فاطمه', new Date('2026-08-22T00:00:00'));
-    expect(name.startsWith('CustomerAccounting_Customer_')).toBe(true);
+    expect(name.startsWith('FMT_Customer_')).toBe(true);
     expect(name.endsWith('.pdf')).toBe(true);
   });
 });

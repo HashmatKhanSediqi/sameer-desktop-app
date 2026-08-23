@@ -1,6 +1,6 @@
 # Architecture
 
-This document defines the technology stack, module boundaries, and system design for the Customer Accounting desktop application.
+This document defines the technology stack, module boundaries, and system design for **FMT**.
 
 ---
 
@@ -29,43 +29,40 @@ This document defines the technology stack, module boundaries, and system design
 | Web app (browser) | Not a desktop app; fails offline-installer requirement |
 | Python + PyQt | Requires bundling Python; larger packaging complexity |
 
-### Core Dependencies (Document Only — Do Not Install Yet)
+### Core Dependencies (Implemented)
 
 **Runtime / Framework**
-- Electron (latest stable LTS-compatible)
-- React 18+
-- TypeScript 5+
+- Electron 34.x, React 18, TypeScript 5, electron-vite
 
 **Database**
 - `better-sqlite3` (main process only)
-- Custom migration runner (SQL files, versioned)
+- Custom migration runner (SQL files `001`–`005`)
 
 **Authentication**
 - `bcrypt` (password hashing, main process)
+
+**Money**
+- `decimal.js`
 
 **Localization**
 - `i18next` + `react-i18next`
 - RTL via CSS logical properties + `dir` attribute
 
 **Reports**
-- PDF (canonical): `pdfkit` + `arabic-persian-reshaper` + `bidi-js` in main process with embedded Noto Naskh Arabic / Vazirmatn / Noto Sans fonts
-- Excel: `exceljs` (read/write XLSX)
-
-**Import**
-- `exceljs` for parsing import files
+- PDF: `pdfkit` + `arabic-persian-reshaper` + `bidi-js` with embedded Inter / Vazirmatn / Noto Naskh Arabic
+- Excel: `exceljs`
 
 **Backup**
-- Custom `.cab` archive: ZIP-compatible format via `archiver` (`.cab` extension); manifest JSON + SQLite + assets
+- Custom `.cab` = ZIP-compatible archive via in-process ZIP writer/reader (path allow-list, bomb limits, CRC). Not shell `archiver` extraction.
 
 **Updates**
-- `electron-updater` + code-signed releases on update server
+- Architecture ready (`update-system.md`); **not shipped in v1.0**
 
 **Installer**
-- `electron-builder` with NSIS target
+- `electron-builder` NSIS → `FMT-Setup.exe`, productName `FMT`, icon `assets/icons/icon.ico`
 
 **UI**
-- Component library: shadcn/ui or similar (Tailwind-based) for professional modern look
-- State: Zustand or React Context for app state; React Query optional for cache patterns
+- Custom CSS design system (green brand tokens); React functional components
 
 ---
 
@@ -124,33 +121,21 @@ This document defines the technology stack, module boundaries, and system design
 ### Directory Structure (Target)
 
 ```
-customer-accounting/
-├── package.json
-├── electron-builder.yml
+sameer-desktop-app/          # repository folder (npm name: customer-accounting)
+├── package.json             # productName FMT; artifact FMT-Setup.exe
 ├── src/
-│   ├── main/                 # Electron main process
-│   │   ├── index.ts
-│   │   ├── ipc/              # IPC handlers
-│   │   ├── services/         # Business logic services
-│   │   ├── database/         # SQLite, migrations
-│   │   └── utils/
+│   ├── main/
 │   ├── preload/
-│   │   └── index.ts          # contextBridge API
-│   ├── renderer/             # React app
-│   │   ├── App.tsx
-│   │   ├── pages/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── i18n/
-│   │   └── styles/
-│   └── shared/               # Types shared main/renderer
-│       └── types/
-├── assets/
-│   ├── fonts/                # Noto Naskh Arabic, etc.
-│   └── icons/
-├── migrations/               # SQL migration files
-└── project-context/          # This documentation
+│   ├── renderer/
+│   └── shared/
+├── assets/fonts , assets/icons
+├── migrations/              # 001–005
+├── tests/
+├── project-context/
+└── dist/FMT-Setup.exe       # build output
 ```
+
+Compatibility: `appId` `com.customeraccounting.app`; userData folder `CustomerAccounting`.
 
 ---
 
@@ -206,7 +191,8 @@ All IPC channels must be typed in `src/shared/types/ipc.ts`.
 | `company:update` | invoke | Save company profile and logo |
 | `company:getLogo` | invoke | Read stored company logo bytes |
 | `transfers:create` | invoke | Atomic customer-to-customer transfer |
-| `customers:list` | invoke | List all customers with balances |
+| `customers:list` | invoke | Paginated customer list with optional accounting enrichment |
+| `customers:search` | invoke | Paginated / identity search (SQL LIKE; no FTS5) |
 | `customers:get` | invoke | Customer detail + transactions |
 | `customers:create` | invoke | Create customer |
 | `customers:update` | invoke | Update customer |
@@ -234,8 +220,8 @@ All IPC channels must be typed in `src/shared/types/ipc.ts`.
 1. **Startup** — Main process initializes paths, opens SQLite, runs migrations, seeds default admin if missing, creates window.
 2. **Pre-login** — Show login OR "Import Existing System" (restore) screen.
 3. **Post-login** — If company profile is not configured, show company setup. Then load settings (language, pagination, theme, exchange) and show customer list.
-4. **Shutdown** — Close SQLite cleanly; flush WAL.
-5. **Crash recovery** — SQLite WAL replay on next startup; log crash to log file.
+4. **Shutdown** — Auto-close backup (if data exists) → close SQLite (WAL checkpoint) → clear crash sentinel.
+5. **Crash recovery** — Crash sentinel warning + integrity_check on open; WAL replay; never auto-destroy DB.
 
 ---
 
@@ -277,9 +263,11 @@ All IPC channels must be typed in `src/shared/types/ipc.ts`.
 | Operation | Target |
 |-----------|--------|
 | App cold start | < 5 seconds on typical Windows PC |
-| Customer list load (1000 customers) | < 1 second |
-| Transaction list page | < 500 ms |
-| PDF report (1000 rows) | < 10 seconds |
-| Backup (10 MB data) | < 5 seconds |
+| Customer list page @ 100k customers | ~0.5 s (automated) |
+| Customer search page @ 100k | ~50 ms (automated) |
+| Backup @ 100k / 300k txns | ~2.2 s / ~18 MB (automated) |
+| Transaction history page | ~1–2 ms (automated at scale fixture) |
 
-Indexes and pagination must be used to meet these targets.
+**1,000,000+ customers have not been empirically validated.**
+
+Indexes, SQL aggregation, and pagination must continue to be used — never load full tables into the renderer.

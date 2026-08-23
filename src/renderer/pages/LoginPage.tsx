@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { LanguageSelector } from '../components/LanguageSelector';
 import { useAuth } from '../context/AuthContext';
 
+const appIconUrl = new URL('../../../assets/icons/iconn.png', import.meta.url).href;
+
 interface LoginPageProps {
   onImportExisting: () => void;
   onForgotPassword: () => void;
@@ -44,11 +46,7 @@ export function LoginPage({ onImportExisting, onForgotPassword, recovered }: Log
       </div>
       <div className="login-card">
         <div className="login-brand">
-          <div className="login-mark" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
+          <img className="login-app-icon" src={appIconUrl} alt="" width={64} height={64} />
           <h1>{t('title')}</h1>
           <p className="login-subtitle">{t('subtitle')}</p>
         </div>

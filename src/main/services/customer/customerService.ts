@@ -2,13 +2,17 @@ import type Database from 'better-sqlite3';
 import { CustomerRepository, type CustomerRecord } from '../../database/repositories/customerRepository';
 import { AppError } from '../../utils/errors';
 import type { Logger } from '../../utils/logger';
+import { DEFAULT_PAGE_SIZE, resolvePagination } from '@shared/pagination';
 import type {
   CreateCustomerInput,
   Customer,
   CustomerIdentity,
+  CustomerListItem,
   CustomerPhotoData,
+  PaginatedCustomerListResult,
   UpdateCustomerInput,
 } from '@shared/types/customer';
+import type { GlobalCurrencyTotal } from '@shared/types/transaction';
 import { CustomerPhotoService } from './customerPhotoService';
 import {
   escapeLikePattern,
@@ -32,9 +36,102 @@ export class CustomerService {
     return this.repository.listCustomers().map(toListItem);
   }
 
+  count(): number {
+    return this.repository.countCustomers();
+  }
+
+  listPage(
+    pageInput: number | undefined,
+    pageSizeInput: number | undefined,
+    enrich: (customers: CustomerIdentity[]) => {
+      customers: CustomerListItem[];
+      totals: GlobalCurrencyTotal[];
+    },
+  ): PaginatedCustomerListResult {
+    const totalCount = this.repository.countCustomers();
+    const pagination = resolvePagination(pageInput, pageSizeInput, totalCount, DEFAULT_PAGE_SIZE);
+    const records = this.repository.listCustomersPaginated(
+      pagination.pageSize,
+      (pagination.page - 1) * pagination.pageSize,
+    );
+    const identities = records.map(toListItem);
+    const enriched = enrich(identities);
+    return {
+      customers: enriched.customers,
+      totals: enriched.totals,
+      totalCount,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: pagination.totalPages,
+    };
+  }
+
+  searchPage(
+    query: unknown,
+    pageInput: number | undefined,
+    pageSizeInput: number | undefined,
+    enrich: (customers: CustomerIdentity[]) => {
+      customers: CustomerListItem[];
+      totals: GlobalCurrencyTotal[];
+    },
+  ): PaginatedCustomerListResult {
+    const exactNumber = this.parseExactCustomerNumberQuery(query);
+    if (exactNumber !== null) {
+      const totalCount = this.repository.countCustomersByExactNumber(exactNumber);
+      const pagination = resolvePagination(pageInput, pageSizeInput, totalCount, DEFAULT_PAGE_SIZE);
+      const records = this.repository.listCustomersByExactNumberPaginated(
+        exactNumber,
+        pagination.pageSize,
+        (pagination.page - 1) * pagination.pageSize,
+      );
+      const identities = records.map(toListItem);
+      const enriched = enrich(identities);
+      return {
+        customers: enriched.customers,
+        totals: enriched.totals,
+        totalCount,
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        totalPages: pagination.totalPages,
+      };
+    }
+
+    const pattern = this.buildSearchPattern(query);
+    if (pattern === null) {
+      return this.listPage(pageInput, pageSizeInput, enrich);
+    }
+
+    const totalCount = this.repository.countSearchCustomers(pattern);
+    const pagination = resolvePagination(pageInput, pageSizeInput, totalCount, DEFAULT_PAGE_SIZE);
+    const records = this.repository.searchCustomersPaginated(
+      pattern,
+      pagination.pageSize,
+      (pagination.page - 1) * pagination.pageSize,
+    );
+    const identities = records.map(toListItem);
+    const enriched = enrich(identities);
+    return {
+      customers: enriched.customers,
+      totals: enriched.totals,
+      totalCount,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      totalPages: pagination.totalPages,
+    };
+  }
+
   search(query: unknown): CustomerIdentity[] {
-    if (query === undefined || query === null) {
+    const pattern = this.buildSearchPattern(query);
+    if (pattern === null) {
       return this.list();
+    }
+
+    return this.repository.searchCustomers(pattern).map(toListItem);
+  }
+
+  private buildSearchPattern(query: unknown): string | null {
+    if (query === undefined || query === null) {
+      return null;
     }
 
     if (typeof query !== 'string') {
@@ -43,11 +140,24 @@ export class CustomerService {
 
     const trimmed = query.trim();
     if (trimmed.length === 0) {
-      return this.list();
+      return null;
     }
 
-    const pattern = `%${escapeLikePattern(trimmed)}%`;
-    return this.repository.searchCustomers(pattern).map(toListItem);
+    return `%${escapeLikePattern(trimmed)}%`;
+  }
+
+  private parseExactCustomerNumberQuery(query: unknown): string | null {
+    if (typeof query !== 'string') {
+      return null;
+    }
+    const trimmed = query.trim();
+    if (trimmed.length === 0 || trimmed.length > 50) {
+      return null;
+    }
+    if (!/^C-\d+$/i.test(trimmed) && !/^RARE-\d+$/i.test(trimmed)) {
+      return null;
+    }
+    return trimmed;
   }
 
   getById(id: unknown): Customer {

@@ -89,11 +89,23 @@ export function isSupportedBackupFormatVersion(version: string): boolean {
 }
 
 export function defaultBackupFileName(date = new Date()): string {
-  return `CustomerAccounting_Backup_${formatLocalDate(date)}.cab`;
+  return `FMT_Backup_${formatLocalDate(date)}.cab`;
 }
 
 export function defaultSafetyBackupFileName(date = new Date()): string {
-  return `CustomerAccounting_SafetyBackup_${formatLocalDate(date)}_${formatLocalTime(date)}.cab`;
+  return `FMT_SafetyBackup_${formatLocalDate(date)}_${formatLocalTime(date)}.cab`;
+}
+
+/** Close-time backups stored under backups/scheduled/ */
+export const AUTO_CLOSE_BACKUP_FILE_PREFIX = 'FMT_AutoClose_';
+export const AUTO_CLOSE_BACKUP_RETENTION = 10;
+
+/** Safety backups before restore under backups/auto/ */
+export const SAFETY_BACKUP_FILE_PREFIX = 'FMT_SafetyBackup_';
+export const SAFETY_BACKUP_RETENTION = 5;
+
+export function defaultAutoCloseBackupFileName(date = new Date()): string {
+  return `${AUTO_CLOSE_BACKUP_FILE_PREFIX}${formatLocalDate(date)}_${formatLocalTime(date)}.cab`;
 }
 
 function formatLocalDate(date: Date): string {

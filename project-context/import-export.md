@@ -1,6 +1,8 @@
 # Import and Export
 
-Excel import/export specification with validation, preview, and atomic commit.
+Excel import/export specification with validation, preview, and atomic commit for **FMT**.
+
+Template download filename: **`FMT_Import_Template.xlsx`**.
 
 ---
 
@@ -212,7 +214,7 @@ Provide **Download Import Template** in Import UI:
 - Pre-formatted XLSX with headers and example row
 - Localized sheet instructions in second row (comment or instructions sheet)
 
-Template filename: `CustomerAccounting_Import_Template.xlsx`
+Template filename: `FMT_Import_Template.xlsx`
 
 ---
 

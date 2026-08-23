@@ -90,7 +90,7 @@ If no transactions exist for a currency in scope → display **0** for all three
 
 Customers with no transactions still generate a report: customer info, zero balances per currency, and the localized empty-data message. Currencies are never combined.
 
-**Filename (individual customer):** `CustomerAccounting_Customer_{Name}_{Number}_{YYYY-MM-DD}.pdf` — number omitted when the customer has none.
+**Filename (individual customer):** `FMT_Customer_{Name}_{Number}_{YYYY-MM-DD}.pdf` — number omitted when the customer has none.
 
 ### 4.2 All Customers Report
 
@@ -276,13 +276,13 @@ Progress events for long reports via IPC event channel.
 ## 11. Filename Convention
 
 ```
-CustomerAccounting_{ReportType}_{CustomerNameOrAll}_{YYYY-MM-DD}.{pdf|xlsx}
+FMT_{ReportType}_{CustomerNameOrAll}_{YYYY-MM-DD}.{pdf|xlsx}
 ```
 
 Individual customer reports include the customer number when present:
 
 ```
-CustomerAccounting_Customer_{CustomerName}_{CustomerNumber}_{YYYY-MM-DD}.{pdf|xlsx}
+FMT_Customer_{CustomerName}_{CustomerNumber}_{YYYY-MM-DD}.{pdf|xlsx}
 ```
 
 Sanitize customer name and number for filesystem.
@@ -291,11 +291,13 @@ Sanitize customer name and number for filesystem.
 
 ## 12. Performance
 
-| Report Size | Target |
-|-------------|--------|
+| Report Size | Target / note |
+|-------------|---------------|
 | < 100 rows | < 2 seconds |
 | < 1000 rows | < 10 seconds |
-| > 1000 rows | Show progress bar; stream if possible |
+| Very large all-customer reports | May still consume **substantial memory** — streaming/chunking is a v1.1 candidate |
+
+Do not load the live accounting database into renderer memory to build reports; generation runs in the main process. Extremely large all-customer exports remain a known limitation.
 
 For very large exports, consider chunked Excel writing.
 

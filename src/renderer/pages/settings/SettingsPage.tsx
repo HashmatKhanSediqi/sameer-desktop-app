@@ -462,6 +462,10 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
         <h2>{t('about')}</h2>
         <dl className="status-list">
           <div>
+            <dt>{t('application')}</dt>
+            <dd>{tCommon('appName')}</dd>
+          </div>
+          <div>
             <dt>{t('version')}</dt>
             <dd>{status?.version ?? tCommon('emptyValue')}</dd>
           </div>

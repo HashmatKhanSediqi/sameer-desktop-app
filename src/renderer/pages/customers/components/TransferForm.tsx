@@ -1,38 +1,89 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sanitizeAmountInput } from '@shared/amountInput';
 import type { Currency } from '@shared/types/currency';
-import type { CustomerListItem } from '@shared/types/customer';
+import type { CustomerIdentity } from '@shared/types/customer';
 import { useAuth } from '../../../context/AuthContext';
 
 interface TransferFormProps {
-  customers: CustomerListItem[];
   currencies: Currency[];
   defaultFromCustomerId?: number;
   onCancel: () => void;
   onSaved: () => void;
 }
 
+const PICKER_PAGE_SIZE = 100;
+
 export function TransferForm({
-  customers,
   currencies,
   defaultFromCustomerId,
   onCancel,
   onSaved,
 }: TransferFormProps): JSX.Element {
   const { t } = useTranslation('transactions');
+  const { t: tCustomers } = useTranslation('customers');
   const { t: tErrors } = useTranslation('errors');
   const { sessionId } = useAuth();
-  const [fromCustomerId, setFromCustomerId] = useState(defaultFromCustomerId ?? customers[0]?.id ?? 0);
-  const [toCustomerId, setToCustomerId] = useState(
-    customers.find((customer) => customer.id !== (defaultFromCustomerId ?? customers[0]?.id))?.id ?? 0,
-  );
+  const [customers, setCustomers] = useState<CustomerIdentity[]>([]);
+  const [pickerQuery, setPickerQuery] = useState('');
+  const [debouncedPickerQuery, setDebouncedPickerQuery] = useState('');
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState(true);
+  const [fromCustomerId, setFromCustomerId] = useState(defaultFromCustomerId ?? 0);
+  const [toCustomerId, setToCustomerId] = useState(0);
   const [currencyCode, setCurrencyCode] = useState(currencies[0]?.code ?? 'AFN');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedPickerQuery(pickerQuery), 300);
+    return () => window.clearTimeout(timer);
+  }, [pickerQuery]);
+
+  const loadCustomers = useCallback(async (): Promise<void> => {
+    if (!sessionId) {
+      return;
+    }
+
+    setIsLoadingCustomers(true);
+    try {
+      const request = {
+        sessionId,
+        page: 1,
+        pageSize: PICKER_PAGE_SIZE,
+        includeAccounting: false as const,
+      };
+      const result =
+        debouncedPickerQuery.trim().length === 0
+          ? await window.api.customers.list(request)
+          : await window.api.customers.search({ ...request, query: debouncedPickerQuery });
+      if (!result.ok) {
+        setError(tErrors(result.errorCode));
+        return;
+      }
+
+      setCustomers(result.data.customers);
+      const ids = result.data.customers.map((customer) => customer.id);
+      const preferredFrom = defaultFromCustomerId && ids.includes(defaultFromCustomerId)
+        ? defaultFromCustomerId
+        : ids[0] ?? 0;
+      setFromCustomerId((current) => (ids.includes(current) ? current : preferredFrom));
+      setToCustomerId((current) => {
+        if (ids.includes(current) && current !== preferredFrom) {
+          return current;
+        }
+        return ids.find((id) => id !== preferredFrom) ?? 0;
+      });
+    } finally {
+      setIsLoadingCustomers(false);
+    }
+  }, [debouncedPickerQuery, defaultFromCustomerId, sessionId, tErrors]);
+
+  useEffect(() => {
+    void loadCustomers();
+  }, [loadCustomers]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
@@ -49,7 +100,7 @@ export function TransferForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (!sessionId || isSubmitting) {
+    if (!sessionId || isSubmitting || customers.length < 2) {
       return;
     }
     if (!confirmed) {
@@ -89,10 +140,22 @@ export function TransferForm({
       >
         <h2>{t('transfer.title')}</h2>
         <div className="form-field">
+          <label htmlFor="transfer-picker-search">{tCustomers('list.searchPlaceholder')}</label>
+          <input
+            id="transfer-picker-search"
+            type="search"
+            className="search-input"
+            value={pickerQuery}
+            onChange={(event) => setPickerQuery(event.target.value)}
+            placeholder={tCustomers('list.searchPlaceholder')}
+          />
+        </div>
+        <div className="form-field">
           <label htmlFor="transfer-from">{t('transfer.from')}</label>
           <select
             id="transfer-from"
             value={fromCustomerId}
+            disabled={isLoadingCustomers || customers.length === 0}
             onChange={(event) => setFromCustomerId(Number(event.target.value))}
           >
             {customers.map((customer) => (
@@ -104,7 +167,12 @@ export function TransferForm({
         </div>
         <div className="form-field">
           <label htmlFor="transfer-to">{t('transfer.to')}</label>
-          <select id="transfer-to" value={toCustomerId} onChange={(event) => setToCustomerId(Number(event.target.value))}>
+          <select
+            id="transfer-to"
+            value={toCustomerId}
+            disabled={isLoadingCustomers || customers.length < 2}
+            onChange={(event) => setToCustomerId(Number(event.target.value))}
+          >
             {customers.map((customer) => (
               <option key={customer.id} value={customer.id}>
                 {customer.name?.trim() || customer.customerNumber || customer.id}
@@ -154,7 +222,7 @@ export function TransferForm({
           <button type="button" className="button button-secondary" onClick={onCancel} disabled={isSubmitting}>
             {t('cancel')}
           </button>
-          <button type="submit" className="button button-primary" disabled={isSubmitting}>
+          <button type="submit" className="button button-primary" disabled={isSubmitting || isLoadingCustomers || customers.length < 2}>
             {confirmed ? t('transfer.confirm') : t('transfer.review')}
           </button>
         </div>

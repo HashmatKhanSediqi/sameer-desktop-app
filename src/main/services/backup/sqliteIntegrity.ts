@@ -23,11 +23,19 @@ export function verifySqliteIntegrity(filePath: string): boolean {
   try {
     assertSqliteDatabaseFile(filePath);
     db = new Database(filePath, { readonly: true, fileMustExist: true });
-    const result = db.pragma('integrity_check', { simple: true });
-    return result === 'ok';
+    return verifyConnectedDatabaseIntegrity(db);
   } catch {
     return false;
   } finally {
     db?.close();
+  }
+}
+
+export function verifyConnectedDatabaseIntegrity(db: Database.Database): boolean {
+  try {
+    const result = db.pragma('integrity_check', { simple: true });
+    return result === 'ok';
+  } catch {
+    return false;
   }
 }

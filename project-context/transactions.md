@@ -37,6 +37,11 @@ Transactions record money movement for a customer in a specific currency.
 - Dari/Persian/Arabic numerals and letters are not accepted; invalid characters are blocked on input/paste, not only after submit
 - Amount field remains `dir="ltr"`; Notes and other text fields are unrestricted
 
+### Balance rules
+
+- **Transfers:** insufficient source balance is rejected inside the SQLite transaction (both legs roll back).
+- **Cash Out / edit:** may produce a **negative customer balance** unless a future business rule adds a gate. Automated tests document this behavior.
+
 ### Currency Validation
 
 - Must be active currency in `currencies` table

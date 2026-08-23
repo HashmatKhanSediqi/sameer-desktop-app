@@ -30,6 +30,10 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
   const [showTransfer, setShowTransfer] = useState(false);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -43,6 +47,10 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
     return () => window.clearTimeout(timer);
   }, [query]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery]);
+
   const loadCustomers = useCallback(async (): Promise<void> => {
     if (!sessionId) {
       return;
@@ -52,10 +60,16 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
     setError(null);
 
     try {
+      const request = {
+        sessionId,
+        page,
+        pageSize,
+        includeAccounting: true as const,
+      };
       const [result, currencyResult, settingsResult] = await Promise.all([
         debouncedQuery.trim().length === 0
-          ? window.api.customers.list({ sessionId })
-          : window.api.customers.search({ sessionId, query: debouncedQuery }),
+          ? window.api.customers.list(request)
+          : window.api.customers.search({ ...request, query: debouncedQuery }),
         window.api.currencies.list({ sessionId }),
         window.api.settings.get(),
       ]);
@@ -67,18 +81,22 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
 
       setCustomers(result.data.customers);
       setTotals(result.data.totals);
+      setTotalCount(result.data.totalCount);
+      setTotalPages(result.data.totalPages);
+      setPage(result.data.page);
       if (currencyResult.ok) {
         setCurrencies(currencyResult.data.currencies);
       }
       if (settingsResult.ok) {
         setExchangeEnabled(settingsResult.data.exchangeEnabled);
+        setPageSize(settingsResult.data.paginationPageSize);
       }
     } catch {
       setError(t('loadError'));
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedQuery, sessionId, t]);
+  }, [debouncedQuery, page, pageSize, sessionId, t]);
 
   useEffect(() => {
     void loadCustomers();
@@ -161,7 +179,7 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
           type="button"
           className="button button-secondary"
           onClick={() => setShowTransfer(true)}
-          disabled={customers.length < 2}
+          disabled={totalCount < 2}
         >
           {tTx('transfer.title')}
         </button>
@@ -190,7 +208,7 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
 
       {isLoading ? (
         <p>{t('list.loading')}</p>
-      ) : customers.length === 0 ? (
+      ) : totalCount === 0 ? (
         <div className="empty-state">
           <p>{t('list.empty')}</p>
           <p className="subtitle">{t('list.emptyHint')}</p>
@@ -199,13 +217,36 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
           </button>
         </div>
       ) : (
-        <CustomerTable
-          customers={customers}
-          currencyCodes={totals.map((total) => total.currencyCode)}
-          onView={onViewCustomer}
-          onEdit={(id) => void openEdit(id)}
-          onDelete={setPendingDelete}
-        />
+        <>
+          <CustomerTable
+            customers={customers}
+            currencyCodes={totals.map((total) => total.currencyCode)}
+            onView={onViewCustomer}
+            onEdit={(id) => void openEdit(id)}
+            onDelete={setPendingDelete}
+          />
+          {totalPages > 1 ? (
+            <div className="pagination-bar">
+              <button
+                type="button"
+                className="button button-secondary button-compact"
+                disabled={page <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                {tTx('previous')}
+              </button>
+              <span>{tTx('page', { page, totalPages })}</span>
+              <button
+                type="button"
+                className="button button-secondary button-compact"
+                disabled={page >= totalPages}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                {tTx('next')}
+              </button>
+            </div>
+          ) : null}
+        </>
       )}
 
       {formMode === 'create' ? (
@@ -226,7 +267,6 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
 
       {showTransfer ? (
         <TransferForm
-          customers={customers}
           currencies={currencies}
           onCancel={() => setShowTransfer(false)}
           onSaved={() => {

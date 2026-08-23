@@ -17,6 +17,7 @@ import { BackupService } from '../services/backup/backupService';
 import { CompanyLogoService } from '../services/company/companyLogoService';
 import { CompanyService } from '../services/company/companyService';
 import { getFontsDirectory } from '../config/fontsPath';
+import { clearCrashSentinel, hadUncleanShutdown, setCrashSentinel } from '../utils/crashSentinel';
 import type { AppPaths } from '@shared/types/ipc';
 import type { Logger } from '../utils/logger';
 import { join } from 'node:path';
@@ -43,6 +44,11 @@ export async function createApplicationContext(
 ): Promise<ApplicationContext> {
   const paths = resolveAppPaths();
   ensureUserDataDirectories(paths);
+
+  if (hadUncleanShutdown(paths.userData)) {
+    logger.warn('Possible unclean shutdown detected; verifying database integrity');
+  }
+  setCrashSentinel(paths.userData);
 
   const database = new DatabaseConnection(paths.database, logger);
   database.connect();
@@ -99,5 +105,6 @@ export function bindApplicationServices(ctx: ApplicationContext, migrationsDir?:
 
 export function shutdownApplicationContext(ctx: ApplicationContext): void {
   ctx.database.close();
+  clearCrashSentinel(ctx.paths.userData);
   ctx.logger.info('Application context shut down');
 }

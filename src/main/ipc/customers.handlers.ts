@@ -2,7 +2,13 @@ import type { IpcMain } from 'electron';
 import type { ApplicationContext } from '../services/applicationContext';
 import { AppError, wrapIpcHandler } from '../utils/errors';
 import { IPC_CHANNELS } from '@shared/types/ipc';
-import type { CreateCustomerInput, CustomerIdentity, CustomerListItem, UpdateCustomerInput } from '@shared/types/customer';
+import { MAX_PAGE_SIZE, MIN_PAGE_SIZE, parseOptionalPage, parsePageSize } from '@shared/pagination';
+import type {
+  CreateCustomerInput,
+  CustomerIdentity,
+  CustomerListItem,
+  UpdateCustomerInput,
+} from '@shared/types/customer';
 
 function parseSessionRequest(input: unknown): { sessionId: string; record: Record<string, unknown> } {
   if (!input || typeof input !== 'object') {
@@ -67,10 +73,54 @@ function parseUpdateInput(record: Record<string, unknown>): UpdateCustomerInput 
   return input;
 }
 
-function withAccounting(
+function parseListQuery(record: Record<string, unknown>, ctx: ApplicationContext): {
+  page?: number;
+  pageSize?: number;
+  includeAccounting: boolean;
+} {
+  const settings = ctx.settingsService.get();
+  const defaultPageSize = settings.paginationPageSize;
+
+  let page: number | undefined;
+  if (record.page !== undefined) {
+    if (typeof record.page !== 'number') {
+      throw new AppError('VALIDATION_ERROR', 'INVALID_REQUEST');
+    }
+    page = parseOptionalPage(record.page, 1);
+  }
+
+  let pageSize: number | undefined;
+  if (record.pageSize !== undefined) {
+    if (typeof record.pageSize !== 'number') {
+      throw new AppError('VALIDATION_ERROR', 'INVALID_REQUEST');
+    }
+    pageSize = parsePageSize(record.pageSize, defaultPageSize);
+    if (pageSize < MIN_PAGE_SIZE || pageSize > MAX_PAGE_SIZE) {
+      throw new AppError('VALIDATION_ERROR', 'INVALID_REQUEST');
+    }
+  }
+
+  const includeAccounting = record.includeAccounting !== false;
+  return { page, pageSize: pageSize ?? defaultPageSize, includeAccounting };
+}
+
+function enrichCustomers(
   ctx: ApplicationContext,
   customers: CustomerIdentity[],
+  includeAccounting: boolean,
 ): { customers: CustomerListItem[]; totals: ReturnType<ApplicationContext['transactionService']['getGlobalTotals']> } {
+  if (!includeAccounting) {
+    return {
+      customers: customers.map((customer) => ({
+        ...customer,
+        balances: {},
+        cashInCount: 0,
+        cashOutCount: 0,
+      })),
+      totals: [],
+    };
+  }
+
   const accounting = ctx.transactionService.getListAccounting(customers.map((customer) => customer.id));
   return {
     customers: customers.map((customer) => {
@@ -93,9 +143,12 @@ function withAccounting(
 export function registerCustomerHandlers(ipcMain: IpcMain, ctx: ApplicationContext): void {
   ipcMain.handle(IPC_CHANNELS.CUSTOMERS_LIST, (_event, input: unknown) =>
     wrapIpcHandler(() => {
-      const { sessionId } = parseSessionRequest(input);
+      const { sessionId, record } = parseSessionRequest(input);
       ctx.authService.requireSession(sessionId);
-      return withAccounting(ctx, ctx.customerService.list());
+      const query = parseListQuery(record, ctx);
+      return ctx.customerService.listPage(query.page, query.pageSize, (customers) =>
+        enrichCustomers(ctx, customers, query.includeAccounting),
+      );
     }),
   );
 
@@ -108,7 +161,10 @@ export function registerCustomerHandlers(ipcMain: IpcMain, ctx: ApplicationConte
         throw new AppError('VALIDATION_ERROR', 'INVALID_REQUEST');
       }
 
-      return withAccounting(ctx, ctx.customerService.search(record.query));
+      const query = parseListQuery(record, ctx);
+      return ctx.customerService.searchPage(record.query, query.page, query.pageSize, (customers) =>
+        enrichCustomers(ctx, customers, query.includeAccounting),
+      );
     }),
   );
 

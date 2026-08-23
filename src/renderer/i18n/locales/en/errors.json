@@ -2,6 +2,7 @@
   "INTERNAL_ERROR": "Something went wrong. Please try again.",
   "INVALID_REQUEST": "The request is invalid.",
   "DATABASE_ERROR": "Unable to save data.",
+  "DATABASE_CORRUPTED": "The accounting database may be damaged. Restore from a backup if you have one.",
   "NOT_AUTHENTICATED": "Please log in to continue.",
   "SESSION_EXPIRED": "Your session has expired. Please log in again.",
   "INVALID_CREDENTIALS": "Invalid username or password",

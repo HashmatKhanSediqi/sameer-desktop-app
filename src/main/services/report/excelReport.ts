@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { extname } from 'node:path';
 import ExcelJS from 'exceljs';
 import type { ReportModel } from '@shared/types/report';
@@ -159,7 +159,7 @@ function addTitleRows(sheet: ExcelJS.Worksheet, model: ReportModel, start: numbe
       try {
         const extension = extname(model.company.logoPath).replace('.', '').toLowerCase();
         const imageId = sheet.workbook.addImage({
-          buffer: readFileSync(model.company.logoPath),
+          filename: model.company.logoPath,
           extension: extension === 'jpg' || extension === 'jpeg' ? 'jpeg' : extension === 'webp' ? 'png' : 'png',
         });
         sheet.addImage(imageId, {

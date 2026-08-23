@@ -149,18 +149,19 @@ export class ReportsService {
     endDate?: string,
   ): ReportModel {
     const customer = this.deps.customerService.getById(customerId);
-    const rows = this.deps.transactionService.listAmountRows(customerId, { startDate, endDate });
-    const currencies = this.currenciesForScope(rows);
+    const aggregateGroups = this.deps.transactionService.aggregateForReportScope({ customerId, startDate, endDate });
+    const scopedRows = this.aggregateRowsAsAmountRows(aggregateGroups);
+    const currencies = this.currenciesForScope(scopedRows);
     const summaries = toCurrencySections(
-      this.deps.transactionService.summarizeRows(currencies, rows),
-      rows,
+      this.deps.transactionService.summarizeAggregates(currencies, aggregateGroups),
+      scopedRows,
     );
     const transactions = this.mapTransactions(
       this.deps.transactionService.listForReport({ customerId, startDate, endDate }),
       labels,
       locale,
     );
-    const info = toCustomerInfo(customer, labels, rows, locale);
+    const info = toCustomerInfo(customer, labels, aggregateGroups, locale);
 
     return {
       ...base,
@@ -179,26 +180,60 @@ export class ReportsService {
     labels: ReportLabels,
     locale: SupportedLocale,
   ): ReportModel {
-    const identities = this.deps.customerService.list();
-    const accounting = this.deps.transactionService.getListAccounting(identities.map((item) => item.id));
-    const allRows = this.deps.transactionService.listAmountRows();
-    const currencies = this.currenciesForScope(allRows);
-    const customers: ReportCustomerRow[] = identities.map((identity) => {
-      const stats = accounting.get(identity.id) ?? { balances: {}, cashInCount: 0, cashOutCount: 0 };
-      return {
-        id: identity.id,
-        name: displayName(identity.name, labels.unnamedCustomer),
-        customerNumber: identity.customerNumber?.trim() || reportT(locale, 'common', 'emptyValue'),
-        cashInCount: stats.cashInCount,
-        cashOutCount: stats.cashOutCount,
-        createdAt: null,
-        updatedAt: null,
-        displayCreatedAt: null,
-        displayUpdatedAt: null,
-        balances: fillBalances(currencies, stats.balances),
-      };
-    });
-    const summaries = toCurrencySections(this.deps.transactionService.summarizeRows(currencies, allRows), allRows);
+    const currencies = this.deps.transactionService.listActiveCurrencies();
+    const globalGroups = this.deps.transactionService.aggregateGlobal();
+    const distinctCustomers = this.deps.transactionService.countDistinctCustomersByCurrency();
+    const summaries = toCurrencySectionsFromGlobal(
+      this.deps.transactionService.summarizeAggregates(
+        currencies,
+        globalGroups.map((group) => ({
+          customer_id: 0,
+          currency_code: group.currency_code,
+          type: group.type,
+          tx_count: group.tx_count,
+          total_amount: group.total_amount,
+        })),
+      ),
+      distinctCustomers,
+    );
+    const transactionCount = globalGroups.reduce((sum, group) => sum + group.tx_count, 0);
+    const totalCount = this.deps.customerService.count();
+    const customers: ReportCustomerRow[] = [];
+    const pageSize = 500;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+    for (let page = 1; page <= totalPages; page += 1) {
+      const pageResult = this.deps.customerService.listPage(page, pageSize, (identities) => {
+        const accounting = this.deps.transactionService.getListAccounting(identities.map((item) => item.id));
+        return {
+          customers: identities.map((identity) => {
+            const stats = accounting.get(identity.id) ?? { balances: {}, cashInCount: 0, cashOutCount: 0 };
+            return {
+              ...identity,
+              balances: stats.balances,
+              cashInCount: stats.cashInCount,
+              cashOutCount: stats.cashOutCount,
+            };
+          }),
+          totals: [],
+        };
+      });
+
+      for (const item of pageResult.customers) {
+        customers.push({
+          id: item.id,
+          name: displayName(item.name, labels.unnamedCustomer),
+          customerNumber: item.customerNumber?.trim() || reportT(locale, 'common', 'emptyValue'),
+          cashInCount: item.cashInCount,
+          cashOutCount: item.cashOutCount,
+          createdAt: null,
+          updatedAt: null,
+          displayCreatedAt: null,
+          displayUpdatedAt: null,
+          balances: fillBalances(currencies, item.balances),
+        });
+      }
+    }
 
     if (customers.length === 0) {
       throw new AppError('REPORT_NO_DATA', 'REPORT_NO_DATA');
@@ -211,7 +246,7 @@ export class ReportsService {
       transactions: [],
       currencySummaries: summaries,
       customerCount: customers.length,
-      transactionCount: allRows.length,
+      transactionCount,
       empty: false,
     };
   }
@@ -230,17 +265,23 @@ export class ReportsService {
     }
 
     const records = this.deps.transactionService.listForReport({ customerId, startDate, endDate });
-    const amountRows = this.deps.transactionService.listAmountRows(customerId, { startDate, endDate });
+    const aggregateGroups = this.deps.transactionService.aggregateForReportScope({ customerId, startDate, endDate });
+    const scopedRows = this.aggregateRowsAsAmountRows(aggregateGroups);
     if (requireRows && records.length === 0) {
       throw new AppError('REPORT_NO_DATA', 'REPORT_NO_DATA');
     }
 
-    const currencies = this.currenciesForScope(amountRows);
+    const currencies = this.currenciesForScope(scopedRows);
     const transactions = this.mapTransactions(records, labels, locale);
     const customerIds = new Set(records.map((row) => row.customer_id));
     const customer =
       customerId !== undefined
-        ? toCustomerInfo(this.deps.customerService.getById(customerId), labels, amountRows, locale)
+        ? toCustomerInfo(
+            this.deps.customerService.getById(customerId),
+            labels,
+            aggregateGroups.filter((group) => group.customer_id === customerId),
+            locale,
+          )
         : null;
 
     return {
@@ -249,8 +290,8 @@ export class ReportsService {
       customers: [],
       transactions,
       currencySummaries: toCurrencySections(
-        this.deps.transactionService.summarizeRows(currencies, amountRows),
-        amountRows,
+        this.deps.transactionService.summarizeAggregates(currencies, aggregateGroups),
+        scopedRows,
       ),
       customerCount: customer ? 1 : customerIds.size,
       transactionCount: transactions.length,
@@ -265,10 +306,15 @@ export class ReportsService {
     startDate?: string,
     endDate?: string,
   ): ReportModel {
-    const rows = this.deps.transactionService.listAmountRows(undefined, { startDate, endDate });
-    const currencies = this.currenciesForScope(rows);
-    const summaries = toCurrencySections(this.deps.transactionService.summarizeRows(currencies, rows), rows);
-    const customerIds = new Set(rows.map((row) => row.customer_id));
+    const aggregateGroups = this.deps.transactionService.aggregateForReportScope({ startDate, endDate });
+    const scopedRows = this.aggregateRowsAsAmountRows(aggregateGroups);
+    const currencies = this.currenciesForScope(scopedRows);
+    const summaries = toCurrencySections(
+      this.deps.transactionService.summarizeAggregates(currencies, aggregateGroups),
+      scopedRows,
+    );
+    const customerIds = new Set(aggregateGroups.map((group) => group.customer_id));
+    const transactionCount = aggregateGroups.reduce((sum, group) => sum + group.tx_count, 0);
 
     return {
       ...base,
@@ -277,7 +323,7 @@ export class ReportsService {
       transactions: [],
       currencySummaries: summaries,
       customerCount: customerIds.size,
-      transactionCount: rows.length,
+      transactionCount,
       empty: false,
     };
   }
@@ -290,6 +336,17 @@ export class ReportsService {
       needed.add(row.currency_code);
     }
     return all.filter((currency) => needed.has(currency.code));
+  }
+
+  private aggregateRowsAsAmountRows(
+    groups: ReturnType<TransactionService['aggregateForReportScope']>,
+  ): TransactionAmountRow[] {
+    return groups.map((group) => ({
+      customer_id: group.customer_id,
+      type: group.type,
+      currency_code: group.currency_code,
+      amount: group.total_amount,
+    }));
   }
 
   private mapTransactions(
@@ -426,15 +483,15 @@ function displayName(name: string | null | undefined, fallback: string): string 
 function toCustomerInfo(
   customer: Customer,
   labels: ReportLabels,
-  rows: TransactionAmountRow[],
+  groups: Array<{ type: 'CASH_IN' | 'CASH_OUT'; tx_count: number }>,
   locale: SupportedLocale,
 ): ReportCustomerInfo {
   return {
     id: customer.id,
     name: displayName(customer.name, labels.unnamedCustomer),
     customerNumber: customer.customerNumber?.trim() || '',
-    cashInCount: rows.filter((row) => row.type === 'CASH_IN').length,
-    cashOutCount: rows.filter((row) => row.type === 'CASH_OUT').length,
+    cashInCount: groups.filter((group) => group.type === 'CASH_IN').reduce((sum, group) => sum + group.tx_count, 0),
+    cashOutCount: groups.filter((group) => group.type === 'CASH_OUT').reduce((sum, group) => sum + group.tx_count, 0),
     createdAt: customer.createdAt,
     updatedAt: customer.updatedAt,
     displayCreatedAt: customer.createdAt ? formatDateTimeForLocale(customer.createdAt, locale) : null,
@@ -453,6 +510,18 @@ function toCurrencySections(summaries: CurrencySummary[], rows: TransactionAmoun
       customerCount: customerIds.size,
     };
   });
+}
+
+function toCurrencySectionsFromGlobal(
+  summaries: CurrencySummary[],
+  distinctCustomers: Array<{ currency_code: string; customer_count: number }>,
+): ReportCurrencySection[] {
+  const counts = new Map(distinctCustomers.map((row) => [row.currency_code, row.customer_count]));
+  return summaries.map((summary) => ({
+    ...summary,
+    transactionCount: summary.cashInCount + summary.cashOutCount,
+    customerCount: counts.get(summary.currencyCode) ?? 0,
+  }));
 }
 
 function transferTypeLabel(

@@ -1,6 +1,6 @@
 # Localization
 
-Multi-language support for Dari, Pashto, and English with RTL/LTR layout.
+Multi-language support for Dari, Pashto, and English with RTL/LTR layout for **FMT**.
 
 ---
 

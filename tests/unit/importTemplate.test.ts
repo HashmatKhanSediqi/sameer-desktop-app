@@ -7,7 +7,7 @@ describe('import template', () => {
   it('writes an xlsx template with Customers, Transactions, and instructions', async () => {
     const testDb = createTestDatabase();
     try {
-      const filePath = join(testDb.dbPath, '..', 'CustomerAccounting_Import_Template.xlsx');
+      const filePath = join(testDb.dbPath, '..', 'FMT_Import_Template.xlsx');
       await writeImportTemplate(filePath, 'en');
       const ExcelJS = await import('exceljs');
       const workbook = new ExcelJS.Workbook();

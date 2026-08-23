@@ -241,7 +241,7 @@ describe('ReportsService', () => {
       });
       const bytes = readFileSync(generated.filePath);
       expect(bytes.subarray(0, 5).toString('utf8')).toBe('%PDF-');
-      expect(generated.fileName).toMatch(/^CustomerAccounting_Customer_Ahmad_C-1_\d{4}-\d{2}-\d{2}\.pdf$/);
+      expect(generated.fileName).toMatch(/^FMT_Customer_Ahmad_C-1_\d{4}-\d{2}-\d{2}\.pdf$/);
     } finally {
       harness.cleanup();
     }
@@ -298,7 +298,7 @@ describe('ReportsService', () => {
         customerId: empty.id,
       });
       expect(existsSync(generated.filePath)).toBe(true);
-      expect(generated.fileName).toMatch(/^CustomerAccounting_Customer_Noor_N-9_\d{4}-\d{2}-\d{2}\.pdf$/);
+      expect(generated.fileName).toMatch(/^FMT_Customer_Noor_N-9_\d{4}-\d{2}-\d{2}\.pdf$/);
     } finally {
       harness.cleanup();
     }

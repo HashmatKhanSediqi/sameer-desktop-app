@@ -26,14 +26,19 @@ import type {
 import type { CreateTransferInput, TransferResult } from '@shared/types/transfer';
 import { formatBalance, ZERO_BALANCE } from './money';
 import {
+  buildAccountingMapFromAggregates,
+  buildCurrencySummariesFromAggregates,
+  buildGlobalTotalsFromAggregates,
+} from './transactionAggregates';
+import {
   parseAmount,
   parseCurrencyCode,
   parseOptionalNote,
-  parseOptionalPage,
   parsePositiveIntegerId,
   parseTransactionDate,
   parseTransactionType,
 } from './transactionValidation';
+import { resolvePagination as resolveSharedPagination } from '@shared/pagination';
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -149,10 +154,6 @@ export class TransactionService {
     const currencyCode = this.requireActiveCurrency(input.currencyCode);
     const note = parseOptionalNote(input.note);
     const transactionDate = parseTransactionDate(input.transactionDate);
-    const sourceBalance = this.balanceFor(fromCustomerId, currencyCode);
-    if (new Decimal(sourceBalance).lt(amount)) {
-      throw new AppError('INSUFFICIENT_BALANCE', 'INSUFFICIENT_BALANCE');
-    }
 
     const transferId = randomUUID();
     const pair = this.transactions.createTransferPair(
@@ -226,60 +227,42 @@ export class TransactionService {
   getCustomerSummary(customerId: unknown): CustomerTransactionSummary {
     const id = this.requireCustomer(customerId);
     const currencies = this.currencies.listActive();
-    const rows = this.transactions.listAmountRows(id);
+    const groups = this.transactions.aggregateForCustomer(id);
     return {
       customerId: id,
-      currencies: buildCurrencySummaries(currencies, rows),
-      cashInCount: rows.filter((row) => row.type === 'CASH_IN').length,
-      cashOutCount: rows.filter((row) => row.type === 'CASH_OUT').length,
+      currencies: buildCurrencySummariesFromAggregates(currencies, groups),
+      cashInCount: groups.filter((group) => group.type === 'CASH_IN').reduce((sum, group) => sum + group.tx_count, 0),
+      cashOutCount: groups.filter((group) => group.type === 'CASH_OUT').reduce((sum, group) => sum + group.tx_count, 0),
     };
   }
 
   getGlobalTotals(): GlobalCurrencyTotal[] {
     const currencies = this.currencies.listActive();
-    const rows = this.transactions.listAmountRows();
-    return buildCurrencySummaries(currencies, rows).map((summary) => ({
-      currencyCode: summary.currencyCode,
-      nameKey: summary.nameKey,
-      symbol: summary.symbol,
-      balance: summary.balance,
-    }));
+    const groups = this.transactions.aggregateGlobal();
+    return buildGlobalTotalsFromAggregates(currencies, groups);
   }
 
   getListAccounting(customerIds: number[]): Map<
     number,
     { balances: Record<string, string>; cashInCount: number; cashOutCount: number }
   > {
+    if (customerIds.length === 0) {
+      return new Map();
+    }
+
     const currencies = this.currencies.listActive();
-    const rows = this.transactions.listAmountRows();
-    const byCustomer = new Map<number, TransactionAmountRow[]>();
+    const groups = this.transactions.aggregateForCustomers(customerIds);
+    return buildAccountingMapFromAggregates(currencies, groups, customerIds);
+  }
 
-    for (const row of rows) {
-      const list = byCustomer.get(row.customer_id) ?? [];
-      list.push(row);
-      byCustomer.set(row.customer_id, list);
-    }
-
-    const result = new Map<
-      number,
-      { balances: Record<string, string>; cashInCount: number; cashOutCount: number }
-    >();
-
-    for (const customerId of customerIds) {
-      const customerRows = byCustomer.get(customerId) ?? [];
-      const summaries = buildCurrencySummaries(currencies, customerRows);
-      const balances: Record<string, string> = {};
-      for (const summary of summaries) {
-        balances[summary.currencyCode] = summary.balance;
-      }
-      result.set(customerId, {
-        balances,
-        cashInCount: customerRows.filter((row) => row.type === 'CASH_IN').length,
-        cashOutCount: customerRows.filter((row) => row.type === 'CASH_OUT').length,
-      });
-    }
-
-    return result;
+  getAllCustomersAccounting(): Map<
+    number,
+    { balances: Record<string, string>; cashInCount: number; cashOutCount: number }
+  > {
+    const currencies = this.currencies.listActive();
+    const groups = this.transactions.aggregateAllCustomers();
+    const customerIds = [...new Set(groups.map((group) => group.customer_id))];
+    return buildAccountingMapFromAggregates(currencies, groups, customerIds);
   }
 
   listActiveCurrencies(): Currency[] {
@@ -303,6 +286,22 @@ export class TransactionService {
 
   summarizeRows(currencies: Currency[], rows: TransactionAmountRow[]): CurrencySummary[] {
     return buildCurrencySummaries(currencies, rows);
+  }
+
+  summarizeAggregates(currencies: Currency[], groups: ReturnType<TransactionRepository['aggregateForReportScope']>): CurrencySummary[] {
+    return buildCurrencySummariesFromAggregates(currencies, groups);
+  }
+
+  aggregateForReportScope(query: ReportTransactionQuery): ReturnType<TransactionRepository['aggregateForReportScope']> {
+    return this.transactions.aggregateForReportScope(query);
+  }
+
+  countDistinctCustomersByCurrency(): Array<{ currency_code: string; customer_count: number }> {
+    return this.transactions.countDistinctCustomersByCurrency();
+  }
+
+  aggregateGlobal(): ReturnType<TransactionRepository['aggregateGlobal']> {
+    return this.transactions.aggregateGlobal();
   }
 
   private requireCustomer(id: unknown): number {
@@ -355,11 +354,8 @@ export class TransactionService {
       return { page: 1, pageSize, totalPages: 1 };
     }
 
-    const pageSize = parseOptionalPage(pageSizeInput, defaultSize);
-    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-    const requestedPage = parseOptionalPage(pageInput, 1);
-    const page = Math.min(requestedPage, totalPages);
-    return { page, pageSize, totalPages };
+    const resolved = resolveSharedPagination(pageInput, pageSizeInput, totalCount, defaultSize);
+    return resolved;
   }
 }
 

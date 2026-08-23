@@ -1,6 +1,6 @@
 # Authentication
 
-Administrator login, session management, and credential handling.
+Administrator login, session management, and credential handling for **FMT**.
 
 ---
 
@@ -13,6 +13,8 @@ Administrator login, session management, and credential handling.
 | Default password | `admin123` |
 | Storage | Password hash in SQLite `admin_users` table |
 | Session | In-memory session in main process (v1.0) |
+| Password change | Implemented (Settings) |
+| Recovery | Hashed security question/answer |
 
 ---
 

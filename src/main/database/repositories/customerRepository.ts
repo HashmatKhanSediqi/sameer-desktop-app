@@ -62,6 +62,65 @@ export class CustomerRepository {
       .all() as CustomerRecord[];
   }
 
+  countCustomers(): number {
+    const row = this.db.prepare('SELECT COUNT(*) AS count FROM customers').get() as { count: number };
+    return row.count;
+  }
+
+  listCustomersPaginated(limit: number, offset: number): CustomerRecord[] {
+    return this.db
+      .prepare(`SELECT ${CUSTOMER_COLUMNS} FROM customers ${LIST_ORDER} LIMIT ? OFFSET ?`)
+      .all(limit, offset) as CustomerRecord[];
+  }
+
+  countSearchCustomers(likePattern: string): number {
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM customers
+         WHERE name LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR customer_number LIKE ? ESCAPE '!' COLLATE NOCASE`,
+      )
+      .get(likePattern, likePattern) as { count: number };
+    return row.count;
+  }
+
+  countCustomersByExactNumber(customerNumber: string): number {
+    const row = this.db
+      .prepare('SELECT COUNT(*) AS count FROM customers WHERE customer_number = ? COLLATE NOCASE')
+      .get(customerNumber) as { count: number };
+    return row.count;
+  }
+
+  listCustomersByExactNumberPaginated(
+    customerNumber: string,
+    limit: number,
+    offset: number,
+  ): CustomerRecord[] {
+    return this.db
+      .prepare(
+        `SELECT ${CUSTOMER_COLUMNS}
+         FROM customers
+         WHERE customer_number = ? COLLATE NOCASE
+         ${LIST_ORDER}
+         LIMIT ? OFFSET ?`,
+      )
+      .all(customerNumber, limit, offset) as CustomerRecord[];
+  }
+
+  searchCustomersPaginated(likePattern: string, limit: number, offset: number): CustomerRecord[] {
+    return this.db
+      .prepare(
+        `SELECT ${CUSTOMER_COLUMNS}
+         FROM customers
+         WHERE name LIKE ? ESCAPE '!' COLLATE NOCASE
+            OR customer_number LIKE ? ESCAPE '!' COLLATE NOCASE
+         ${LIST_ORDER}
+         LIMIT ? OFFSET ?`,
+      )
+      .all(likePattern, likePattern, limit, offset) as CustomerRecord[];
+  }
+
   searchCustomers(likePattern: string): CustomerRecord[] {
     return this.db
       .prepare(

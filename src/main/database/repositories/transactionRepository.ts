@@ -1,6 +1,8 @@
 import type Database from 'better-sqlite3';
+import Decimal from 'decimal.js';
 import type { TransactionType } from '@shared/types/transaction';
 import type { TransferRole } from '@shared/types/transfer';
+import { AppError } from '../../utils/errors';
 
 export interface TransactionRecord {
   id: number;
@@ -45,6 +47,21 @@ export interface TransactionAmountRow {
   amount: string;
 }
 
+export interface TransactionAggregateRow {
+  customer_id: number;
+  currency_code: string;
+  type: TransactionType;
+  tx_count: number;
+  total_amount: string;
+}
+
+export interface GlobalTransactionAggregateRow {
+  currency_code: string;
+  type: TransactionType;
+  tx_count: number;
+  total_amount: string;
+}
+
 export interface ReportTransactionRecord extends TransactionRecord {
   customer_name: string | null;
   customer_number: string | null;
@@ -58,6 +75,7 @@ export interface ReportTransactionQuery {
 
 const COLUMNS = `id, customer_id, type, currency_code, amount, note, transaction_date, created_at, updated_at, transfer_id, transfer_role, counterparty_customer_id`;
 const HISTORY_ORDER = `ORDER BY datetime(transaction_date) DESC, id DESC`;
+const AGGREGATE_AMOUNT = `printf('%.4f', SUM(CAST(amount AS REAL)))`;
 
 export class TransactionRepository {
   constructor(private readonly db: Database.Database) {}
@@ -89,10 +107,30 @@ export class TransactionRepository {
     outgoing: CreateTransactionRecordInput,
     incoming: CreateTransactionRecordInput,
   ): { outId: number; inId: number } {
-    return this.db.transaction(() => ({
-      outId: this.createTransaction(outgoing),
-      inId: this.createTransaction(incoming),
-    }))();
+    return this.db.transaction(() => {
+      const balance = this.balanceForCustomerCurrency(outgoing.customerId, outgoing.currencyCode);
+      if (new Decimal(balance).lt(new Decimal(outgoing.amount))) {
+        throw new AppError('INSUFFICIENT_BALANCE', 'INSUFFICIENT_BALANCE');
+      }
+
+      return {
+        outId: this.createTransaction(outgoing),
+        inId: this.createTransaction(incoming),
+      };
+    })();
+  }
+
+  private balanceForCustomerCurrency(customerId: number, currencyCode: string): string {
+    const row = this.db
+      .prepare(
+        `SELECT
+           COALESCE(SUM(CASE WHEN type = 'CASH_IN' THEN CAST(amount AS REAL) ELSE 0 END), 0) -
+           COALESCE(SUM(CASE WHEN type = 'CASH_OUT' THEN CAST(amount AS REAL) ELSE 0 END), 0) AS balance
+         FROM transactions
+         WHERE customer_id = ? AND currency_code = ?`,
+      )
+      .get(customerId, currencyCode) as { balance: number };
+    return new Decimal(row.balance).toFixed(4);
   }
 
   deleteByTransferId(transferId: string): number {
@@ -166,6 +204,83 @@ export class TransactionRepository {
       'SELECT customer_id, type, currency_code, amount FROM transactions',
       { customerId, startDate: dateRange?.startDate, endDate: dateRange?.endDate },
     ) as TransactionAmountRow[];
+  }
+
+  aggregateForCustomers(customerIds: number[]): TransactionAggregateRow[] {
+    if (customerIds.length === 0) {
+      return [];
+    }
+
+    const placeholders = customerIds.map(() => '?').join(', ');
+    return this.db
+      .prepare(
+        `SELECT customer_id, currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount
+         FROM transactions
+         WHERE customer_id IN (${placeholders})
+         GROUP BY customer_id, currency_code, type`,
+      )
+      .all(...customerIds) as TransactionAggregateRow[];
+  }
+
+  aggregateForCustomer(customerId: number): TransactionAggregateRow[] {
+    return this.aggregateForCustomers([customerId]);
+  }
+
+  aggregateGlobal(): GlobalTransactionAggregateRow[] {
+    return this.db
+      .prepare(
+        `SELECT currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount
+         FROM transactions
+         GROUP BY currency_code, type`,
+      )
+      .all() as GlobalTransactionAggregateRow[];
+  }
+
+  countDistinctCustomersByCurrency(): Array<{ currency_code: string; customer_count: number }> {
+    return this.db
+      .prepare(
+        `SELECT currency_code, COUNT(DISTINCT customer_id) AS customer_count
+         FROM transactions
+         GROUP BY currency_code`,
+      )
+      .all() as Array<{ currency_code: string; customer_count: number }>;
+  }
+
+  aggregateAllCustomers(): TransactionAggregateRow[] {
+    return this.db
+      .prepare(
+        `SELECT customer_id, currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount
+         FROM transactions
+         GROUP BY customer_id, currency_code, type`,
+      )
+      .all() as TransactionAggregateRow[];
+  }
+
+  aggregateForReportScope(query: ReportTransactionQuery): TransactionAggregateRow[] {
+    const clauses: string[] = [];
+    const params: Array<string | number> = [];
+
+    if (query.customerId !== undefined) {
+      clauses.push('customer_id = ?');
+      params.push(query.customerId);
+    }
+    if (query.startDate) {
+      clauses.push('date(transaction_date) >= date(?)');
+      params.push(query.startDate);
+    }
+    if (query.endDate) {
+      clauses.push('date(transaction_date) <= date(?)');
+      params.push(query.endDate);
+    }
+
+    const where = clauses.length > 0 ? ` WHERE ${clauses.join(' AND ')}` : '';
+    return this.db
+      .prepare(
+        `SELECT customer_id, currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount
+         FROM transactions${where}
+         GROUP BY customer_id, currency_code, type`,
+      )
+      .all(...params) as TransactionAggregateRow[];
   }
 
   listForReport(query: ReportTransactionQuery): ReportTransactionRecord[] {
