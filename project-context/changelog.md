@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.1] — 2026-08-24 (update install, accounting scroll)
+
+### Fixed
+- In-app install from Settings failed at the last step with "Update was not installed because the safety backup could not be completed." On this machine the live database is schema **8** (teller + dynamic currencies). Packaged **1.0.2** only ships migrations 001–006, so `createPreUpdateBackup()` validation rejects the backup (`BACKUP_VERSION_MISMATCH`) and never calls `quitAndInstall`. 1.2.1 cannot change already-installed 1.0.2; if Settings still shows that error, run `FMT-Setup.exe` once. After 1.2.1 is installed, later in-app updates validate schema 8 and install silently (`quitAndInstall(true, true)` plus NSIS `--updated` → silent).
+- Accounting main page: only the customer list scrolls; currency summary cards stay visible.
+- Customer details: transaction column headers stay visible while rows scroll.
+
+---
+
 ## [1.2.0] — 2026-08-24 (transaction date/time and module select)
 
 ### Added

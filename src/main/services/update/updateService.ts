@@ -229,7 +229,8 @@ export class UpdateService {
         version: this.availableVersion,
         safetyBackupPath: backup.filePath,
       });
-      this.updater.quitAndInstall(false, true);
+      // Silent (/S) so NSIS does not show the assisted wizard. --force-run relaunches FMT.
+      this.updater.quitAndInstall(true, true);
       return this.getStatus();
     } catch (error) {
       this.installPending = false;

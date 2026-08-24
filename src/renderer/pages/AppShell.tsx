@@ -72,7 +72,15 @@ export function AppShell({ onSwitchModule }: AppShellProps): JSX.Element {
         </div>
       </header>
 
-      <main className={view.type === 'detail' ? 'app-main app-main-detail' : 'app-main'}>
+      <main
+        className={
+          view.type === 'detail'
+            ? 'app-main app-main-detail'
+            : view.type === 'list'
+              ? 'app-main app-main-list'
+              : 'app-main'
+        }
+      >
         {view.type === 'list' ? (
           <CustomerListPage
             onViewCustomer={(customerId) => setView({ type: 'detail', customerId })}

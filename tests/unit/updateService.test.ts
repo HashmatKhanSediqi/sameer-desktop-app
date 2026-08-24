@@ -25,6 +25,7 @@ class MockUpdater extends EventEmitter implements ElectronUpdaterAdapter {
   checkImpl: () => Promise<UpdateCheckResultLike | null> = async () => null;
   downloadImpl: () => Promise<string[]> = async () => [];
   quitAndInstallCalls = 0;
+  lastQuitAndInstallArgs: [boolean?, boolean?] | null = null;
 
   async checkForUpdates(): Promise<UpdateCheckResultLike | null> {
     return this.checkImpl();
@@ -34,8 +35,9 @@ class MockUpdater extends EventEmitter implements ElectronUpdaterAdapter {
     return this.downloadImpl();
   }
 
-  quitAndInstall(): void {
+  quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void {
     this.quitAndInstallCalls += 1;
+    this.lastQuitAndInstallArgs = [isSilent, isForceRunAfter];
   }
 
   emitProgress(progress: UpdateProgress): void {
@@ -269,6 +271,7 @@ describe('UpdateService', () => {
     const status = await service.installUpdate();
     expect(backupService.createPreUpdateBackup).toHaveBeenCalledTimes(1);
     expect(updater.quitAndInstallCalls).toBe(1);
+    expect(updater.lastQuitAndInstallArgs).toEqual([true, true]);
     expect(service.isInstallPending()).toBe(true);
     expect(status.safetyBackupPath).toContain('FMT_PreUpdate_');
   });

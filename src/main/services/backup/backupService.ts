@@ -143,6 +143,10 @@ export class BackupService {
       const validated = await this.validate(destination);
       if (!validated.valid) {
         unlinkIfExists(destination);
+        this.deps.logger.error('Pre-update backup failed validation', {
+          path: destination,
+          errors: validated.errors,
+        });
         return { created: false, error: 'Pre-update backup failed validation' };
       }
       this.pruneBackupFiles(preUpdateDir, PRE_UPDATE_BACKUP_FILE_PREFIX, PRE_UPDATE_BACKUP_RETENTION);

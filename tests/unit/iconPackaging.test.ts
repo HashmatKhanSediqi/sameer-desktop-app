@@ -17,6 +17,10 @@ describe('Windows icon packaging', () => {
     expect(packageJson.build.icon).toBe('assets/icons/icon.ico');
     expect(packageJson.build.win.icon).toBe('assets/icons/icon.ico');
     expect(packageJson.build.nsis.installerIcon).toBe('assets/icons/icon.ico');
+    expect(packageJson.build.nsis.include).toBe('assets/installer/installer.nsh');
+    const nsh = readFileSync(join(process.cwd(), 'assets', 'installer', 'installer.nsh'), 'utf8');
+    expect(nsh).toMatch(/isUpdated/);
+    expect(nsh).toMatch(/SetSilent silent/);
     expect(packageJson.build.nsis.createDesktopShortcut).toBe(true);
     expect(packageJson.build.win.signAndEditExecutable).toBe(false);
     expect(packageJson.build.afterPack).toBe('scripts/after-pack-icon.cjs');

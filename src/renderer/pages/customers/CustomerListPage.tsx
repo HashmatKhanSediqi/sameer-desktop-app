@@ -207,9 +207,9 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
       ) : null}
 
       {isLoading ? (
-        <p>{t('list.loading')}</p>
+        <p className="customer-list-status">{t('list.loading')}</p>
       ) : totalCount === 0 ? (
-        <div className="empty-state">
+        <div className="empty-state customer-list-status">
           <p>{t('list.empty')}</p>
           <p className="subtitle">{t('list.emptyHint')}</p>
           <button type="button" className="button button-primary" onClick={() => setFormMode('create')}>
@@ -217,14 +217,16 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
           </button>
         </div>
       ) : (
-        <>
-          <CustomerTable
-            customers={customers}
-            currencyCodes={totals.map((total) => total.currencyCode)}
-            onView={onViewCustomer}
-            onEdit={(id) => void openEdit(id)}
-            onDelete={setPendingDelete}
-          />
+        <div className="customer-list-section">
+          <div className="customer-list-scroll">
+            <CustomerTable
+              customers={customers}
+              currencyCodes={totals.map((total) => total.currencyCode)}
+              onView={onViewCustomer}
+              onEdit={(id) => void openEdit(id)}
+              onDelete={setPendingDelete}
+            />
+          </div>
           {totalPages > 1 ? (
             <div className="pagination-bar">
               <button
@@ -246,7 +248,7 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
               </button>
             </div>
           ) : null}
-        </>
+        </div>
       )}
 
       {formMode === 'create' ? (

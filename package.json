@@ -1,6 +1,6 @@
 {
   "name": "customer-accounting",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "FMT — offline desktop customer accounting application",
   "main": "./out/main/index.js",
   "author": "FMT",
@@ -113,6 +113,7 @@
       "allowElevation": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
+      "include": "assets/installer/installer.nsh",
       "installerIcon": "assets/icons/icon.ico",
       "uninstallerIcon": "assets/icons/icon.ico",
       "installerHeaderIcon": "assets/icons/icon.ico",
