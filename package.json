@@ -1,6 +1,6 @@
 {
   "name": "customer-accounting",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "FMT — offline desktop customer accounting application",
   "main": "./out/main/index.js",
   "author": "FMT",
@@ -53,6 +53,9 @@
     "electron": "^34.2.0",
     "electron-builder": "^25.1.8",
     "electron-vite": "^2.3.0",
+    "png-to-ico": "^3.0.2",
+    "pngjs": "^7.0.0",
+    "rcedit": "^5.0.2",
     "typescript": "^5.7.3",
     "vite": "^5.4.14",
     "vitest": "^3.0.5"
@@ -65,8 +68,12 @@
       "output": "dist",
       "buildResources": "assets/installer"
     },
+    "afterPack": "scripts/after-pack-icon.cjs",
     "files": [
-      "out/**/*"
+      "out/**/*",
+      "!**/*.db",
+      "!**/*.sqlite",
+      "!**/*.sqlite3"
     ],
     "extraResources": [
       {

@@ -73,7 +73,8 @@ export type IpcErrorCode =
   | 'UPDATE_NOT_AVAILABLE'
   | 'UPDATE_NOT_READY'
   | 'UPDATE_BACKUP_FAILED'
-  | 'UPDATE_INVALID_VERSION';
+  | 'UPDATE_INVALID_VERSION'
+  | 'CURRENCY_IN_USE';
 
 export interface AppPaths {
   userData: string;
@@ -252,6 +253,24 @@ export interface CurrenciesDeactivateSuccessResponse {
 }
 
 export type CurrenciesDeactivateResult = CurrenciesDeactivateSuccessResponse | IpcErrorResponse;
+
+export type CurrenciesReactivateRequest = AuthenticatedRequest & { code: string };
+
+export interface CurrenciesReactivateSuccessResponse {
+  ok: true;
+  data: { currency: Currency };
+}
+
+export type CurrenciesReactivateResult = CurrenciesReactivateSuccessResponse | IpcErrorResponse;
+
+export type CurrenciesDeleteRequest = AuthenticatedRequest & { code: string };
+
+export interface CurrenciesDeleteSuccessResponse {
+  ok: true;
+  data: { code: string; deleted: true };
+}
+
+export type CurrenciesDeleteResult = CurrenciesDeleteSuccessResponse | IpcErrorResponse;
 
 export type TransactionsListRequest = AuthenticatedRequest & {
   customerId: number;
@@ -529,6 +548,8 @@ export const IPC_CHANNELS = {
   CURRENCIES_LIST: 'currencies:list',
   CURRENCIES_CREATE: 'currencies:create',
   CURRENCIES_DEACTIVATE: 'currencies:deactivate',
+  CURRENCIES_REACTIVATE: 'currencies:reactivate',
+  CURRENCIES_DELETE: 'currencies:delete',
   TRANSACTIONS_CREATE: 'transactions:create',
   TRANSACTIONS_UPDATE: 'transactions:update',
   TRANSACTIONS_DELETE: 'transactions:delete',

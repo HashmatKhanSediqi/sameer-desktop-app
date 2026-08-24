@@ -66,4 +66,80 @@ describe('CurrencyService settings operations', () => {
       testDb.cleanup();
     }
   });
+
+  it('reactivates through the explicit reactivate method without duplicating codes', () => {
+    const testDb = createTestDatabase();
+    try {
+      applyProjectMigrations(testDb.db, testDb.logger);
+      const service = new CurrencyService(testDb.db);
+      service.deactivate('EUR');
+
+      const restored = service.reactivate('EUR');
+      expect(restored.isActive).toBe(true);
+      expect(service.listAll().filter((currency) => currency.code === 'EUR')).toHaveLength(1);
+
+      const stillActive = service.reactivate('EUR');
+      expect(stillActive.isActive).toBe(true);
+
+      service.deactivate('EUR');
+      const restoredAgain = service.create({ code: 'eur', symbol: '€' });
+      expect(restoredAgain.isActive).toBe(true);
+      expect(service.listAll().filter((currency) => currency.code === 'EUR')).toHaveLength(1);
+    } finally {
+      testDb.cleanup();
+    }
+  });
+
+  it('permanently deletes an unused currency and blocks deletion when history exists', () => {
+    const testDb = createTestDatabase();
+    try {
+      applyProjectMigrations(testDb.db, testDb.logger);
+      const service = new CurrencyService(testDb.db);
+
+      const created = service.create({ code: 'GBP', symbol: '£' });
+      expect(created.hasTransactions).toBe(false);
+      const removed = service.remove('GBP');
+      expect(removed).toEqual({ code: 'GBP', deleted: true });
+      expect(service.listAll().some((currency) => currency.code === 'GBP')).toBe(false);
+
+      service.deactivate('EUR');
+      expect(() => service.remove('EUR')).not.toThrow();
+
+      const customerId = Number(
+        testDb.db.prepare('INSERT INTO customers (name) VALUES (?)').run('Ahmad').lastInsertRowid,
+      );
+      testDb.db
+        .prepare(
+          `INSERT INTO transactions (customer_id, type, currency_code, amount)
+           VALUES (?, 'CASH_IN', 'USD', '10.00')`,
+        )
+        .run(customerId);
+
+      const usdBefore = testDb.db.prepare('SELECT COUNT(*) AS count FROM transactions WHERE currency_code = ?').get('USD') as {
+        count: number;
+      };
+      expect(() => service.remove('USD')).toThrowError(/CURRENCY_IN_USE/);
+      const usdAfter = testDb.db.prepare('SELECT COUNT(*) AS count FROM transactions WHERE currency_code = ?').get('USD') as {
+        count: number;
+      };
+      expect(usdAfter.count).toBe(usdBefore.count);
+      expect(service.listAll().some((currency) => currency.code === 'USD')).toBe(true);
+    } finally {
+      testDb.cleanup();
+    }
+  });
+
+  it('does not delete the last active currency', () => {
+    const testDb = createTestDatabase();
+    try {
+      applyProjectMigrations(testDb.db, testDb.logger);
+      const service = new CurrencyService(testDb.db);
+      service.deactivate('EUR');
+      service.deactivate('USD');
+      expect(() => service.remove('AFN')).toThrowError(/LAST_ACTIVE_CURRENCY/);
+      expect(service.listActive()).toHaveLength(1);
+    } finally {
+      testDb.cleanup();
+    }
+  });
 });

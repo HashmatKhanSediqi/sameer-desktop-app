@@ -49,9 +49,11 @@ describe('IPC channel registry', () => {
     expect(ALLOWED_IPC_CHANNELS).toContain('settings:update');
   });
 
-  it('registers currency create and deactivate IPC channels', () => {
+  it('registers currency create, deactivate, reactivate, and delete IPC channels', () => {
     expect(ALLOWED_IPC_CHANNELS).toContain('currencies:create');
     expect(ALLOWED_IPC_CHANNELS).toContain('currencies:deactivate');
+    expect(ALLOWED_IPC_CHANNELS).toContain('currencies:reactivate');
+    expect(ALLOWED_IPC_CHANNELS).toContain('currencies:delete');
   });
 
   it('registers reports:generate for PDF and Excel export', () => {

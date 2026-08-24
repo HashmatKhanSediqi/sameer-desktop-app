@@ -79,6 +79,41 @@ export class CurrencyService {
     return updated;
   }
 
+  reactivate(code: string): Currency {
+    const normalized = this.parseCode(code);
+    const existing = this.repository.getByCode(normalized);
+    if (!existing) {
+      throw new AppError('INVALID_CURRENCY', 'CURRENCY_NOT_FOUND');
+    }
+    if (existing.isActive) {
+      return existing;
+    }
+
+    this.repository.reactivate(normalized, existing.symbol);
+    const restored = this.repository.getByCode(normalized);
+    if (!restored) {
+      throw new AppError('INVALID_CURRENCY', 'CURRENCY_NOT_FOUND');
+    }
+    return restored;
+  }
+
+  remove(code: string): { code: string; deleted: true } {
+    const normalized = this.parseCode(code);
+    const existing = this.repository.getByCode(normalized);
+    if (!existing) {
+      throw new AppError('INVALID_CURRENCY', 'CURRENCY_NOT_FOUND');
+    }
+    if (this.repository.hasTransactions(normalized)) {
+      throw new AppError('CURRENCY_IN_USE', 'CURRENCY_IN_USE');
+    }
+    if (existing.isActive && this.repository.countActive() <= 1) {
+      throw new AppError('VALIDATION_ERROR', 'LAST_ACTIVE_CURRENCY');
+    }
+
+    this.repository.deleteByCode(normalized);
+    return { code: normalized, deleted: true };
+  }
+
   hasTransactions(code: string): boolean {
     return this.repository.hasTransactions(this.parseCode(code));
   }

@@ -27,8 +27,12 @@ import type {
   CurrenciesCreateResult,
   CurrenciesDeactivateRequest,
   CurrenciesDeactivateResult,
+  CurrenciesDeleteRequest,
+  CurrenciesDeleteResult,
   CurrenciesListRequest,
   CurrenciesListResult,
+  CurrenciesReactivateRequest,
+  CurrenciesReactivateResult,
   CustomersCreateRequest,
   CustomersCreateResult,
   CustomersDeleteRequest,
@@ -118,6 +122,8 @@ export interface PreloadApi {
     list: (request: CurrenciesListRequest) => Promise<CurrenciesListResult>;
     create: (request: CurrenciesCreateRequest) => Promise<CurrenciesCreateResult>;
     deactivate: (request: CurrenciesDeactivateRequest) => Promise<CurrenciesDeactivateResult>;
+    reactivate: (request: CurrenciesReactivateRequest) => Promise<CurrenciesReactivateResult>;
+    delete: (request: CurrenciesDeleteRequest) => Promise<CurrenciesDeleteResult>;
   };
   transactions: {
     list: (request: TransactionsListRequest) => Promise<TransactionsListResult>;

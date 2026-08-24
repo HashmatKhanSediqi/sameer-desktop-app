@@ -163,9 +163,11 @@ Architecture must support adding currencies without rewriting core logic.
 
 ### Constraints
 
-- Code must be unique
-- Cannot delete currency with existing transactions (deactivate only)
-- Deactivated currency: hidden from new transactions; historical data preserved
+- Currency codes must be unique. Adding an inactive code reactivates the existing row instead of inserting a duplicate.
+- Settings provides **Reactivate** for inactive currencies and **Delete** for removal.
+- Unused currencies (no historical transactions) may be permanently deleted.
+- Currencies referenced by historical transactions cannot be hard-deleted. The admin can deactivate them instead. Transactions, customers, and other currencies are never deleted as a side effect.
+- The last remaining active currency cannot be deactivated or deleted.
 
 ### Core Logic Changes Required
 
@@ -215,6 +217,18 @@ Array<{
 ### `currencies:deactivate`
 
 **Input:** `{ code }`
+
+### `currencies:reactivate`
+
+**Input:** `{ code }`
+
+Reactivates an existing inactive currency. Idempotent if already active. Does not create a second row for the same code.
+
+### `currencies:delete`
+
+**Input:** `{ code }`
+
+Permanently deletes the currency row only when no transactions reference it. If historical transactions exist, the request fails with `CURRENCY_IN_USE` and history is left unchanged.
 
 ---
 

@@ -271,13 +271,15 @@ body {
 }
 
 .login-app-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 14px;
+  width: 72px;
+  height: 72px;
+  padding: 6px;
+  border-radius: 10px;
   object-fit: contain;
+  background: transparent;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.28) inset,
-    0 8px 16px var(--color-primary-shadow);
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 8px 18px var(--color-primary-shadow);
 }
 
 .login-mark {

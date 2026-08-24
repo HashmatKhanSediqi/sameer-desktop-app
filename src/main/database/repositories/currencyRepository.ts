@@ -7,6 +7,7 @@ interface CurrencyRecord {
   symbol: string | null;
   is_active: number;
   sort_order: number;
+  has_transactions?: number;
 }
 
 export class CurrencyRepository {
@@ -15,7 +16,8 @@ export class CurrencyRepository {
   listActive(): Currency[] {
     const rows = this.db
       .prepare(
-        `SELECT code, name_key, symbol, is_active, sort_order
+        `SELECT code, name_key, symbol, is_active, sort_order,
+                EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code) AS has_transactions
          FROM currencies
          WHERE is_active = 1
          ORDER BY sort_order ASC, code ASC`,
@@ -28,7 +30,8 @@ export class CurrencyRepository {
   listAll(): Currency[] {
     const rows = this.db
       .prepare(
-        `SELECT code, name_key, symbol, is_active, sort_order
+        `SELECT code, name_key, symbol, is_active, sort_order,
+                EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code) AS has_transactions
          FROM currencies
          ORDER BY sort_order ASC, code ASC`,
       )
@@ -40,7 +43,8 @@ export class CurrencyRepository {
   getByCode(code: string): Currency | undefined {
     const row = this.db
       .prepare(
-        `SELECT code, name_key, symbol, is_active, sort_order
+        `SELECT code, name_key, symbol, is_active, sort_order,
+                EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code) AS has_transactions
          FROM currencies
          WHERE code = ?`,
       )
@@ -94,6 +98,11 @@ export class CurrencyRepository {
     const result = this.db.prepare('UPDATE currencies SET is_active = 0 WHERE code = ? AND is_active = 1').run(code);
     return result.changes > 0;
   }
+
+  deleteByCode(code: string): boolean {
+    const result = this.db.prepare('DELETE FROM currencies WHERE code = ?').run(code);
+    return result.changes > 0;
+  }
 }
 
 function toCurrency(row: CurrencyRecord): Currency {
@@ -103,5 +112,6 @@ function toCurrency(row: CurrencyRecord): Currency {
     symbol: row.symbol ?? '',
     isActive: row.is_active === 1,
     sortOrder: row.sort_order,
+    hasTransactions: row.has_transactions === 1,
   };
 }

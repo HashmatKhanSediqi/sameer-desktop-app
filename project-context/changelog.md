@@ -21,6 +21,16 @@ MAJOR.MINOR.PATCH
 
 ---
 
+## [1.0.1] — 2026-08-24 (post-v1.0.0 validation fixes)
+
+### Fixed
+- Windows desktop/Start Menu shortcut now embeds the official FMT ICO (`afterPack` rcedit onto `FMT.exe`; padded multi-resolution `icon.ico`). Login/source artwork uses padded safe-margin treatment so Windows does not crop the logo.
+- Fresh installs initialize an empty accounting database (no demo company/customer/transaction data). Default admin remains `admin` / `admin123`. Existing `%APPDATA%\CustomerAccounting\` data is not wiped on upgrade; if only a legacy `%APPDATA%\FMT` folder exists, that data is kept.
+- Currency reactivation is available in Settings. Unused currencies can be deleted. Currencies with historical transactions cannot be hard-deleted (`CURRENCY_IN_USE`); deactivate instead. Last active currency remains protected.
+- Settings update status distinguishes up to date, available, checking, downloading, ready, unsupported, and real network failures. "No update available" is no longer shown as an offline error.
+
+---
+
 ## [1.0.0] — 2026-08-24 (FMT v1.0.0 — GitHub Release)
 
 ### Released

@@ -2,7 +2,7 @@
 
 In-app update architecture for **FMT** using **electron-updater** and **GitHub Releases**.
 
-> **v1.0 status:** In-app updates **shipped** via GitHub Releases (`electron-updater`). GitHub Release **v1.0.0** publishes `FMT-Setup.exe`, `latest.yml`, and blockmap. Live update install from an older build on a clean VM has **not** been manually verified in this audit.
+> **v1.0.1 status:** In-app updates **shipped** via GitHub Releases (`electron-updater`). GitHub Release **v1.0.1** publishes `FMT-Setup.exe`, `latest.yml`, and blockmap. A packaged 1.0.0 build should detect 1.0.1 from this feed. Live update *install* from an older build on a clean VM has **not** been manually verified.
 
 ---
 
@@ -51,9 +51,12 @@ BackupService.createPreUpdateBackup()  →  validated .cab under backups/pre-upd
  install
 ```
 
-- **Dev / unpackaged:** state is `unsupported` (no network update attempts that claim success).
-- **Packaged:** auto-check once after ~30s startup delay; then at most once per 24 hours.
-- **Manual check:** Settings → About → Check for Updates (any time).
+- **Dev / unpackaged:** state is `unsupported`.
+- **Packaged:** auto-check after startup delay, then at most once per 24 hours.
+- **Manual check:** Settings → Application updates.
+- **No newer release:** state is `upToDate` ("You are up to date."). This is not an error.
+- **Network / GitHub failure:** state is `error` ("Could not check for updates. You can keep using FMT offline.").
+- electron-updater "no update available" messages are mapped to `upToDate`, never to the offline error.
 
 ---
 
@@ -139,7 +142,7 @@ Update failures must **never** prevent FMT from starting or using the existing d
 - Uses electron-updater’s normal GitHub Releases + `latest.yml` checksum verification
 - No custom download-and-run of arbitrary URLs
 - Downgrades disabled (`allowDowngrade = false`)
-- **Code signing:** currently unsigned (`signAndEditExecutable: false`). SmartScreen / Authenticode remains a **separate** release concern. Unsigned installers are **not** fully trusted by Windows.
+- **Code signing:** Authenticode is **not** configured. `signAndEditExecutable` is `false` (avoids electron-builder `winCodeSign`). The FMT icon is embedded by `afterPack` rcedit. Unsigned installers are **not** fully trusted by Windows.
 
 ---
 

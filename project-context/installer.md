@@ -73,6 +73,8 @@ Same compatibility path — do not rename without a migration plan for existing 
 }
 ```
 
+`installerIcon` / `uninstallerIcon` / `installerHeaderIcon` / Windows `icon` all use `assets/icons/icon.ico`. Authenticode signing is not configured. `signAndEditExecutable` stays `false` so electron-builder does not require the `winCodeSign` toolchain (its extract fails on Windows without symlink privilege). `afterPack` (`scripts/after-pack-icon.cjs`) embeds the official ICO onto `FMT.exe` with the `rcedit` binary so desktop and Start Menu shortcuts do not fall back to the default Electron icon.
+
 `appId`: `com.customeraccounting.app` (compatibility)  
 `productName`: `FMT`
 

@@ -4,6 +4,7 @@ export interface Currency {
   symbol: string;
   isActive: boolean;
   sortOrder: number;
+  hasTransactions: boolean;
 }
 
 export interface CreateCurrencyInput {

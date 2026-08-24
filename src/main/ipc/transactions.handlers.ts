@@ -90,6 +90,29 @@ export function registerTransactionHandlers(ipcMain: IpcMain, ctx: ApplicationCo
     }),
   );
 
+  ipcMain.handle(IPC_CHANNELS.CURRENCIES_REACTIVATE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      if (typeof record.code !== 'string') {
+        throw new AppError('VALIDATION_ERROR', 'CURRENCY_CODE_INVALID');
+      }
+      const currency = ctx.currencyService.reactivate(record.code);
+      return { currency };
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.CURRENCIES_DELETE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      if (typeof record.code !== 'string') {
+        throw new AppError('VALIDATION_ERROR', 'CURRENCY_CODE_INVALID');
+      }
+      return ctx.currencyService.remove(record.code);
+    }),
+  );
+
   ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_LIST, (_event, input: unknown) =>
     wrapIpcHandler(() => {
       const { sessionId, record } = parseSessionRequest(input);

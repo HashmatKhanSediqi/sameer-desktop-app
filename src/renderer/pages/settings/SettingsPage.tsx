@@ -39,7 +39,10 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
   const [symbol, setSymbol] = useState('');
   const [isAddingCurrency, setIsAddingCurrency] = useState(false);
   const [pendingDeactivate, setPendingDeactivate] = useState<Currency | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Currency | null>(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showRestore, setShowRestore] = useState(false);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
@@ -189,6 +192,54 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
     }
   }
 
+  async function handleReactivate(currency: Currency): Promise<void> {
+    if (!sessionId || isReactivating) {
+      return;
+    }
+
+    setIsReactivating(true);
+    setError(null);
+    try {
+      const result = await window.api.currencies.reactivate({
+        sessionId,
+        code: currency.code,
+      });
+      if (!result.ok) {
+        setError(mapSettingsError(tErrors, result.errorCode, result.message));
+        return;
+      }
+      setSuccess(t('currencyReactivated'));
+      await load();
+    } finally {
+      setIsReactivating(false);
+    }
+  }
+
+  async function confirmDelete(): Promise<void> {
+    if (!sessionId || !pendingDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const result = await window.api.currencies.delete({
+        sessionId,
+        code: pendingDelete.code,
+      });
+      if (!result.ok) {
+        setError(mapSettingsError(tErrors, result.errorCode, result.message));
+        setPendingDelete(null);
+        return;
+      }
+      setPendingDelete(null);
+      setSuccess(t('currencyDeleted'));
+      await load();
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   async function createBackup(): Promise<void> {
     if (!sessionId || isCreatingBackup) {
       return;
@@ -335,7 +386,23 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
                       >
                         {t('deactivateCurrency')}
                       </button>
-                    ) : null}
+                    ) : (
+                      <button
+                        type="button"
+                        className="button button-secondary button-compact"
+                        disabled={isReactivating}
+                        onClick={() => void handleReactivate(currency)}
+                      >
+                        {t('reactivateCurrency')}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="button button-danger button-compact"
+                      onClick={() => setPendingDelete(currency)}
+                    >
+                      {t('deleteCurrency')}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -493,6 +560,28 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
           isBusy={isDeactivating}
           onCancel={() => setPendingDeactivate(null)}
           onConfirm={() => void confirmDeactivate()}
+        />
+      ) : null}
+
+      {pendingDelete ? (
+        <ConfirmDialog
+          title={t('deleteTitle')}
+          message={
+            pendingDelete.hasTransactions
+              ? t('deleteBlocked', { code: pendingDelete.code })
+              : t('deleteConfirm', { code: pendingDelete.code })
+          }
+          confirmLabel={pendingDelete.hasTransactions ? t('deactivateCurrency') : t('deleteCurrency')}
+          isBusy={isDeleting}
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            if (pendingDelete.hasTransactions) {
+              setPendingDelete(null);
+              setPendingDeactivate(pendingDelete);
+              return;
+            }
+            void confirmDelete();
+          }}
         />
       ) : null}
     </section>

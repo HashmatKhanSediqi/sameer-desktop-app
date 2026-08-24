@@ -12,6 +12,7 @@ import {
   type ElectronUpdaterAdapter,
   type UpdateCheckResultLike,
 } from './electronUpdaterAdapter';
+import { isNoUpdateAvailableError } from './updateErrors';
 
 export interface UpdateServiceDeps {
   currentVersion: string;
@@ -77,12 +78,10 @@ export class UpdateService {
     }
   }
 
-  /** True after a validated pre-update backup when quitAndInstall is about to run. */
   isInstallPending(): boolean {
     return this.installPending;
   }
 
-  /** Keep the updater bound to the live BackupService after restore/rebind. */
   setBackupService(backupService: BackupService): void {
     this.backupService = backupService;
   }
@@ -122,7 +121,6 @@ export class UpdateService {
     try {
       return await this.checkForUpdates();
     } catch {
-      // Offline-first: auto-check failures must never throw into startup.
       return this.getStatus();
     }
   }
@@ -141,42 +139,19 @@ export class UpdateService {
       const result = await this.updater.checkForUpdates();
       this.lastCheckedAt = this.now().toISOString();
       this.lastAutoCheckAt = Date.now();
-
-      if (!result?.updateInfo?.version) {
-        this.setState('upToDate', {
-          availableVersion: null,
-          releaseNotes: null,
-        });
-        return this.getStatus();
-      }
-
-      const remoteVersion = result.updateInfo.version.trim();
-      if (!parseSemVer(remoteVersion)) {
-        this.setState('error', {
-          errorCode: 'UPDATE_INVALID_VERSION',
-          errorMessage: 'invalidVersion',
-          availableVersion: null,
-          releaseNotes: null,
-        });
-        return this.getStatus();
-      }
-
-      if (isSameVersion(remoteVersion, this.currentVersion) || !isNewerVersion(remoteVersion, this.currentVersion)) {
-        this.setState('upToDate', {
-          availableVersion: null,
-          releaseNotes: null,
-        });
-        return this.getStatus();
-      }
-
-      this.setState('available', {
-        availableVersion: remoteVersion,
-        releaseNotes: releaseNotesToString(result.updateInfo.releaseNotes),
-        errorCode: null,
-        errorMessage: null,
-      });
-      return this.getStatus();
+      return this.applyCheckResult(result);
     } catch (error) {
+      this.lastCheckedAt = this.now().toISOString();
+      this.lastAutoCheckAt = Date.now();
+      if (isNoUpdateAvailableError(error)) {
+        this.setState('upToDate', {
+          availableVersion: null,
+          releaseNotes: null,
+          errorCode: null,
+          errorMessage: null,
+        });
+        return this.getStatus();
+      }
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn('Update check failed', { error: message });
       this.setState('error', {
@@ -267,6 +242,47 @@ export class UpdateService {
     }
   }
 
+  private applyCheckResult(result: UpdateCheckResultLike | null): UpdateStatusSnapshot {
+    if (!result?.updateInfo?.version) {
+      this.setState('upToDate', {
+        availableVersion: null,
+        releaseNotes: null,
+        errorCode: null,
+        errorMessage: null,
+      });
+      return this.getStatus();
+    }
+
+    const remoteVersion = result.updateInfo.version.trim();
+    if (!parseSemVer(remoteVersion)) {
+      this.setState('error', {
+        errorCode: 'UPDATE_INVALID_VERSION',
+        errorMessage: 'invalidVersion',
+        availableVersion: null,
+        releaseNotes: null,
+      });
+      return this.getStatus();
+    }
+
+    if (isSameVersion(remoteVersion, this.currentVersion) || !isNewerVersion(remoteVersion, this.currentVersion)) {
+      this.setState('upToDate', {
+        availableVersion: null,
+        releaseNotes: null,
+        errorCode: null,
+        errorMessage: null,
+      });
+      return this.getStatus();
+    }
+
+    this.setState('available', {
+      availableVersion: remoteVersion,
+      releaseNotes: releaseNotesToString(result.updateInfo.releaseNotes),
+      errorCode: null,
+      errorMessage: null,
+    });
+    return this.getStatus();
+  }
+
   private configureUpdater(updater: ElectronUpdaterAdapter): void {
     updater.autoDownload = false;
     updater.allowDowngrade = false;
@@ -299,6 +315,18 @@ export class UpdateService {
 
     updater.on('error', (error) => {
       this.logger.warn('Updater error event', { error: error.message });
+      if (this.state === 'upToDate' || this.state === 'available' || this.state === 'ready') {
+        return;
+      }
+      if (this.state === 'checking' && isNoUpdateAvailableError(error)) {
+        this.setState('upToDate', {
+          availableVersion: null,
+          releaseNotes: null,
+          errorCode: null,
+          errorMessage: null,
+        });
+        return;
+      }
       if (this.state === 'checking' || this.state === 'downloading') {
         this.setState('error', {
           errorCode: this.state === 'checking' ? 'UPDATE_CHECK_FAILED' : 'UPDATE_DOWNLOAD_FAILED',

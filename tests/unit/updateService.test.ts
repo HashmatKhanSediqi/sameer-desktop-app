@@ -45,6 +45,10 @@ class MockUpdater extends EventEmitter implements ElectronUpdaterAdapter {
   emitProgress(progress: UpdateProgress): void {
     this.emit('download-progress', progress);
   }
+
+  emitError(error: Error): void {
+    this.emit('error', error);
+  }
 }
 
 function createLogger(): Logger {
@@ -232,5 +236,41 @@ describe('UpdateService', () => {
     await service.maybeAutoCheck();
     await service.maybeAutoCheck();
     expect(calls).toBe(1);
+  });
+
+  it('treats electron-updater no-update errors as upToDate, not offline failure', async () => {
+    const updater = new MockUpdater();
+    updater.checkImpl = async () => {
+      throw new Error('No published updates available');
+    };
+    const service = new UpdateService({
+      currentVersion: '1.0.0',
+      packaged: true,
+      logger: createLogger(),
+      backupService: createBackupService({ created: true, filePath: 'x.cab' }),
+      updater,
+    });
+
+    const status = await service.checkForUpdates();
+    expect(status.state).toBe('upToDate');
+    expect(status.errorCode).toBeNull();
+  });
+
+  it('does not let a later updater error event overwrite an upToDate result', async () => {
+    const updater = new MockUpdater();
+    updater.checkImpl = async () => ({ updateInfo: { version: '1.0.0' } });
+    const service = new UpdateService({
+      currentVersion: '1.0.0',
+      packaged: true,
+      logger: createLogger(),
+      backupService: createBackupService({ created: true, filePath: 'x.cab' }),
+      updater,
+    });
+
+    await service.checkForUpdates();
+    updater.emitError(new Error('No published updates available'));
+    expect(service.getStatus().state).toBe('upToDate');
+    updater.emitError(new Error('ENOTFOUND'));
+    expect(service.getStatus().state).toBe('upToDate');
   });
 });

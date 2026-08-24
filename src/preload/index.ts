@@ -29,8 +29,12 @@ import {
   type CurrenciesCreateResult,
   type CurrenciesDeactivateRequest,
   type CurrenciesDeactivateResult,
+  type CurrenciesDeleteRequest,
+  type CurrenciesDeleteResult,
   type CurrenciesListRequest,
   type CurrenciesListResult,
+  type CurrenciesReactivateRequest,
+  type CurrenciesReactivateResult,
   type CustomersCreateRequest,
   type CustomersCreateResult,
   type CustomersDeleteRequest,
@@ -153,6 +157,10 @@ const api = {
       invoke(IPC_CHANNELS.CURRENCIES_CREATE, request),
     deactivate: (request: CurrenciesDeactivateRequest): Promise<CurrenciesDeactivateResult> =>
       invoke(IPC_CHANNELS.CURRENCIES_DEACTIVATE, request),
+    reactivate: (request: CurrenciesReactivateRequest): Promise<CurrenciesReactivateResult> =>
+      invoke(IPC_CHANNELS.CURRENCIES_REACTIVATE, request),
+    delete: (request: CurrenciesDeleteRequest): Promise<CurrenciesDeleteResult> =>
+      invoke(IPC_CHANNELS.CURRENCIES_DELETE, request),
   },
   transactions: {
     list: (request: TransactionsListRequest): Promise<TransactionsListResult> =>

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { UPDATE_AUTO_CHECK_STARTUP_DELAY_MS } from '@shared/constants/updateConfig';
 import { loadAppConfig } from './config/appConfig';
@@ -26,7 +27,19 @@ function configureAppIdentity(): void {
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.customeraccounting.app');
   }
+
+  // Must run before app.whenReady() so userData is not %APPDATA%\FMT.
+  const preferred = join(app.getPath('appData'), APP_USER_DATA_NAME);
+  const legacyFmt = join(app.getPath('appData'), 'FMT');
+  if (existsSync(preferred) || !existsSync(legacyFmt)) {
+    app.setPath('userData', preferred);
+  } else {
+    // Keep 1.0.0 data that landed in the productName folder.
+    app.setPath('userData', legacyFmt);
+  }
 }
+
+configureAppIdentity();
 
 async function createMainWindow(ctx: ApplicationContext): Promise<BrowserWindow> {
   const window = new BrowserWindow({
@@ -80,8 +93,6 @@ function scheduleAutomaticUpdateCheck(ctx: ApplicationContext): void {
 }
 
 async function bootstrap(): Promise<void> {
-  configureAppIdentity();
-
   const config = loadAppConfig();
   const paths = resolveAppPaths();
   const logger = new Logger(paths.logs, config);
