@@ -28,6 +28,20 @@
     "eur": "یورو"
   },
   "totalCurrency": "ټول {{code}}",
+  "modules": {
+    "title": "یوه برخه وټاکئ",
+    "subtitle": "همغه شرکت او ننوتلې ناسته دوام کوي.",
+    "accounting": "د پېرېدونکو حسابونه",
+    "accountingDescription": "پېرېدونکي، د حساب پاتې شوني، لېږدول، راپورونه او واردول.",
+    "teller": "صندوق / د نغدو مدیریت",
+    "tellerDescription": "فزیکي نغدې، د نوټونو شمېر، تلي او د صندوق اوږد کتاب.",
+    "openAccounting": "د پېرېدونکو حسابونه پرانیستل",
+    "openTeller": "صندوق پرانیستل",
+    "switchToAccounting": "د پېرېدونکو حسابونه",
+    "switchToTeller": "صندوق",
+    "switchLabel": "برخه",
+    "chooseModule": "برخې"
+  },
   "exchange": {
     "title": "د اسعارو تبادله",
     "from": "له",

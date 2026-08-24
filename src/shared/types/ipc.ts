@@ -33,6 +33,19 @@ import type {
 } from './transaction';
 import type { CreateTransferInput, TransferResult } from './transfer';
 import type { UpdateStatusSnapshot } from './update';
+import type {
+  CreateTellerTransactionInput,
+  OpenTellerSessionInput,
+  TellerDashboard,
+  TellerDenomination,
+  TellerLongBook,
+  TellerReconciliation,
+  TellerSession,
+  TellerTally,
+  TellerTransaction,
+  TellerTransactionListQuery,
+  TellerTransactionListResult,
+} from './teller';
 
 export type { TransactionType };
 
@@ -74,7 +87,16 @@ export type IpcErrorCode =
   | 'UPDATE_NOT_READY'
   | 'UPDATE_BACKUP_FAILED'
   | 'UPDATE_INVALID_VERSION'
-  | 'CURRENCY_IN_USE';
+  | 'CURRENCY_IN_USE'
+  | 'TELLER_SESSION_REQUIRED'
+  | 'TELLER_SESSION_ALREADY_OPEN'
+  | 'TELLER_SESSION_NOT_FOUND'
+  | 'TELLER_SESSION_CLOSED'
+  | 'TELLER_AMOUNT_MISMATCH'
+  | 'TELLER_INSUFFICIENT_CASH'
+  | 'TELLER_DENOMINATION_INVALID'
+  | 'TELLER_OPENING_MISMATCH'
+  | 'TELLER_TRANSACTION_NOT_FOUND';
 
 export interface AppPaths {
   userData: string;
@@ -532,6 +554,83 @@ export type UpdateCheckResult = UpdateStatusSuccessResponse | IpcErrorResponse;
 export type UpdateDownloadResult = UpdateStatusSuccessResponse | IpcErrorResponse;
 export type UpdateInstallResult = UpdateStatusSuccessResponse | IpcErrorResponse;
 
+export type TellerDenominationsListRequest = AuthenticatedRequest & { currencyCode?: string };
+export interface TellerDenominationsListSuccessResponse {
+  ok: true;
+  data: { denominations: TellerDenomination[] };
+}
+export type TellerDenominationsListResult = TellerDenominationsListSuccessResponse | IpcErrorResponse;
+
+export type TellerSessionCurrentRequest = AuthenticatedRequest;
+export interface TellerSessionCurrentSuccessResponse {
+  ok: true;
+  data: { session: TellerSession | null };
+}
+export type TellerSessionCurrentResult = TellerSessionCurrentSuccessResponse | IpcErrorResponse;
+
+export type TellerSessionOpenRequest = AuthenticatedRequest & OpenTellerSessionInput;
+export interface TellerSessionOpenSuccessResponse {
+  ok: true;
+  data: { session: TellerSession };
+}
+export type TellerSessionOpenResult = TellerSessionOpenSuccessResponse | IpcErrorResponse;
+
+export type TellerSessionCloseRequest = AuthenticatedRequest & { tellerSessionId: number };
+export type TellerSessionCloseResult = TellerSessionOpenResult;
+
+export type TellerTransactionsCreateRequest = AuthenticatedRequest & CreateTellerTransactionInput;
+export interface TellerTransactionsCreateSuccessResponse {
+  ok: true;
+  data: { transaction: TellerTransaction };
+}
+export type TellerTransactionsCreateResult = TellerTransactionsCreateSuccessResponse | IpcErrorResponse;
+
+export type TellerTransactionsListRequest = AuthenticatedRequest &
+  Omit<TellerTransactionListQuery, 'sessionId'> & {
+    tellerSessionId?: number;
+  };
+export interface TellerTransactionsListSuccessResponse {
+  ok: true;
+  data: TellerTransactionListResult;
+}
+export type TellerTransactionsListResultIpc = TellerTransactionsListSuccessResponse | IpcErrorResponse;
+
+export type TellerTransactionsGetRequest = AuthenticatedRequest & { transactionId: number };
+export type TellerTransactionsGetResult = TellerTransactionsCreateResult;
+
+export type TellerDashboardGetRequest = AuthenticatedRequest;
+export interface TellerDashboardGetSuccessResponse {
+  ok: true;
+  data: TellerDashboard;
+}
+export type TellerDashboardGetResult = TellerDashboardGetSuccessResponse | IpcErrorResponse;
+
+export type TellerTallyGetRequest = AuthenticatedRequest & { tellerSessionId?: number; currencyCode: string };
+export interface TellerTallyGetSuccessResponse {
+  ok: true;
+  data: TellerTally;
+}
+export type TellerTallyGetResult = TellerTallyGetSuccessResponse | IpcErrorResponse;
+
+export type TellerLongBookGetRequest = AuthenticatedRequest & {
+  tellerSessionId?: number;
+  currencyCode: string;
+  page?: number;
+  pageSize?: number;
+};
+export interface TellerLongBookGetSuccessResponse {
+  ok: true;
+  data: TellerLongBook;
+}
+export type TellerLongBookGetResult = TellerLongBookGetSuccessResponse | IpcErrorResponse;
+
+export type TellerReconciliationGetRequest = AuthenticatedRequest & { tellerSessionId?: number };
+export interface TellerReconciliationGetSuccessResponse {
+  ok: true;
+  data: TellerReconciliation;
+}
+export type TellerReconciliationGetResult = TellerReconciliationGetSuccessResponse | IpcErrorResponse;
+
 export const IPC_CHANNELS = {
   APP_GET_PATHS: 'app:getPaths',
   APP_GET_STATUS: 'app:getStatus',
@@ -577,6 +676,17 @@ export const IPC_CHANNELS = {
   UPDATE_CHECK: 'update:check',
   UPDATE_DOWNLOAD: 'update:download',
   UPDATE_INSTALL: 'update:install',
+  TELLER_DENOMINATIONS_LIST: 'teller:denominations.list',
+  TELLER_SESSION_CURRENT: 'teller:sessions.current',
+  TELLER_SESSION_OPEN: 'teller:sessions.open',
+  TELLER_SESSION_CLOSE: 'teller:sessions.close',
+  TELLER_TRANSACTIONS_CREATE: 'teller:transactions.create',
+  TELLER_TRANSACTIONS_LIST: 'teller:transactions.list',
+  TELLER_TRANSACTIONS_GET: 'teller:transactions.get',
+  TELLER_DASHBOARD_GET: 'teller:dashboard.get',
+  TELLER_TALLY_GET: 'teller:tally.get',
+  TELLER_LONG_BOOK_GET: 'teller:longBook.get',
+  TELLER_RECONCILIATION_GET: 'teller:reconciliation.get',
 } as const;
 
 /** Renderer push channel for update status snapshots (not an invoke channel). */

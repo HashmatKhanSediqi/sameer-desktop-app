@@ -17,6 +17,7 @@ import { BackupService } from '../services/backup/backupService';
 import { CompanyLogoService } from '../services/company/companyLogoService';
 import { CompanyService } from '../services/company/companyService';
 import { UpdateService } from '../services/update/updateService';
+import { TellerService } from '../services/teller/tellerService';
 import { getFontsDirectory } from '../config/fontsPath';
 import { clearCrashSentinel, hadUncleanShutdown, setCrashSentinel } from '../utils/crashSentinel';
 import type { AppPaths } from '@shared/types/ipc';
@@ -39,6 +40,7 @@ export interface ApplicationContext {
   backupService: BackupService;
   companyService: CompanyService;
   updateService: UpdateService;
+  tellerService: TellerService;
 }
 
 export async function createApplicationContext(
@@ -85,6 +87,7 @@ export function bindApplicationServices(ctx: ApplicationContext, migrationsDir?:
   ctx.currencyService = new CurrencyService(db);
   ctx.settingsService = new SettingsService(db);
   ctx.companyService = new CompanyService(db, logoService, ctx.logger);
+  ctx.tellerService = new TellerService(db, ctx.logger);
   ctx.reportsService = new ReportsService({
     customerService: ctx.customerService,
     transactionService: ctx.transactionService,

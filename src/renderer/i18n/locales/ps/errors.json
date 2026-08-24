@@ -68,5 +68,16 @@
   "UPDATE_NOT_AVAILABLE": "د ډاونلوډ لپاره تازه والی نشته.",
   "UPDATE_NOT_READY": "د نصب مخکې تازه والی ډاونلوډ کړئ.",
   "UPDATE_BACKUP_FAILED": "تازه والی نصب نشو ځکه چې د خوندیتوب بیک اپ بشپړ نشو.",
-  "UPDATE_INVALID_VERSION": "د تازه والي سرور ناباوره نسخه راولېږله."
+  "UPDATE_INVALID_VERSION": "د تازه والي سرور ناباوره نسخه راولېږله.",
+  "TELLER_SESSION_REQUIRED": "د نغدو ثبتولو مخکې د صندوق ناسته پرانیستئ.",
+  "TELLER_SESSION_ALREADY_OPEN": "د صندوق ناسته له مخکې پرانیستې ده.",
+  "TELLER_SESSION_NOT_FOUND": "د صندوق ناسته ونه موندل شوه.",
+  "TELLER_SESSION_CLOSED": "دا د صندوق ناسته له مخکې تړل شوې ده.",
+  "TELLER_AMOUNT_MISMATCH": "لیکل شوی مبلغ د نوټونو له مجموعه سره سمون نه لري.",
+  "TELLER_INSUFFICIENT_CASH": "د ټاکل شویو نوټونو کافي فزیکي نغدې نشته.",
+  "TELLER_DENOMINATION_INVALID": "د نوټونو شمېر باید بشپړ او غیرمنفي عدد وي.",
+  "TELLER_OPENING_MISMATCH": "پرانېستونکی موجود باید له اوسني صندوق سره سمون ولري.",
+  "TELLER_TRANSACTION_NOT_FOUND": "د صندوق معامله ونه موندل شوه.",
+  "NEGATIVE_QUANTITY": "د نوټونو شمېر منفي کېدای نه شي.",
+  "NON_INTEGER_QUANTITY": "د نوټونو شمېر باید بشپړ عدد وي."
 }

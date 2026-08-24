@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from './context/AuthContext';
 import { AppShell } from './pages/AppShell';
+import { ModuleSelectPage } from './pages/ModuleSelectPage';
+import { TellerShell } from './pages/teller/TellerShell';
+import type { AppModule } from './components/ModuleSwitcher';
 import { LoginPage } from './pages/LoginPage';
 import { RecoveryPage } from './pages/auth/RecoveryPage';
 import { RestorePage } from './pages/backup/RestorePage';
@@ -14,10 +17,12 @@ export function App(): JSX.Element {
   const [showRecovery, setShowRecovery] = useState(false);
   const [companyReady, setCompanyReady] = useState<boolean | null>(null);
   const [recovered, setRecovered] = useState(false);
+  const [activeModule, setActiveModule] = useState<AppModule>('select');
 
   useEffect(() => {
     if (!isAuthenticated || !sessionId) {
       setCompanyReady(null);
+      setActiveModule('select');
       return;
     }
     let cancelled = false;
@@ -87,5 +92,13 @@ export function App(): JSX.Element {
     );
   }
 
-  return <AppShell />;
+  if (activeModule === 'accounting') {
+    return <AppShell onSwitchModule={setActiveModule} />;
+  }
+
+  if (activeModule === 'teller') {
+    return <TellerShell onSwitchModule={setActiveModule} />;
+  }
+
+  return <ModuleSelectPage onSelect={setActiveModule} />;
 }

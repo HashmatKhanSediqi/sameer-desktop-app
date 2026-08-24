@@ -17,6 +17,7 @@ import { ImportService } from '../../src/main/services/import/importService';
 import { BackupService } from '../../src/main/services/backup/backupService';
 import { CompanyLogoService } from '../../src/main/services/company/companyLogoService';
 import { CompanyService } from '../../src/main/services/company/companyService';
+import { TellerService } from '../../src/main/services/teller/tellerService';
 import type { ApplicationContext } from '../../src/main/services/applicationContext';
 import { applyProjectMigrations, createTestDatabase, type TestDatabase } from './testDatabase';
 
@@ -121,6 +122,7 @@ export async function createCustomerTestHarness(): Promise<CustomerTestHarness> 
     ctx.importService = harness.importService;
     ctx.backupService = harness.backupService;
     ctx.companyService = harness.companyService;
+    ctx.tellerService = new TellerService(testDb.db, testDb.logger);
   }
 
   harness.backupService = new BackupService({

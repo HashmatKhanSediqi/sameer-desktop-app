@@ -28,6 +28,20 @@
     "eur": "Euro"
   },
   "totalCurrency": "Total {{code}}",
+  "modules": {
+    "title": "Choose a module",
+    "subtitle": "Continue in the same company and signed-in session.",
+    "accounting": "Customer Accounting",
+    "accountingDescription": "Customers, account balances, transfers, reports, and import.",
+    "teller": "Teller / Cash Management",
+    "tellerDescription": "Physical cash, denominations, tally, and the teller long book.",
+    "openAccounting": "Open Customer Accounting",
+    "openTeller": "Open Teller",
+    "switchToAccounting": "Customer Accounting",
+    "switchToTeller": "Teller",
+    "switchLabel": "Module",
+    "chooseModule": "Modules"
+  },
   "exchange": {
     "title": "Currency exchange",
     "from": "From",

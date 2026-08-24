@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] — 2026-08-24 (teller cash management)
+
+### Added
+- Teller / Cash Management module inside FMT: module selection after login, switcher between Customer Accounting and Teller without a second login
+- Data-driven AFN/USD denominations, Cash In/Out, Head Teller movements, tally, long book, opening/closing balances, reconciliation
+- Migration `007_teller.sql` (normalized ledger, inventory, session totals, indexes)
+- Automated denomination, cash movement, ledger, company-isolation, and large-history pagination tests
+
+---
+
 ## [1.0.2] — 2026-08-24 (in-app GitHub updater)
 
 ### Fixed

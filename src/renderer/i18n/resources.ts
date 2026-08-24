@@ -27,6 +27,9 @@ import importPs from './locales/ps/import.json';
 import reportsPs from './locales/ps/reports.json';
 import settingsPs from './locales/ps/settings.json';
 import transactionsPs from './locales/ps/transactions.json';
+import tellerEn from './locales/en/teller.json';
+import tellerFa from './locales/fa-AF/teller.json';
+import tellerPs from './locales/ps/teller.json';
 
 export const i18nResources: Resource = {
   en: {
@@ -39,6 +42,7 @@ export const i18nResources: Resource = {
     import: importEn,
     backup: backupEn,
     errors: errorsEn,
+    teller: tellerEn,
   },
   'fa-AF': {
     common: commonFa,
@@ -50,6 +54,7 @@ export const i18nResources: Resource = {
     import: importFa,
     backup: backupFa,
     errors: errorsFa,
+    teller: tellerFa,
   },
   ps: {
     common: commonPs,
@@ -61,6 +66,7 @@ export const i18nResources: Resource = {
     import: importPs,
     backup: backupPs,
     errors: errorsPs,
+    teller: tellerPs,
   },
 };
 

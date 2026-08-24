@@ -33,6 +33,12 @@ describe('migrations', () => {
 
       expect(afterFirst.has(1)).toBe(true);
       expect(afterSecond.size).toBe(afterFirst.size);
+
+      expect(afterSecond.has(7)).toBe(true);
+      const teller = testDb.db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'teller_transactions'")
+        .get();
+      expect(teller).toBeTruthy();
     } finally {
       testDb.cleanup();
     }

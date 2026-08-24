@@ -8,6 +8,7 @@ export const I18N_NAMESPACES = [
   'import',
   'backup',
   'errors',
+  'teller',
 ] as const;
 
 export type I18nNamespace = (typeof I18N_NAMESPACES)[number];

@@ -28,6 +28,20 @@
     "eur": "یورو"
   },
   "totalCurrency": "مجموع {{code}}",
+  "modules": {
+    "title": "یک بخش را انتخاب کنید",
+    "subtitle": "همان شرکت و همان نشست ورود ادامه می‌یابد.",
+    "accounting": "حسابداری مشتریان",
+    "accountingDescription": "مشتریان، موجودی حساب، انتقال، گزارش‌ها و وارد کردن.",
+    "teller": "صندوق / مدیریت نقدی",
+    "tellerDescription": "نقد فیزیکی، واحدهای پول، شمارش نقد و دفتر طویل صندوق.",
+    "openAccounting": "باز کردن حسابداری مشتریان",
+    "openTeller": "باز کردن صندوق",
+    "switchToAccounting": "حسابداری مشتریان",
+    "switchToTeller": "صندوق",
+    "switchLabel": "بخش",
+    "chooseModule": "بخش‌ها"
+  },
   "exchange": {
     "title": "تبدیل اسعار",
     "from": "از",

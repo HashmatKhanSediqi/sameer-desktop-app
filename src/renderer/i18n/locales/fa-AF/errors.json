@@ -68,5 +68,16 @@
   "UPDATE_NOT_AVAILABLE": "به‌روزرسانی برای دانلود موجود نیست.",
   "UPDATE_NOT_READY": "قبل از نصب، به‌روزرسانی را دانلود کنید.",
   "UPDATE_BACKUP_FAILED": "به‌روزرسانی نصب نشد چون پشتیبان ایمنی تکمیل نشد.",
-  "UPDATE_INVALID_VERSION": "سرور به‌روزرسانی نسخه نامعتبر برگرداند."
+  "UPDATE_INVALID_VERSION": "سرور به‌روزرسانی نسخه نامعتبر برگرداند.",
+  "TELLER_SESSION_REQUIRED": "پیش از ثبت نقد، نوبت کاری صندوق را باز کنید.",
+  "TELLER_SESSION_ALREADY_OPEN": "یک نوبت کاری صندوق از قبل باز است.",
+  "TELLER_SESSION_NOT_FOUND": "نوبت کاری صندوق پیدا نشد.",
+  "TELLER_SESSION_CLOSED": "این نوبت کاری صندوق قبلاً بسته شده است.",
+  "TELLER_AMOUNT_MISMATCH": "مبلغ واردشده با مجموع واحدهای پول برابر نیست.",
+  "TELLER_INSUFFICIENT_CASH": "نقد فیزیکی کافی از واحدهای انتخاب‌شده وجود ندارد.",
+  "TELLER_DENOMINATION_INVALID": "تعداد واحدها باید عدد صحیح و غیرمنفی باشد.",
+  "TELLER_OPENING_MISMATCH": "موجودی افتتاحیه باید با شمارش فعلی صندوق برابر باشد.",
+  "TELLER_TRANSACTION_NOT_FOUND": "معامله صندوق پیدا نشد.",
+  "NEGATIVE_QUANTITY": "تعداد واحدها نمی‌تواند منفی باشد.",
+  "NON_INTEGER_QUANTITY": "تعداد واحدها باید عدد صحیح باشد."
 }

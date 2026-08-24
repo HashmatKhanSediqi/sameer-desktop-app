@@ -68,5 +68,16 @@
   "UPDATE_NOT_AVAILABLE": "No update is available to download.",
   "UPDATE_NOT_READY": "Download an update before installing.",
   "UPDATE_BACKUP_FAILED": "Update was not installed because the safety backup could not be completed.",
-  "UPDATE_INVALID_VERSION": "The update server returned an invalid version."
+  "UPDATE_INVALID_VERSION": "The update server returned an invalid version.",
+  "TELLER_SESSION_REQUIRED": "Open a teller session before recording cash.",
+  "TELLER_SESSION_ALREADY_OPEN": "A teller session is already open.",
+  "TELLER_SESSION_NOT_FOUND": "Teller session not found.",
+  "TELLER_SESSION_CLOSED": "This teller session is already closed.",
+  "TELLER_AMOUNT_MISMATCH": "The entered amount does not match the denomination total.",
+  "TELLER_INSUFFICIENT_CASH": "There is not enough physical cash of the selected denominations.",
+  "TELLER_DENOMINATION_INVALID": "Enter whole, non-negative denomination quantities.",
+  "TELLER_OPENING_MISMATCH": "Opening cash must match the current till count.",
+  "TELLER_TRANSACTION_NOT_FOUND": "Teller transaction not found.",
+  "NEGATIVE_QUANTITY": "Denomination quantities cannot be negative.",
+  "NON_INTEGER_QUANTITY": "Denomination quantities must be whole numbers."
 }

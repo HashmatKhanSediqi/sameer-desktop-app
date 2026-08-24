@@ -24,6 +24,10 @@ describe('production database initialization', () => {
 
       expect(customers.count).toBe(0);
       expect(transactions.count).toBe(0);
+      const tellerTx = testDb.db.prepare('SELECT COUNT(*) AS count FROM teller_transactions').get() as {
+        count: number;
+      };
+      expect(tellerTx.count).toBe(0);
       expect(company.configured).toBe(0);
       expect(company.name).toBeNull();
       expect(admins).toEqual([{ username: DEFAULT_ADMIN_USERNAME }]);

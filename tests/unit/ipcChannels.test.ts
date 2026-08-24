@@ -99,6 +99,16 @@ describe('IPC channel registry', () => {
     expect(IPC_CHANNELS.UPDATE_INSTALL).toBe('update:install');
   });
 
+  it('registers teller cash-management channels', () => {
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:denominations.list');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:sessions.open');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:transactions.create');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:dashboard.get');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:tally.get');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:longBook.get');
+    expect(IPC_CHANNELS.TELLER_TRANSACTIONS_LIST).toBe('teller:transactions.list');
+  });
+
   it('has unique channel names', () => {
     const unique = new Set(ALLOWED_IPC_CHANNELS);
     expect(unique.size).toBe(ALLOWED_IPC_CHANNELS.length);

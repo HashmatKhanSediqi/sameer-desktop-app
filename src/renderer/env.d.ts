@@ -84,6 +84,28 @@ import type {
   UpdateGetStatusResult,
   UpdateInstallRequest,
   UpdateInstallResult,
+  TellerDenominationsListRequest,
+  TellerDenominationsListResult,
+  TellerSessionCurrentRequest,
+  TellerSessionCurrentResult,
+  TellerSessionOpenRequest,
+  TellerSessionOpenResult,
+  TellerSessionCloseRequest,
+  TellerSessionCloseResult,
+  TellerTransactionsCreateRequest,
+  TellerTransactionsCreateResult,
+  TellerTransactionsListRequest,
+  TellerTransactionsListResultIpc,
+  TellerTransactionsGetRequest,
+  TellerTransactionsGetResult,
+  TellerDashboardGetRequest,
+  TellerDashboardGetResult,
+  TellerTallyGetRequest,
+  TellerTallyGetResult,
+  TellerLongBookGetRequest,
+  TellerLongBookGetResult,
+  TellerReconciliationGetRequest,
+  TellerReconciliationGetResult,
 } from '@shared/types/ipc';
 import type { ReportProgress } from '@shared/types/report';
 import type { BackupProgress } from '@shared/types/backup';
@@ -158,6 +180,19 @@ export interface PreloadApi {
     download: (request: UpdateDownloadRequest) => Promise<UpdateDownloadResult>;
     install: (request: UpdateInstallRequest) => Promise<UpdateInstallResult>;
     onStatus: (callback: (status: UpdateStatusSnapshot) => void) => () => void;
+  };
+  teller: {
+    listDenominations: (request: TellerDenominationsListRequest) => Promise<TellerDenominationsListResult>;
+    currentSession: (request: TellerSessionCurrentRequest) => Promise<TellerSessionCurrentResult>;
+    openSession: (request: TellerSessionOpenRequest) => Promise<TellerSessionOpenResult>;
+    closeSession: (request: TellerSessionCloseRequest) => Promise<TellerSessionCloseResult>;
+    createTransaction: (request: TellerTransactionsCreateRequest) => Promise<TellerTransactionsCreateResult>;
+    listTransactions: (request: TellerTransactionsListRequest) => Promise<TellerTransactionsListResultIpc>;
+    getTransaction: (request: TellerTransactionsGetRequest) => Promise<TellerTransactionsGetResult>;
+    getDashboard: (request: TellerDashboardGetRequest) => Promise<TellerDashboardGetResult>;
+    getTally: (request: TellerTallyGetRequest) => Promise<TellerTallyGetResult>;
+    getLongBook: (request: TellerLongBookGetRequest) => Promise<TellerLongBookGetResult>;
+    getReconciliation: (request: TellerReconciliationGetRequest) => Promise<TellerReconciliationGetResult>;
   };
 }
 

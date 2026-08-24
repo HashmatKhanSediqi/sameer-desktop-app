@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CompanyProfile } from '@shared/types/company';
 import { LanguageSelector } from '../components/LanguageSelector';
+import { ModuleSwitcher, type AppModule } from '../components/ModuleSwitcher';
 import { useAuth } from '../context/AuthContext';
 import { CustomerDetailPage } from './customers/CustomerDetailPage';
 import { CustomerListPage } from './customers/CustomerListPage';
@@ -16,7 +17,11 @@ type ShellView =
   | { type: 'reports'; customerId?: number }
   | { type: 'import' };
 
-export function AppShell(): JSX.Element {
+interface AppShellProps {
+  onSwitchModule: (module: AppModule) => void;
+}
+
+export function AppShell({ onSwitchModule }: AppShellProps): JSX.Element {
   const { t: tCommon } = useTranslation('common');
   const { username, logout, sessionId } = useAuth();
   const [view, setView] = useState<ShellView>({ type: 'list' });
@@ -50,6 +55,7 @@ export function AppShell(): JSX.Element {
           </div>
         </div>
         <div className="header-toolbar">
+          <ModuleSwitcher current="accounting" onSwitch={onSwitchModule} />
           <LanguageSelector />
           <button type="button" className="button button-secondary" onClick={() => setView({ type: 'import' })}>
             {tCommon('import')}

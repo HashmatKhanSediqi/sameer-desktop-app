@@ -17,7 +17,10 @@ export class CurrencyRepository {
     const rows = this.db
       .prepare(
         `SELECT code, name_key, symbol, is_active, sort_order,
-                EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code) AS has_transactions
+                (
+                  EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code)
+                  OR EXISTS(SELECT 1 FROM teller_transactions tt WHERE tt.currency_code = currencies.code)
+                ) AS has_transactions
          FROM currencies
          WHERE is_active = 1
          ORDER BY sort_order ASC, code ASC`,
@@ -31,7 +34,10 @@ export class CurrencyRepository {
     const rows = this.db
       .prepare(
         `SELECT code, name_key, symbol, is_active, sort_order,
-                EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code) AS has_transactions
+                (
+                  EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code)
+                  OR EXISTS(SELECT 1 FROM teller_transactions tt WHERE tt.currency_code = currencies.code)
+                ) AS has_transactions
          FROM currencies
          ORDER BY sort_order ASC, code ASC`,
       )
@@ -44,7 +50,10 @@ export class CurrencyRepository {
     const row = this.db
       .prepare(
         `SELECT code, name_key, symbol, is_active, sort_order,
-                EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code) AS has_transactions
+                (
+                  EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code)
+                  OR EXISTS(SELECT 1 FROM teller_transactions tt WHERE tt.currency_code = currencies.code)
+                ) AS has_transactions
          FROM currencies
          WHERE code = ?`,
       )
@@ -61,10 +70,16 @@ export class CurrencyRepository {
   }
 
   hasTransactions(code: string): boolean {
-    const row = this.db
+    const customerRow = this.db
       .prepare('SELECT 1 AS present FROM transactions WHERE currency_code = ? LIMIT 1')
       .get(code) as { present: number } | undefined;
-    return row !== undefined;
+    if (customerRow !== undefined) {
+      return true;
+    }
+    const tellerRow = this.db
+      .prepare('SELECT 1 AS present FROM teller_transactions WHERE currency_code = ? LIMIT 1')
+      .get(code) as { present: number } | undefined;
+    return tellerRow !== undefined;
   }
 
   nextSortOrder(): number {
