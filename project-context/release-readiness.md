@@ -78,7 +78,7 @@ SQL-side pagination, aggregation, and indexes (`005_query_indexes.sql`, `006_cus
 | 38 | Production Windows build | VERIFIED | `npm run build:win` succeeds |
 | 39 | Code signing | KNOWN LIMITATION | Authenticode not configured; installer remains unsigned. Icon embedding uses `afterPack` rcedit (`signAndEditExecutable: false`) |
 | 40 | Clean Windows installation testing | KNOWN LIMITATION | Full clean Windows VM manual validation has **not** been performed in this audit |
-| 41 | In-app updater (electron-updater + GitHub Releases) | FIXED in v1.0.2 | v1.0.1 failed because the GitHub repo was private (`releases.atom` 404). Repo is now public; `app-update.yml` sets `private: false`; `setFeedURL` removed. Live 1.0.1→1.0.2 install verification follows publication. |
+| 41 | In-app updater (electron-updater + GitHub Releases) | VERIFIED (live 1.0.1→1.0.2) | Public GitHub feed; packaged 1.0.1 detected 1.0.2, downloaded, pre-update backup validated, app started as 1.0.2 with user data intact. NSIS wizard still appears because `oneClick` is false / `isSilent` is false. |
 
 ---
 
@@ -96,7 +96,7 @@ These STEP 8 findings remain true unless separately fixed and re-verified:
 8. **Code signing is not configured.**
 9. **FTS5 is not currently implemented** for customer search.
 10. **Extremely large all-customer reports may still consume substantial memory.**
-11. **Live in-app update install from an older FMT build has not been manually verified on a clean Windows VM.** GitHub Release metadata and artifacts are published; end-user update UX should be spot-checked after distribution.
+11. **Clean Windows VM install still has not been performed.** Live 1.0.1→1.0.2 in-app update **was** verified on this development machine (detect, download, pre-update backup, install, data preserved). NSIS `oneClick: false` still shows the setup wizard unless `/S` is used.
 
 ---
 
@@ -124,7 +124,7 @@ These STEP 8 findings remain true unless separately fixed and re-verified:
 - Rate limiting on password recovery IPC
 - Playwright E2E suite
 - Insufficient-balance gate on cash-out/edit (if required by business)
-- Live in-app update install smoke test on a clean Windows VM (Release is published)
+- Live in-app update install smoke test on a clean Windows VM (local 1.0.1→1.0.2 packaged update was verified)
 
 ---
 

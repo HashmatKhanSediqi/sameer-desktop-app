@@ -18,7 +18,7 @@ In-app update architecture for **FMT** using **electron-updater** and **GitHub R
 | Customer data | Always local (SQLite) — never cloud |
 | Update tool | `electron-updater` |
 | Installer artifact | `FMT-Setup.exe` (+ `latest.yml` / blockmap from electron-builder) |
-| Application files | `%LOCALAPPDATA%\Programs\CustomerAccounting\` |
+| Application files | `%LOCALAPPDATA%\Programs\FMT\` (NSIS `productName`) |
 | User data | `%APPDATA%\CustomerAccounting\` |
 
 The update system distributes **application binaries** — not customer accounting data.
@@ -212,4 +212,13 @@ Locales: English, Dari (`fa-AF`), Pashto (`ps`) — no hard-coded user-facing En
 
 **v1.0.1 production failure (verified from installed logs):** `GET https://github.com/HashmatKhanSediqi/sameer-desktop-app/releases.atom` returned 404 with `logged_in=no`. Settings correctly showed the error state; the feed was not publicly readable.
 
-Live packaged update verification for v1.0.2 is recorded in `release-readiness.md` after it is performed.
+**v1.0.2 live packaged verification (this machine, 2026-08-24):**
+- Installed FMT v1.0.1 under `%LOCALAPPDATA%\Programs\FMT\`, user data `%APPDATA%\CustomerAccounting\`
+- Update check detected GitHub Release **1.0.2** (`state: available`)
+- Download of `FMT-Setup.exe` from GitHub completed (differential download)
+- `createPreUpdateBackup()` wrote and validated `backups\pre-update\FMT_PreUpdate_2026-08-24_18-57-55.cab` (2 customers) before install
+- After install, app started as **1.0.2**, opened the same `accounting.db`, auto-check reported up to date
+- Persisted: customer `Updater Test Customer` (id 2, `hasPhoto: true`), Cash In 250 AFN, Cash Out 40 AFN (balance 210 AFN), currency `XYZ`, company `Updater Test Company`
+- Admin login `admin` / `admin123` still worked
+
+**Limitation:** `quitAndInstall(false, true)` with NSIS `oneClick: false` opens the FMT Setup wizard (`--updated,--force-run`). The in-app download succeeded; finishing the wizard is a normal NSIS UI step (silent `/S` also completes the same pending installer). No VM was used; this was a local packaged install with separate v1.0.1 vs v1.0.2 binaries.
