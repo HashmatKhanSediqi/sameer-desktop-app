@@ -108,7 +108,7 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
   const summary = dashboard?.currencies.find((row) => row.currencyCode === currencyCode) ?? dashboard?.currencies[0] ?? null;
 
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell-teller">
       <header className="app-header app-header-bar">
         <div className="header-brand">
           {logoSrc ? <img className="header-logo" src={logoSrc} alt="" /> : null}
