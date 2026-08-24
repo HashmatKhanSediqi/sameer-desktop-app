@@ -14,13 +14,10 @@ import { GlobalTotalCards } from './components/GlobalTotalCards';
 
 interface CustomerListPageProps {
   onViewCustomer: (id: number) => void;
-  onOpenReports: () => void;
-  onOpenImport: () => void;
 }
 
-export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }: CustomerListPageProps): JSX.Element {
+export function CustomerListPage({ onViewCustomer }: CustomerListPageProps): JSX.Element {
   const { t } = useTranslation('customers');
-  const { t: tCommon } = useTranslation('common');
   const { t: tTx } = useTranslation('transactions');
   const { sessionId } = useAuth();
   const [customers, setCustomers] = useState<CustomerListItem[]>([]);
@@ -182,12 +179,6 @@ export function CustomerListPage({ onViewCustomer, onOpenReports, onOpenImport }
           disabled={totalCount < 2}
         >
           {tTx('transfer.title')}
-        </button>
-        <button type="button" className="button button-secondary" onClick={onOpenImport}>
-          {tCommon('import')}
-        </button>
-        <button type="button" className="button button-secondary" onClick={onOpenReports}>
-          {tCommon('reports')}
         </button>
       </div>
 

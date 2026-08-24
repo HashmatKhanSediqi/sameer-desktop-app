@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sanitizeAmountInput } from '@shared/amountInput';
-import { combineDateAndTime } from '@shared/transactionDateTime';
+import { resolveCreateDateTime } from '@shared/transactionDateTime';
 import type { Currency } from '@shared/types/currency';
 import type { CustomerIdentity } from '@shared/types/customer';
 import { TransactionDateTimeFields } from '../../../components/TransactionDateTimeFields';
@@ -114,6 +114,9 @@ export function TransferForm({
 
     setIsSubmitting(true);
     setError(null);
+    const resolved = resolveCreateDateTime(dateValue, timeValue);
+    setDateValue(resolved.date);
+    setTimeValue(resolved.time);
     try {
       const result = await window.api.transactions.transfer({
         sessionId,
@@ -122,7 +125,7 @@ export function TransferForm({
         currencyCode,
         amount,
         note,
-        transactionDate: combineDateAndTime(dateValue, timeValue),
+        transactionDate: resolved.combined,
       });
       if (!result.ok) {
         setError(t(`validation.${result.message}`, { defaultValue: tErrors(result.errorCode) }));

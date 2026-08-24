@@ -253,7 +253,7 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
 
       {customer ? (
         <div className="customer-detail-layout">
-          <aside className="card customer-detail">
+          <aside className="card customer-detail customer-profile-card">
             <div className="customer-detail-header">
               <CustomerAvatar
                 customerId={customer.id}
@@ -262,8 +262,8 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
                 size="lg"
               />
               <div>
+                <p className="customer-profile-kicker">{t('detail')}</p>
                 <h2>{customer.name?.trim() ? customer.name : t('noName')}</h2>
-                <p className="subtitle">{t('detail')}</p>
               </div>
             </div>
 
@@ -289,16 +289,13 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
 
           <div className="customer-detail-main">
             {summary ? (
-              <div className="currency-summary-fixed">
+              <div className="currency-summary-fixed currency-summary-scroll">
                 <CurrencySummaryCards summaries={summary.currencies} />
               </div>
             ) : null}
 
             <div className="card customer-history-card">
-              <div className="page-header">
-                <h2>{tTx('history')}</h2>
-              </div>
-
+              <h2 className="visually-hidden">{tTx('history')}</h2>
               <div className="history-scroll">
                 {transactions.length === 0 ? (
                   <p className="subtitle">{tTx('empty')}</p>

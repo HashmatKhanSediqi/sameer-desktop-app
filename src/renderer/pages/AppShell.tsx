@@ -45,7 +45,7 @@ export function AppShell({ onSwitchModule }: AppShellProps): JSX.Element {
   }, [sessionId]);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell-accounting">
       <header className="app-header app-header-bar">
         <div className="header-brand">
           {logoSrc ? <img className="header-logo" src={logoSrc} alt="" /> : null}
@@ -84,8 +84,6 @@ export function AppShell({ onSwitchModule }: AppShellProps): JSX.Element {
         {view.type === 'list' ? (
           <CustomerListPage
             onViewCustomer={(customerId) => setView({ type: 'detail', customerId })}
-            onOpenReports={() => setView({ type: 'reports' })}
-            onOpenImport={() => setView({ type: 'import' })}
           />
         ) : view.type === 'detail' ? (
           <CustomerDetailPage

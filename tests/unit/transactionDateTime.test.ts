@@ -4,6 +4,7 @@ import {
   sqliteFromDateOnly,
   sqliteFromWallClockString,
   combineDateAndTime,
+  resolveCreateDateTime,
   splitDateAndTime,
   toDateTimeLocalValue,
   toSqliteDateTime,
@@ -50,6 +51,34 @@ describe('transaction date/time helpers', () => {
     expect(combineDateAndTime('', '08:15', new Date(2026, 7, 24, 12, 0, 0))).toBe('2026-08-24T08:15');
     expect(splitDateAndTime('2026-03-15 09:45:00')).toEqual({ date: '2026-03-15', time: '09:45' });
     expect(splitDateAndTime(undefined)).toEqual({ date: '', time: '' });
+  });
+
+  it('fills empty create fields with the current local date and time at resolve time', () => {
+    const now = new Date(2026, 7, 25, 14, 7, 0);
+    expect(resolveCreateDateTime('', '', now)).toEqual({
+      date: '2026-08-25',
+      time: '14:07',
+      combined: '2026-08-25T14:07',
+    });
+  });
+
+  it('preserves an explicit user date and time instead of overwriting with now', () => {
+    const now = new Date(2026, 7, 25, 14, 7, 0);
+    expect(resolveCreateDateTime('2024-12-31', '18:07', now)).toEqual({
+      date: '2024-12-31',
+      time: '18:07',
+      combined: '2024-12-31T18:07',
+    });
+    expect(resolveCreateDateTime('2026-01-10', '', now)).toEqual({
+      date: '2026-01-10',
+      time: '00:00',
+      combined: '2026-01-10T00:00',
+    });
+    expect(resolveCreateDateTime('', '08:15', now)).toEqual({
+      date: '2026-08-25',
+      time: '08:15',
+      combined: '2026-08-25T08:15',
+    });
   });
 });
 

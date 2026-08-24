@@ -117,3 +117,39 @@ export function combineDateAndTime(
   }
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}T${time}`;
 }
+
+export function currentLocalDateAndTime(now = new Date()): { date: string; time: string } {
+  return {
+    date: `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`,
+    time: `${pad2(now.getHours())}:${pad2(now.getMinutes())}`,
+  };
+}
+
+/**
+ * Resolve create-form date/time at save time.
+ * Explicit user values are preserved; empty fields are filled with the current local clock.
+ */
+export function resolveCreateDateTime(
+  dateValue: string,
+  timeValue: string,
+  now = new Date(),
+): { date: string; time: string; combined: string } {
+  const date = dateValue.trim();
+  const time = timeValue.trim();
+  if (date && time) {
+    return { date, time, combined: `${date}T${time}` };
+  }
+
+  const current = currentLocalDateAndTime(now);
+  if (!date && !time) {
+    return {
+      date: current.date,
+      time: current.time,
+      combined: `${current.date}T${current.time}`,
+    };
+  }
+
+  const combined = combineDateAndTime(date, time, now) ?? `${current.date}T${current.time}`;
+  const parts = splitDateAndTime(combined);
+  return { date: parts.date, time: parts.time, combined };
+}

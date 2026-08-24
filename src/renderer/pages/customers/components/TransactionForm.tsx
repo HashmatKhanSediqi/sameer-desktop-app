@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isLatinAmountInsert, sanitizeAmountInput } from '@shared/amountInput';
-import { combineDateAndTime, splitDateAndTime } from '@shared/transactionDateTime';
+import { combineDateAndTime, resolveCreateDateTime, splitDateAndTime } from '@shared/transactionDateTime';
 import type { Currency } from '@shared/types/currency';
 import type { Transaction, TransactionType } from '@shared/types/transaction';
 import { TransactionDateTimeFields } from '../../../components/TransactionDateTimeFields';
@@ -62,9 +62,15 @@ export function TransactionForm({
     setError(null);
     setIsSubmitting(true);
 
-    const selectedDateTime = combineDateAndTime(dateValue, timeValue);
-    const transactionDate =
-      mode === 'edit' ? selectedDateTime ?? transaction?.transactionDate : selectedDateTime;
+    let transactionDate: string | undefined;
+    if (mode === 'create') {
+      const resolved = resolveCreateDateTime(dateValue, timeValue);
+      setDateValue(resolved.date);
+      setTimeValue(resolved.time);
+      transactionDate = resolved.combined;
+    } else {
+      transactionDate = combineDateAndTime(dateValue, timeValue) ?? transaction?.transactionDate;
+    }
 
     try {
       const result =
