@@ -2914,14 +2914,14 @@ th.col-actions {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Shared post-login chrome (Accounting, Teller, module selection)             */
+/* Customer Accounting UI refinement (does not restyle Teller / Cash Mgmt)     */
 /* -------------------------------------------------------------------------- */
 
-.app-shell .button,
-.app-shell .header-toolbar .button,
-.app-shell .header-actions .button,
-.app-shell .action-bar .button,
-.app-shell .modal-actions .button {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .header-toolbar .button,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .header-actions .button,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .action-bar .button,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .modal-actions .button {
   min-height: 32px;
   padding: 4px 12px;
   font-size: 13px;
@@ -2939,26 +2939,26 @@ th.col-actions {
     color 0.12s ease;
 }
 
-.app-shell .button-compact,
-.app-shell .transaction-table .button-compact {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-compact,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .transaction-table .button-compact {
   min-height: 28px;
   padding: 3px 9px;
   font-size: 12px;
 }
 
-.app-shell .transaction-table .button-compact {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .transaction-table .button-compact {
   min-height: 26px;
   padding: 2px 8px;
 }
 
-.app-shell .button .tx-type-mark {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button .tx-type-mark {
   width: 1.05em;
   height: 1.05em;
   margin-inline-end: 0;
   font-size: 12px;
 }
 
-.app-shell .button:disabled {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   box-shadow: none;
@@ -2966,68 +2966,68 @@ th.col-actions {
   transform: none;
 }
 
-.app-shell .button-primary {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-primary {
   box-shadow: none;
 }
 
-.app-shell .button-primary:hover:not(:disabled) {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
   box-shadow: 0 1px 3px var(--color-primary-shadow);
 }
 
-.app-shell .button-primary:active:not(:disabled) {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-primary:active:not(:disabled) {
   background: var(--color-primary-pressed);
   box-shadow: none;
   transform: none;
 }
 
-.app-shell .button-secondary:hover:not(:disabled) {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-secondary:hover:not(:disabled) {
   background: #f3f7f4;
   border-color: #c5d5cb;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
-.app-shell .button-secondary:active:not(:disabled) {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-secondary:active:not(:disabled) {
   background: #e7efe9;
   box-shadow: none;
 }
 
-.app-shell .button-danger:hover:not(:disabled) {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-danger:hover:not(:disabled) {
   background: #b91c1c;
   box-shadow: 0 1px 3px rgba(185, 28, 28, 0.28);
 }
 
-.app-shell .button-danger:active:not(:disabled) {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-danger:active:not(:disabled) {
   background: #991b1b;
   box-shadow: none;
 }
 
-.app-shell .button-cash-in:hover:not(:disabled),
-.app-shell .button-cash-out:hover:not(:disabled) {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-cash-in:hover:not(:disabled),
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-cash-out:hover:not(:disabled) {
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
 }
 
-.app-shell .button-link:hover:not(:disabled),
-.app-shell .link-button:hover:not(:disabled) {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-link:hover:not(:disabled),
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .link-button:hover:not(:disabled) {
   color: var(--color-primary-hover);
 }
 
-.app-shell .button-link:active:not(:disabled),
-.app-shell .link-button:active:not(:disabled) {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-link:active:not(:disabled),
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .link-button:active:not(:disabled) {
   color: var(--color-primary-pressed);
 }
 
-.app-shell .type-option {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .type-option {
   min-height: 34px;
   transition: background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
-.app-shell .type-option:hover {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .type-option:hover {
   border-color: #c5d5cb;
   background: #f8fbf9;
 }
 
-.app-shell .app-header {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .app-header {
   margin: 8px 10px 0;
   padding: 6px 10px;
   background: var(--color-surface);
@@ -3040,22 +3040,22 @@ th.col-actions {
     0 6px 14px rgba(15, 23, 42, 0.05);
 }
 
-.app-shell .app-header-bar {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .app-header-bar {
   gap: 8px 12px;
 }
 
-.app-shell .header-brand {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .header-brand {
   gap: 8px;
   flex: 1 1 11rem;
 }
 
-.app-shell .header-logo {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .header-logo {
   width: 28px;
   height: 28px;
   border-radius: 6px;
 }
 
-.app-shell .app-header h1 {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .app-header h1 {
   margin: 0;
   font-size: 15px;
   font-weight: 700;
@@ -3063,236 +3063,236 @@ th.col-actions {
   line-height: 1.2;
 }
 
-.app-shell .app-header .subtitle {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .app-header .subtitle {
   font-size: 11px;
   line-height: 1.3;
 }
 
-.app-shell .header-toolbar {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .header-toolbar {
   gap: 6px;
 }
 
-.app-shell .module-switcher {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .module-switcher {
   padding: 2px;
   gap: 4px;
 }
 
-.app-shell .module-switcher-btn {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .module-switcher-btn {
   min-height: 26px;
   padding: 3px 10px;
   font-size: 12px;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 
-.app-shell .module-switcher-btn:hover:not(.is-active) {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .module-switcher-btn:hover:not(.is-active) {
   color: var(--color-text);
   background: rgba(31, 122, 77, 0.08);
 }
 
-.app-shell .module-switcher-all {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .module-switcher-all {
   font-size: 12px;
   margin-top: 0;
   padding: 0 6px;
 }
 
-.app-shell .language-selector select {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .language-selector select {
   min-height: 32px;
   padding: 4px 8px;
   font-size: 13px;
 }
 
-.app-shell .app-main {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .app-main {
   padding: 10px 12px 12px;
   gap: 10px;
 }
 
-.app-shell .customer-page,
-.app-shell .app-main-list > .customer-page {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .app-main-list > .customer-page {
   gap: 10px;
 }
 
-.app-shell .page-header {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .page-header {
   gap: 8px 12px;
 }
 
-.app-shell .page-header h2 {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .page-header h2 {
   font-size: 16px;
 }
 
-.app-shell .header-actions,
-.app-shell .action-bar {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .header-actions,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .action-bar {
   gap: 6px;
 }
 
-.app-shell .search-input {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .search-input {
   min-height: 32px;
   padding: 6px 10px;
   font-size: 13px;
 }
 
-.app-shell .form-field input,
-.app-shell .form-field select,
-.app-shell .form-field textarea {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .form-field input,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .form-field select,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .form-field textarea {
   min-height: 32px;
   padding: 6px 10px;
   font-size: 13px;
 }
 
-.app-shell .form-field textarea {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .form-field textarea {
   min-height: 5.5rem;
 }
 
-.app-shell .amount-field .amount-input {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .amount-field .amount-input {
   min-height: 40px;
   font-size: 18px;
 }
 
-.app-shell .transaction-modal-header {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .transaction-modal-header {
   padding: 12px 16px 10px;
 }
 
-.app-shell .transaction-modal-header h2 {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .transaction-modal-header h2 {
   font-size: 16px;
 }
 
-.app-shell .transaction-modal-body {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .transaction-modal-body {
   padding: 14px 16px;
   gap: 12px;
 }
 
-.app-shell .transaction-modal-footer {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .transaction-modal-footer {
   padding: 10px 16px 12px;
 }
 
-.app-shell .transaction-modal-footer .button-primary,
-.app-shell .transaction-modal-footer .button-cash-in,
-.app-shell .transaction-modal-footer .button-cash-out {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .transaction-modal-footer .button-primary,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .transaction-modal-footer .button-cash-in,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .transaction-modal-footer .button-cash-out {
   min-width: 7.5rem;
 }
 
-.app-shell .modal-dialog {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .modal-dialog {
   padding: 16px;
 }
 
-.app-shell .modal-dialog h2 {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .modal-dialog h2 {
   font-size: 16px;
 }
 
-.app-shell .card {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .card {
   padding: 12px 14px;
   border-radius: 10px;
 }
 
-.app-shell .card h2,
-.app-shell .exchange-card h2 {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .card h2,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .exchange-card h2 {
   margin-bottom: 8px;
   font-size: 15px;
 }
 
-.app-shell .banner {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .banner {
   padding: 8px 12px;
 }
 
-.app-shell .summary-card-grid,
-.app-shell .currency-summary-grid {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .summary-card-grid,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .currency-summary-grid {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   gap: 8px;
 }
 
-.app-shell .summary-card {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .summary-card {
   padding: 8px 10px 8px 14px;
   border-radius: 10px;
   box-shadow: 0 2px 8px var(--summary-card-shadow);
 }
 
-.app-shell .summary-card::before {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .summary-card::before {
   inset-block: 8px;
   width: 3px;
 }
 
-.app-shell .summary-card-label {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .summary-card-label {
   font-size: 11px;
 }
 
-.app-shell .summary-card-currency {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .summary-card-currency {
   margin-top: 0;
   font-size: 11px;
 }
 
-.app-shell .summary-card-amount {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .summary-card-amount {
   margin-top: 4px;
   font-size: 18px;
 }
 
-.app-shell .summary-card:hover {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .summary-card:hover {
   transform: none;
   box-shadow: 0 4px 12px var(--summary-card-shadow);
 }
 
-.app-shell .currency-card-metrics {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .currency-card-metrics {
   margin-top: 6px;
   padding-top: 6px;
   gap: 3px;
 }
 
-.app-shell .currency-metric {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .currency-metric {
   font-size: 11px;
   gap: 8px;
 }
 
-.app-shell .customer-table th,
-.app-shell .customer-table td {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-table th,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-table td {
   padding: 8px 10px;
 }
 
-.app-shell .col-actions {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .col-actions {
   gap: 6px;
 }
 
-.app-shell td.col-actions .button + .button {
+.app-shell-accounting td.col-actions .button + .button {
   margin-inline-start: 6px;
 }
 
-.app-shell .empty-state {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .empty-state {
   padding: 20px 16px;
 }
 
-.app-shell .file-button {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .file-button {
   padding: 0 10px;
 }
 
-.app-shell .customer-list-scroll {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-list-scroll {
   overflow: auto;
 }
 
-.app-shell .customer-list-scroll .customer-table {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-list-scroll .customer-table {
   border-collapse: separate;
   border-spacing: 0;
 }
 
-.app-shell .customer-list-scroll .customer-table thead,
-.app-shell .history-scroll .transaction-table thead {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-list-scroll .customer-table thead,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .history-scroll .transaction-table thead {
   position: sticky;
   top: 0;
   z-index: 4;
 }
 
-.app-shell .customer-list-scroll .customer-table thead th,
-.app-shell .history-scroll .transaction-table thead th {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-list-scroll .customer-table thead th,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .history-scroll .transaction-table thead th {
   background: var(--color-surface);
   box-shadow: 0 1px 0 var(--color-border);
 }
 
-.app-shell .customer-list-scroll .customer-table thead th.col-actions,
-.app-shell .history-scroll .transaction-table thead th.col-actions {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-list-scroll .customer-table thead th.col-actions,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .history-scroll .transaction-table thead th.col-actions {
   display: table-cell;
   z-index: 4;
   background: var(--color-surface);
 }
 
-.app-shell .history-scroll .transaction-table thead th {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .history-scroll .transaction-table thead th {
   position: sticky;
   top: 0;
   z-index: 3;
@@ -3300,15 +3300,15 @@ th.col-actions {
   box-shadow: 0 1px 0 var(--color-border);
 }
 
-.app-shell .customer-page-detail .customer-detail-layout {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .customer-detail-layout {
   flex-direction: column;
   flex-wrap: nowrap;
   gap: 10px;
   align-items: stretch;
 }
 
-.app-shell .customer-page-detail .customer-detail,
-.app-shell .customer-profile-card {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .customer-detail,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-profile-card {
   flex: 0 0 auto;
   width: min(100%, 22rem);
   max-width: 22rem;
@@ -3323,13 +3323,13 @@ th.col-actions {
   background: var(--color-surface);
 }
 
-.app-shell .customer-detail-header {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-detail-header {
   gap: 10px;
   margin-bottom: 10px;
   align-items: center;
 }
 
-.app-shell .customer-profile-kicker {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-profile-kicker {
   margin: 0 0 2px;
   color: var(--color-text-muted);
   font-size: 11px;
@@ -3338,46 +3338,46 @@ th.col-actions {
   text-transform: uppercase;
 }
 
-.app-shell .customer-profile-card h2 {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-profile-card h2 {
   margin: 0;
   font-size: 15px;
   line-height: 1.25;
 }
 
-.app-shell .customer-page-detail .customer-avatar-lg {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .customer-avatar-lg {
   width: 48px;
   height: 48px;
   font-size: 16px;
 }
 
-.app-shell .customer-profile-card .status-list {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-profile-card .status-list {
   gap: 8px;
 }
 
-.app-shell .customer-detail .status-list dt {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-detail .status-list dt {
   font-size: 11px;
 }
 
-.app-shell .customer-detail .status-list dd {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-detail .status-list dd {
   font-size: 13px;
 }
 
-.app-shell .customer-page-detail .customer-detail-main {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .customer-detail-main {
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
   gap: 8px;
 }
 
-.app-shell .app-main-list .summary-card-grid {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .app-main-list .summary-card-grid {
   max-height: min(176px, 32vh);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
-.app-shell .customer-page-detail .currency-summary-fixed,
-.app-shell .customer-page-detail .currency-summary-scroll {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .currency-summary-fixed,
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .currency-summary-scroll {
   flex: 0 1 auto;
   width: 100%;
   max-height: min(220px, 32vh);
@@ -3387,57 +3387,56 @@ th.col-actions {
   overscroll-behavior: contain;
 }
 
-.app-shell .customer-page-detail .customer-history-card {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .customer-history-card {
   flex: 1 1 0;
   min-height: 14rem;
   padding: 8px 10px 10px;
 }
 
-.app-shell .pagination-bar {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .pagination-bar {
   margin-top: 8px;
   gap: 8px;
 }
 
 @media (max-width: 960px) {
-  .app-shell .customer-page-detail .customer-detail,
-  .app-shell .customer-profile-card {
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .customer-detail,
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-profile-card {
     flex-basis: auto;
     width: min(100%, 22rem);
     max-width: 22rem;
   }
 
-  .app-shell .customer-page-detail .currency-summary-fixed,
-  .app-shell .customer-page-detail .currency-summary-scroll {
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .currency-summary-fixed,
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .currency-summary-scroll {
     max-height: min(220px, 34vh);
   }
 
-  .app-shell .customer-page-detail .customer-history-card {
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .customer-page-detail .customer-history-card {
     flex: 1 1 auto;
     min-height: 16rem;
   }
 }
 
 @media (max-width: 768px) {
-  .app-shell .header-toolbar .button,
-  .app-shell .header-actions .button,
-  .app-shell .action-bar .button,
-  .app-shell .modal-actions .button {
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .header-toolbar .button,
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .header-actions .button,
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .action-bar .button,
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .modal-actions .button {
     flex: 0 1 auto;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-shell .button,
-  .app-shell .type-option,
-  .app-shell .module-switcher-btn,
-  .app-shell .summary-card,
-  .teller-nav-btn,
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button,
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .type-option,
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .module-switcher-btn,
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .summary-card,
   .password-toggle {
     transition: none;
   }
 
-  .app-shell .button-primary:active:not(:disabled),
-  .app-shell .summary-card:hover {
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .button-primary:active:not(:disabled),
+  .app-shell:is(.app-shell-accounting, :has(.module-select-main)) .summary-card:hover {
     transform: none;
   }
 }
@@ -3489,7 +3488,7 @@ th.col-actions {
   display: block;
 }
 
-.app-shell .module-select-main {
+.app-shell:is(.app-shell-accounting, :has(.module-select-main)) .module-select-main {
   padding: 20px 16px 28px;
 }
 
@@ -3549,178 +3548,275 @@ th.col-actions {
   height: 18px;
 }
 
-.app-shell-teller .teller-summary {
-  margin: 8px 10px 0;
-  padding: 10px 14px;
-  border-radius: 10px;
+/* -------------------------------------------------------------------------- */
+/* Teller / Cash Management chrome lock (commit 4c5ca55 shared values)         */
+/* Accounting compact rules must not apply here. Do not use this class for     */
+/* the later compact .app-shell-teller overrides from 8ef2c05.                 */
+/* -------------------------------------------------------------------------- */
+
+.app-shell.app-shell-teller .button,
+.app-shell.app-shell-teller .header-toolbar .button,
+.app-shell.app-shell-teller .header-actions .button,
+.app-shell.app-shell-teller .action-bar .button,
+.app-shell.app-shell-teller .modal-actions .button {
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: 600;
+  gap: unset;
+  box-shadow: none;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease, filter 0.15s ease;
 }
 
-.app-shell-teller .teller-summary-kicker {
-  font-size: 11px;
+.app-shell.app-shell-teller .button-cash-in,
+.app-shell.app-shell-teller .button-cash-out {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.app-shell-teller .teller-summary-title {
-  margin: 4px 0 0;
-  font-size: 13px;
-  gap: 6px 10px;
+.app-shell.app-shell-teller .button-primary {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 2px 0 var(--color-primary-pressed);
 }
 
-.app-shell-teller .teller-summary-metrics {
-  width: 100%;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
-  gap: 8px;
+.app-shell.app-shell-teller .button-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 2px 0 var(--color-primary-pressed);
 }
 
-.app-shell-teller .teller-summary-metrics > div,
-.app-shell-teller .teller-metrics-row > div {
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
+.app-shell.app-shell-teller .button-primary:active:not(:disabled) {
+  background: var(--color-primary-pressed);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12) inset;
+  transform: translateY(1px);
+}
+
+.app-shell.app-shell-teller .button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.app-shell.app-shell-teller .button-secondary:hover:not(:disabled) {
   background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: none;
 }
 
-.app-shell-teller .teller-summary-metrics dt {
-  font-size: 11px;
-}
-
-.app-shell-teller .teller-summary-metrics dd {
-  margin: 2px 0 0;
-  font-size: 1.05rem;
-}
-
-.app-shell-teller .teller-nav {
-  padding: 6px 10px 0;
-  margin: 0 10px;
-  background: transparent;
-  border-bottom: 0;
-  gap: 6px;
-}
-
-.app-shell-teller .teller-nav-btn {
-  min-height: 30px;
-  padding: 4px 12px;
-  font-size: 13px;
-  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
-}
-
-.app-shell-teller .teller-nav-btn:hover:not(.is-active) {
-  color: var(--color-text);
-  background: rgba(31, 122, 77, 0.08);
-}
-
-.app-shell-teller .teller-main {
-  overflow: hidden;
-  min-height: 0;
-  padding-top: 10px;
-}
-
-.app-shell-teller .teller-panel,
-.app-shell-teller .teller-dashboard,
-.app-shell-teller .teller-form {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.app-shell-teller .teller-panel,
-.app-shell-teller .teller-dashboard {
-  height: 100%;
-}
-
-.app-shell-teller .teller-form {
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-
-.app-shell-teller .teller-panel-header,
-.app-shell-teller .teller-filter-bar,
-.app-shell-teller .teller-metrics-row,
-.app-shell-teller .pagination-bar,
-.app-shell-teller .teller-total-line {
-  flex: 0 0 auto;
-}
-
-.app-shell-teller .teller-panel-header h2,
-.app-shell-teller .teller-panel h2 {
-  font-size: 16px;
-}
-
-.app-shell-teller .table-wrap {
-  flex: 1 1 auto;
-  min-height: 8rem;
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-
-.app-shell-teller .table-wrap .customer-table,
-.app-shell-teller .teller-denom-table {
-  border-collapse: separate;
-  border-spacing: 0;
-  width: 100%;
-}
-
-.app-shell-teller .table-wrap thead,
-.app-shell-teller .teller-denom-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-}
-
-.app-shell-teller .table-wrap thead th,
-.app-shell-teller .teller-denom-table thead th {
+.app-shell.app-shell-teller .button-secondary:active:not(:disabled) {
   background: var(--color-surface);
-  box-shadow: 0 1px 0 var(--color-border);
+  box-shadow: none;
 }
 
-.app-shell-teller .table-wrap thead th.col-actions {
-  display: table-cell;
-  z-index: 4;
+.app-shell.app-shell-teller .button-cash-in:hover:not(:disabled) {
+  background: #15803d;
+  border-color: #15803d;
+  box-shadow: none;
 }
 
-.app-shell-teller .teller-denom-wrap {
-  flex: 1 1 auto;
-  min-height: 8rem;
-  max-height: min(280px, 42vh);
-  overflow: auto;
+.app-shell.app-shell-teller .button-cash-out:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  box-shadow: none;
 }
 
-.app-shell-teller .teller-currency-grid {
-  width: 100%;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
-  gap: 8px;
+.app-shell.app-shell-teller .button-link:hover:not(:disabled),
+.app-shell.app-shell-teller .link-button:hover:not(:disabled) {
+  color: var(--color-primary);
 }
 
-.app-shell-teller .teller-currency-card,
-.app-shell-teller .teller-session-card {
-  padding: 10px 12px;
-  border-radius: 10px;
+.app-shell.app-shell-teller .app-header {
+  margin: 0;
+  padding: clamp(12px, 2vw, 24px);
+  background: var(--color-surface);
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  box-shadow: none;
 }
 
-.app-shell-teller .teller-currency-card header {
-  margin-bottom: 8px;
+.app-shell.app-shell-teller .app-header-bar {
+  gap: 12px 16px;
 }
 
-.app-shell-teller .teller-metrics {
+.app-shell.app-shell-teller .header-brand {
+  gap: 12px;
+  flex: 1 1 16rem;
+}
+
+.app-shell.app-shell-teller .header-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.app-shell.app-shell-teller .app-header h1 {
+  margin: 0 0 4px;
+  font-size: clamp(18px, 2.4vw, 24px);
+  font-weight: 700;
+  letter-spacing: normal;
+  line-height: inherit;
+}
+
+.app-shell.app-shell-teller .app-header .subtitle {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.app-shell.app-shell-teller .header-toolbar {
   gap: 8px 12px;
 }
 
-.app-shell-teller .teller-metrics dd {
-  margin: 2px 0 0;
-  font-size: 1.05rem;
+.app-shell.app-shell-teller .module-switcher {
+  padding: 4px;
+  gap: 8px;
 }
 
-.app-shell-teller .teller-metrics-row {
-  width: 100%;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+.app-shell.app-shell-teller .module-switcher-btn {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: inherit;
+  transition: none;
+}
+
+.app-shell.app-shell-teller .module-switcher-btn:hover:not(.is-active) {
+  color: var(--color-text-muted);
+  background: transparent;
+}
+
+.app-shell.app-shell-teller .module-switcher-all {
+  padding-inline: 8px;
+  font-size: 13px;
+  margin-top: unset;
+}
+
+.app-shell.app-shell-teller .language-selector select {
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: inherit;
+}
+
+.app-shell.app-shell-teller .app-main {
+  padding: clamp(12px, 2vw, 24px);
+  gap: 16px;
+}
+
+.app-shell.app-shell-teller .form-field input {
+  min-height: 44px;
   padding: 10px 12px;
+  font-size: inherit;
 }
 
-.app-shell-teller .teller-session-card {
-  align-self: start;
-  max-width: 28rem;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    0 8px 18px rgba(15, 23, 42, 0.06);
+.app-shell.app-shell-teller .form-field select {
+  min-height: unset;
+  padding: 10px 12px;
+  font-size: inherit;
+}
+
+.app-shell.app-shell-teller .form-field textarea {
+  min-height: 120px;
+  padding: 10px 12px;
+  font-size: inherit;
+}
+
+.app-shell.app-shell-teller .card {
+  padding: 16px 20px;
+  border-radius: 8px;
+}
+
+.app-shell.app-shell-teller .card h2 {
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.app-shell.app-shell-teller .customer-table th,
+.app-shell.app-shell-teller .customer-table td {
+  padding: 12px 16px;
+}
+
+.app-shell.app-shell-teller .empty-state {
+  padding: 32px;
+}
+
+.app-shell.app-shell-teller .pagination-bar {
+  margin-top: 12px;
+  gap: 12px;
+}
+
+.app-shell.app-shell-teller .teller-summary {
+  margin: 0 clamp(12px, 2vw, 24px);
+  margin-top: 12px;
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+}
+
+.app-shell.app-shell-teller .teller-summary-kicker {
+  font-size: 12px;
+}
+
+.app-shell.app-shell-teller .teller-summary-title {
+  margin: 6px 0 0;
+  font-size: 15px;
+  gap: 8px 12px;
+}
+
+.app-shell.app-shell-teller .teller-summary-metrics {
+  width: auto;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.app-shell.app-shell-teller .teller-summary-metrics > div,
+.app-shell.app-shell-teller .teller-metrics-row > div {
+  min-width: unset;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.app-shell.app-shell-teller .teller-summary-metrics dt {
+  font-size: 12px;
+}
+
+.app-shell.app-shell-teller .teller-summary-metrics dd {
+  margin: 4px 0 0;
+  font-size: 1.2rem;
+}
+
+.app-shell.app-shell-teller .teller-nav {
+  padding: 12px clamp(12px, 2vw, 24px) 0;
+  margin: 0;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  gap: 8px;
+}
+
+.app-shell.app-shell-teller .teller-nav-btn {
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+.app-shell.app-shell-teller .teller-denom-wrap {
+  max-height: none;
+  overflow: auto;
+}
+
+.app-shell.app-shell-teller .teller-panel,
+.app-shell.app-shell-teller .teller-dashboard,
+.app-shell.app-shell-teller .teller-form {
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .app-shell.app-shell-teller .teller-summary-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell.app-shell-teller .teller-currency-grid,
+  .app-shell.app-shell-teller .teller-metrics-row,
+  .app-shell.app-shell-teller .teller-summary-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
 }
