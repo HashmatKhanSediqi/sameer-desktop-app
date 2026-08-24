@@ -1,8 +1,11 @@
 {
   "nav": {
     "dashboard": "پیشخوان",
+    "workspace": "میز نقد",
     "cashIn": "دریافت نقدی",
     "cashOut": "پرداخت نقدی",
+    "cashInAction": "+ دریافت نقدی",
+    "cashOutAction": "− پرداخت نقدی",
     "tally": "شمارش نقد",
     "longBook": "دفتر طویل",
     "history": "تاریخچه"
@@ -28,20 +31,28 @@
     "title": "پیشخوان صندوق",
     "currentSession": "نوبت فعلی",
     "currentCurrency": "اسعار",
+    "opening": "موجودی افتتاحیه",
     "cashIn": "دریافت نقدی",
     "cashOut": "پرداخت نقدی",
     "currentBalance": "موجودی فعلی",
     "transactionCount": "معاملات",
-    "physicalTally": "شمارش فیزیکی",
+    "cashInCount": "ورود",
+    "cashOutCount": "خروج",
+    "headTellerIn": "از صندوق‌دار ارشد",
+    "headTellerOut": "به صندوق‌دار ارشد",
+    "physicalTally": "نقد فیزیکی",
     "expected": "نقد مورد انتظار",
     "difference": "تفاوت",
-    "matched": "متوازن",
-    "unmatched": "اختلاف"
+    "matched": "تطبیق‌شده",
+    "unmatched": "اختلاف",
+    "lastTransaction": "آخرین معامله",
+    "noneLast": "هنوز نیست"
   },
   "form": {
     "party": "منبع / مقصد",
     "partyCustomer": "مشتری",
     "partyHeadTeller": "صندوق‌دار ارشد",
+    "partyInternal": "داخلی / ICBA",
     "customer": "مشتری",
     "customerSearch": "جستجوی مشتری",
     "currency": "اسعار",
@@ -50,6 +61,10 @@
     "value": "ارزش",
     "lineTotal": "مبلغ",
     "calculated": "مجموع محاسبه‌شده",
+    "enteredAmount": "مبلغ واردشده",
+    "amountVerified": "مبلغ تأیید شد",
+    "amountMismatch": "عدم تطابق مبلغ",
+    "difference": "تفاوت",
     "available": "موجود",
     "note": "یادداشت",
     "saveIn": "ثبت دریافت نقدی",
@@ -58,7 +73,8 @@
     "savedOut": "پرداخت نقدی ثبت شد.",
     "noDenoms": "برای این اسعار واحد پول تعریف نشده است.",
     "selectCustomer": "یک مشتری انتخاب کنید",
-    "headTellerHint": "حرکت نقد با صندوق‌دار ارشد — معامله حساب مشتری نیست."
+    "headTellerHint": "حرکت نقد با صندوق‌دار ارشد — معامله حساب مشتری نیست.",
+    "internalHint": "حرکت نقد داخلی یا کارگزار (ICBA) — جدا از معاملات مشتری نگه داشته می‌شود."
   },
   "tally": {
     "title": "شمارش نقد",

@@ -31,6 +31,15 @@ import {
   type CurrenciesDeactivateResult,
   type CurrenciesDeleteRequest,
   type CurrenciesDeleteResult,
+  type CurrenciesDenominationsCreateRequest,
+  type CurrenciesDenominationsCreateResult,
+  type CurrenciesDenominationsDeactivateRequest,
+  type CurrenciesDenominationsDeleteRequest,
+  type CurrenciesDenominationsDeleteResult,
+  type CurrenciesDenominationsListRequest,
+  type CurrenciesDenominationsListResult,
+  type CurrenciesDenominationsMutateResult,
+  type CurrenciesDenominationsReactivateRequest,
   type CurrenciesListRequest,
   type CurrenciesListResult,
   type CurrenciesReactivateRequest,
@@ -183,6 +192,24 @@ const api = {
       invoke(IPC_CHANNELS.CURRENCIES_REACTIVATE, request),
     delete: (request: CurrenciesDeleteRequest): Promise<CurrenciesDeleteResult> =>
       invoke(IPC_CHANNELS.CURRENCIES_DELETE, request),
+    listDenominations: (request: CurrenciesDenominationsListRequest): Promise<CurrenciesDenominationsListResult> =>
+      invoke(IPC_CHANNELS.CURRENCIES_DENOMINATIONS_LIST, request),
+    createDenomination: (
+      request: CurrenciesDenominationsCreateRequest,
+    ): Promise<CurrenciesDenominationsCreateResult> =>
+      invoke(IPC_CHANNELS.CURRENCIES_DENOMINATIONS_CREATE, request),
+    deactivateDenomination: (
+      request: CurrenciesDenominationsDeactivateRequest,
+    ): Promise<CurrenciesDenominationsMutateResult> =>
+      invoke(IPC_CHANNELS.CURRENCIES_DENOMINATIONS_DEACTIVATE, request),
+    reactivateDenomination: (
+      request: CurrenciesDenominationsReactivateRequest,
+    ): Promise<CurrenciesDenominationsMutateResult> =>
+      invoke(IPC_CHANNELS.CURRENCIES_DENOMINATIONS_REACTIVATE, request),
+    deleteDenomination: (
+      request: CurrenciesDenominationsDeleteRequest,
+    ): Promise<CurrenciesDenominationsDeleteResult> =>
+      invoke(IPC_CHANNELS.CURRENCIES_DENOMINATIONS_DELETE, request),
   },
   transactions: {
     list: (request: TransactionsListRequest): Promise<TransactionsListResult> =>

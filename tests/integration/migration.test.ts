@@ -35,10 +35,19 @@ describe('migrations', () => {
       expect(afterSecond.size).toBe(afterFirst.size);
 
       expect(afterSecond.has(7)).toBe(true);
+      expect(afterSecond.has(8)).toBe(true);
       const teller = testDb.db
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'teller_transactions'")
         .get();
       expect(teller).toBeTruthy();
+
+      const displayName = testDb.db.prepare("PRAGMA table_info(currencies)").all() as Array<{ name: string }>;
+      expect(displayName.some((column) => column.name === 'display_name')).toBe(true);
+
+      const eurDenoms = testDb.db
+        .prepare("SELECT COUNT(*) AS count FROM denominations WHERE currency_code = 'EUR'")
+        .get() as { count: number };
+      expect(eurDenoms.count).toBe(13);
     } finally {
       testDb.cleanup();
     }

@@ -14,6 +14,7 @@ describe('CurrencyService settings operations', () => {
       expect(created.symbol).toBe('£');
       expect(created.isActive).toBe(true);
       expect(created.nameKey).toBe('currency.gbp');
+      expect(created.displayName).toBe('GBP');
       expect(service.listActive().some((currency) => currency.code === 'GBP')).toBe(true);
     } finally {
       testDb.cleanup();
@@ -138,6 +139,66 @@ describe('CurrencyService settings operations', () => {
       service.deactivate('USD');
       expect(() => service.remove('AFN')).toThrowError(/LAST_ACTIVE_CURRENCY/);
       expect(service.listActive()).toHaveLength(1);
+    } finally {
+      testDb.cleanup();
+    }
+  });
+
+  it('stores display names and seeds EUR denominations', () => {
+    const testDb = createTestDatabase();
+    try {
+      applyProjectMigrations(testDb.db, testDb.logger);
+      const service = new CurrencyService(testDb.db);
+      const afn = service.listAll().find((currency) => currency.code === 'AFN');
+      expect(afn?.displayName).toBe('Afghan Afghani');
+      const eur = service.listDenominations('EUR');
+      expect(eur.map((item) => item.value)).toEqual([
+        '100',
+        '50',
+        '20',
+        '10',
+        '5',
+        '2',
+        '1',
+        '0.50',
+        '0.20',
+        '0.10',
+        '0.05',
+        '0.02',
+        '0.01',
+      ]);
+    } finally {
+      testDb.cleanup();
+    }
+  });
+
+  it('creates custom currencies with arbitrary denominations and blocks deleting used values', () => {
+    const testDb = createTestDatabase();
+    try {
+      applyProjectMigrations(testDb.db, testDb.logger);
+      const service = new CurrencyService(testDb.db);
+
+      const pkr = service.create({ code: 'PKR', name: 'Pakistani Rupee', symbol: '₨' });
+      expect(pkr.displayName).toBe('Pakistani Rupee');
+      const created = service.createDenomination({ currencyCode: 'PKR', value: '5000' });
+      expect(created.value).toBe('5000');
+      service.createDenomination({ currencyCode: 'PKR', value: '1000' });
+      service.createDenomination({ currencyCode: 'PKR', value: '0.50' });
+      expect(service.listDenominations('PKR')).toHaveLength(3);
+      expect(() => service.createDenomination({ currencyCode: 'PKR', value: '5000' })).toThrowError(
+        /DENOMINATION_EXISTS/,
+      );
+
+      const extra = service.createDenomination({ currencyCode: 'PKR', value: '20' });
+      service.removeDenomination(extra.id);
+      expect(service.listDenominations('PKR').some((item) => item.value === '20')).toBe(false);
+
+      const inr = service.create({ code: 'INR', name: 'Indian Rupee', symbol: '₹' });
+      expect(inr.code).toBe('INR');
+      for (const value of ['500', '200', '100', '50', '20', '10', '5', '2', '1']) {
+        service.createDenomination({ currencyCode: 'INR', value });
+      }
+      expect(service.listDenominations('INR')).toHaveLength(9);
     } finally {
       testDb.cleanup();
     }

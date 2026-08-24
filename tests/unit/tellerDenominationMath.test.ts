@@ -65,4 +65,25 @@ describe('teller denomination math', () => {
     expect(remainingPieces(10, 4)).toBe(6);
     expect(remainingAmount(3, '500')).toBe('1500.0000');
   });
+
+  it('calculates mixed currencies including fractional coins with the same engine', () => {
+    const euro = calculateDenominationTotal([
+      { denominationId: 21, unitValue: '50', quantity: 2 },
+      { denominationId: 22, unitValue: '0.50', quantity: 3 },
+      { denominationId: 23, unitValue: '0.02', quantity: 4 },
+    ]);
+    expect(euro.ok).toBe(true);
+    if (euro.ok) {
+      expect(euro.total).toBe('101.5800');
+    }
+
+    const yen = calculateDenominationTotal([
+      { denominationId: 31, unitValue: '10000', quantity: 1 },
+      { denominationId: 32, unitValue: '500', quantity: 2 },
+    ]);
+    expect(yen.ok).toBe(true);
+    if (yen.ok) {
+      expect(yen.total).toBe('11000.0000');
+    }
+  });
 });

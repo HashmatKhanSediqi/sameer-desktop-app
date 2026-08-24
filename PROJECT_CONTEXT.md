@@ -97,8 +97,10 @@ Teller **reuses this session**. No second login. `created_by` / teller identity 
 | 4 | `004_admin_company_theme_transfers.sql` | recovery columns, `company_profile`, transfer columns, theme/exchange settings |
 | 5 | `005_query_indexes.sql` | composite list/history indexes |
 | 6 | `006_customer_number_nocase.sql` | case-insensitive customer-number index |
+| 7 | `007_teller.sql` | Teller tables, types, AFN/USD denominations (do not edit after apply) |
+| 8 | `008_dynamic_currencies.sql` | `currencies.display_name`, EUR denomination seed, denomination value index |
 
-**Existing files must not be edited.** Phase 3 adds `007_teller.sql`.
+**Existing files must not be edited.** Later teller refinements add a new numbered migration (currently `008_dynamic_currencies.sql`).
 
 ---
 
@@ -451,8 +453,8 @@ Opening + Cash In − Cash Out = Closing
 - Use `decimal.js` (precision 40, ROUND_HALF_UP) — same as customer accounting `money.ts`.
 - Never use JavaScript `number` for amount arithmetic.
 - Store amounts as TEXT; store piece counts as INTEGER.
-- AFN and USD remain exact (integer notes in this phase; TEXT still allows future fractional coins).
-- Do not mix AFN and USD in a single total.
+- AFN, USD, and any later currency remain exact TEXT decimals. Fractional coins (for example EUR 0.50) are supported.
+- Do not mix currencies in a single total. Each currency has its own till, tally, long book, and reconciliation.
 
 ```
 Calculated amount = Σ (unit_value × quantity)
@@ -514,7 +516,7 @@ Version: bump to **1.1.0** (backward-compatible feature + schema addition). Defa
 
 ## UI / reporting notes
 
-Teller UI: dashboard, Cash In, Cash Out (source/destination: customer or Head Teller), Tally, Long Book, paginated search/history, session open/close, module switcher.
+Teller UI: sticky top summary (session, currency switcher, opening / cash in / cash out / current balance / physical cash / difference, transaction counts, Cash In / Cash Out actions), cash-desk workspace, Tally, Long Book, paginated history, session open/close, module switcher. Currency and denomination CRUD lives in Settings.
 
 Reports architecture: query helpers (dashboard, tally, long book, filtered history) are designed so daily AFN/USD/Cash In/Cash Out/Tally/Long Book/reconciliation reports can be added later without restructuring tables. This phase ships interactive views of those datasets rather than every PDF template.
 
@@ -525,3 +527,73 @@ Reports architecture: query helpers (dashboard, tally, long book, filtered histo
 The workbook `1405-05-18.xls` is the business-logic reference. Broken Excel artifacts such as `#REF!` are not copied. Intended concepts preserved:
 
 Deposit, Withdrawal/Paid, Cash Received From Head Teller, Cash In/Out, denomination counting, amount check, totals, remaining pieces/amount, Tally, opening, running balance, total received/paid, closing, Long Book, AFN, USD.
+
+---
+
+## Excel Parity Audit
+
+Fresh inspection of `1405-05-18.xls` (authoritative Teller workbook) against FMT 1.1.0 after the dynamic-currency refinement. The UI is not a spreadsheet clone; accounting behavior is.
+
+### Workbook surfaces discovered
+
+| Excel sheet / area | Intended business rule | FMT location | Status |
+|---|---|---|---|
+| `"AFN "` Deposit/Withdrawal Final Sheet | Per-line `Σ(qty × denomination)`; Check `IF(amount = calculated, "OK", "NO")`; deposit/withdraw TRS counts; H.T. and ICBA columns | `TellerService.createTransaction`, `denominationMath.ts`, cash-desk form | **Corrected / stricter** — FMT rejects mismatch instead of saving a `"NO"` row |
+| `" USD"` | Same model, USD denominations 100/50/20/10/5/1 | Same engine, USD-seeded `denominations` | **Correct** — currency-agnostic Σ |
+| `"tellay "` Tally | Remaining pieces = received − paid; remaining amount = remaining × value; total cash = Σ remaining amounts | `getTally`, `remainingPieces` / `remainingAmount` | **Correct** |
+| `"AFN-L-B"` / `"USD-L-B"` Long Book | Opening + received − paid = closing; running = previous ± movement; date, reference, party | `getLongBook` (SQL-paginated) | **Correct** (see `#REF!` notes) |
+| Opening (`OP`) | Snapshot of till at session open; not a second inventory increment | `openSession` + `teller_session_opening_denominations` + `OPENING_BALANCE` audit row | **Correct** |
+| Head Teller (H.T.) | Distinct from customer deposit/withdraw; still moves cash, tally, long book, recon | `HEAD_TELLER_IN` / `HEAD_TELLER_OUT` | **Correct** |
+| ICBA / internal cash | Distinct correspondent/internal columns | `INTERNAL_TRANSFER_IN` / `INTERNAL_TRANSFER_OUT` in party selector | **Added to cash-desk UX** |
+| Transaction counts | Count committed deposit TRS, withdraw TRS, H.T. movements; ignore failed rows | Session totals + type counts; writes only persist `validation_status = OK` | **Correct** |
+| Reconciliation | Expected vs physical vs difference | Dashboard summary + `getReconciliation` | **Correct** — discrepancy is shown, not hidden |
+| Negative piece counts in Excel | Some rows used negative qty for change-making | FMT forbids negative qty and denomination-level shortage | **Intentional** — do not copy Excel’s negative-qty workaround |
+| Hard-coded AFN/USD only | Excel has two live currency sheets | Normalized `currencies` → `denominations` → `teller_transaction_denominations` | **Extended** — unlimited currencies |
+
+### `#REF!` and other Excel defects not reproduced
+
+- Long Book sheets contain broken references to a deleted `'Long BooK  Paid'` (and similar) range. FMT does **not** store or display `#REF!`.
+- Intended equivalent: one chronological Long Book per currency with opening row + IN as Received + OUT as Paid and a derived closing balance.
+- Excel allowed `"NO"` (amount ≠ denomination total) to remain on the sheet. FMT aborts with `TELLER_AMOUNT_MISMATCH`.
+- Excel sometimes recorded negative piece counts. FMT keeps non-negative integers and rejects Cash Out that would make any denomination negative, even if another denomination’s total would cover the amount.
+
+### Calculations confirmed
+
+```
+Transaction total = Σ(denomination value × quantity)   // any currency
+Tally remaining pieces = received pieces − paid pieces
+Tally remaining amount = remaining pieces × denomination value
+Physical cash = Σ(remaining amount)                    // that currency only
+Long Book closing = opening + total received − total paid
+Running = previous ± this movement
+Reconciliation difference = physical − expected
+```
+
+A USD (or EUR, PKR, …) movement never changes another currency’s inventory.
+
+### Dynamic currency architecture
+
+- `currencies.display_name` plus existing code/symbol/active flag (migration `008_dynamic_currencies.sql`).
+- Denominations stay in `denominations` (value TEXT, not `afn_1000` columns). Historical rows keep `denomination_id`.
+- Settings: create currency (name, code, symbol) and add/deactivate/delete denominations. In-use denominations cannot be hard-deleted (`DENOMINATION_IN_USE`); deactivate instead. Currencies with history stay as inactive records (`CURRENCY_IN_USE`).
+- Seeded AFN/USD data is preserved. EUR now has a standard note/coin ladder so it is usable immediately.
+- Core math has no `if (currency === 'AFN')` branches.
+
+### UX changes (this pass)
+
+- Critical session / currency / opening / cash in / cash out / current balance / physical cash / difference / counts / last movement sit in a **top summary bar** (does not scroll away with the working table).
+- Prominent **+ Cash In** / **− Cash Out** on that bar; Head Teller and Internal/ICBA are first-class party choices on the cash desk.
+- Currency switcher drives denominations, tally, long book, history, and the summary for the selected currency only.
+- Live denomination grid: calculated total, amount verified / mismatch with entered vs calculated vs difference; save disabled on mismatch.
+- Settings currency manager for unlimited currencies and per-currency denominations.
+- History/long book remain paginated (default 50); dashboard totals read session aggregates, not the full ledger.
+
+### Tests added or extended
+
+- Excel-style Σ for AFN, USD, EUR fractional coins, and a large-unit currency.
+- Custom PKR (+ EUR) Cash In/Out, isolated tally/long book, Head Teller and internal counts, reconciled / surplus / shortage difference.
+- Currency display names, EUR seed ladder, arbitrary denomination create/delete, `DENOMINATION_IN_USE`.
+- Migration 8 (`display_name`, EUR 13 denominations).
+- IPC channels for denomination CRUD.
+
+Do not remove these rules in later work: mismatch reject, denomination-aware negative till, opening snapshot vs inventory, Head Teller ≠ customer, per-currency isolation, active/inactive rather than destroying history.

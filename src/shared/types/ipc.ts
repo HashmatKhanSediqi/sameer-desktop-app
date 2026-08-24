@@ -12,7 +12,12 @@ import type {
   SearchCustomerInput,
   UpdateCustomerInput,
 } from './customer';
-import type { CreateCurrencyInput, Currency } from './currency';
+import type {
+  CreateCurrencyInput,
+  CreateDenominationInput,
+  Currency,
+  CurrencyDenomination,
+} from './currency';
 import type { AppSettings, SettingsUpdateInput } from './settings';
 import type { GeneratedReport, ReportGenerateInput, ReportProgress } from './report';
 import type { ImportCommitData, ImportParseData, ParsedCustomer, ParsedTransaction } from './import';
@@ -88,6 +93,10 @@ export type IpcErrorCode =
   | 'UPDATE_BACKUP_FAILED'
   | 'UPDATE_INVALID_VERSION'
   | 'CURRENCY_IN_USE'
+  | 'CURRENCY_NAME_INVALID'
+  | 'DENOMINATION_EXISTS'
+  | 'DENOMINATION_VALUE_INVALID'
+  | 'DENOMINATION_IN_USE'
   | 'TELLER_SESSION_REQUIRED'
   | 'TELLER_SESSION_ALREADY_OPEN'
   | 'TELLER_SESSION_NOT_FOUND'
@@ -293,6 +302,41 @@ export interface CurrenciesDeleteSuccessResponse {
 }
 
 export type CurrenciesDeleteResult = CurrenciesDeleteSuccessResponse | IpcErrorResponse;
+
+export type CurrenciesDenominationsListRequest = AuthenticatedRequest & {
+  currencyCode: string;
+  includeInactive?: boolean;
+};
+export interface CurrenciesDenominationsListSuccessResponse {
+  ok: true;
+  data: { denominations: CurrencyDenomination[] };
+}
+export type CurrenciesDenominationsListResult =
+  | CurrenciesDenominationsListSuccessResponse
+  | IpcErrorResponse;
+
+export type CurrenciesDenominationsCreateRequest = AuthenticatedRequest & CreateDenominationInput;
+export interface CurrenciesDenominationsCreateSuccessResponse {
+  ok: true;
+  data: { denomination: CurrencyDenomination };
+}
+export type CurrenciesDenominationsCreateResult =
+  | CurrenciesDenominationsCreateSuccessResponse
+  | IpcErrorResponse;
+
+export type CurrenciesDenominationsDeactivateRequest = AuthenticatedRequest & { id: number };
+export type CurrenciesDenominationsReactivateRequest = AuthenticatedRequest & { id: number };
+export type CurrenciesDenominationsDeleteRequest = AuthenticatedRequest & { id: number };
+export type CurrenciesDenominationsMutateResult =
+  | CurrenciesDenominationsCreateSuccessResponse
+  | IpcErrorResponse;
+export interface CurrenciesDenominationsDeleteSuccessResponse {
+  ok: true;
+  data: { id: number; deleted: true };
+}
+export type CurrenciesDenominationsDeleteResult =
+  | CurrenciesDenominationsDeleteSuccessResponse
+  | IpcErrorResponse;
 
 export type TransactionsListRequest = AuthenticatedRequest & {
   customerId: number;
@@ -649,6 +693,11 @@ export const IPC_CHANNELS = {
   CURRENCIES_DEACTIVATE: 'currencies:deactivate',
   CURRENCIES_REACTIVATE: 'currencies:reactivate',
   CURRENCIES_DELETE: 'currencies:delete',
+  CURRENCIES_DENOMINATIONS_LIST: 'currencies:denominations.list',
+  CURRENCIES_DENOMINATIONS_CREATE: 'currencies:denominations.create',
+  CURRENCIES_DENOMINATIONS_DEACTIVATE: 'currencies:denominations.deactivate',
+  CURRENCIES_DENOMINATIONS_REACTIVATE: 'currencies:denominations.reactivate',
+  CURRENCIES_DENOMINATIONS_DELETE: 'currencies:denominations.delete',
   TRANSACTIONS_CREATE: 'transactions:create',
   TRANSACTIONS_UPDATE: 'transactions:update',
   TRANSACTIONS_DELETE: 'transactions:delete',

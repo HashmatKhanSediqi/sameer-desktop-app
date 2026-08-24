@@ -1,8 +1,11 @@
 {
   "nav": {
     "dashboard": "Dashboard",
+    "workspace": "Cash desk",
     "cashIn": "Cash In",
     "cashOut": "Cash Out",
+    "cashInAction": "+ Cash In",
+    "cashOutAction": "− Cash Out",
     "tally": "Tally",
     "longBook": "Long Book",
     "history": "History"
@@ -28,20 +31,28 @@
     "title": "Teller dashboard",
     "currentSession": "Current session",
     "currentCurrency": "Currency",
+    "opening": "Opening balance",
     "cashIn": "Cash In",
     "cashOut": "Cash Out",
     "currentBalance": "Current balance",
     "transactionCount": "Transactions",
-    "physicalTally": "Physical tally",
+    "cashInCount": "In",
+    "cashOutCount": "Out",
+    "headTellerIn": "From Head Teller",
+    "headTellerOut": "To Head Teller",
+    "physicalTally": "Physical cash",
     "expected": "Expected cash",
     "difference": "Difference",
-    "matched": "Balanced",
-    "unmatched": "Discrepancy"
+    "matched": "Reconciled",
+    "unmatched": "Discrepancy",
+    "lastTransaction": "Last transaction",
+    "noneLast": "None yet"
   },
   "form": {
     "party": "Source / destination",
     "partyCustomer": "Customer",
     "partyHeadTeller": "Head Teller",
+    "partyInternal": "Internal / ICBA",
     "customer": "Customer",
     "customerSearch": "Search customer",
     "currency": "Currency",
@@ -50,6 +61,10 @@
     "value": "Value",
     "lineTotal": "Amount",
     "calculated": "Calculated total",
+    "enteredAmount": "Entered amount",
+    "amountVerified": "Amount verified",
+    "amountMismatch": "Amount mismatch",
+    "difference": "Difference",
     "available": "Available",
     "note": "Note",
     "saveIn": "Save Cash In",
@@ -58,7 +73,8 @@
     "savedOut": "Cash Out saved.",
     "noDenoms": "No denominations are configured for this currency.",
     "selectCustomer": "Select a customer",
-    "headTellerHint": "Cash movement with Head Teller — not a customer account transaction."
+    "headTellerHint": "Cash movement with Head Teller — not a customer account transaction.",
+    "internalHint": "Internal or correspondent (ICBA) cash movement — kept separate from customer transactions."
   },
   "tally": {
     "title": "Tally",

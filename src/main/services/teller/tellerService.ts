@@ -16,6 +16,7 @@ import type {
   TellerCurrencyDashboard,
   TellerDashboard,
   TellerDenomination,
+  TellerLastTransaction,
   TellerLongBook,
   TellerLongBookRow,
   TellerReconciliation,
@@ -45,7 +46,6 @@ import {
 } from './tellerValidation';
 
 const DEFAULT_PAGE_SIZE = 50;
-const DASHBOARD_CURRENCIES = ['AFN', 'USD'] as const;
 
 export class TellerService {
   private readonly repo: TellerRepository;
@@ -147,6 +147,9 @@ export class TellerService {
         ]);
         if (!calc.ok) {
           throw new AppError('TELLER_DENOMINATION_INVALID', calc.error);
+        }
+        if (quantity <= 0) {
+          continue;
         }
         const lineTotal = calc.lines[0]?.lineTotal ?? ZERO_BALANCE;
         this.repo.insertOpeningLine({
@@ -261,7 +264,7 @@ export class TellerService {
     }
 
     const currencyCode = input.currencyCode.trim().toUpperCase();
-    if (!this.repo.currencyActive(currencyCode)) {
+    if (!this.repo.currencyExists(currencyCode) || !this.repo.currencyActive(currencyCode)) {
       throw new AppError('INVALID_CURRENCY', 'INVALID_CURRENCY');
     }
 
@@ -450,15 +453,24 @@ export class TellerService {
   getDashboard(): TellerDashboard {
     const companyId = this.companyId();
     const session = this.repo.getOpenSession(companyId) ?? null;
-    const currencies = DASHBOARD_CURRENCIES.map((code) => this.buildCurrencyDashboard(companyId, session, code));
+    const codes = this.repo.listDashboardCurrencies(companyId, session?.id ?? null);
+    const currencies = codes.map((row) =>
+      this.buildCurrencyDashboard(companyId, session, row.code, {
+        displayName: (row.display_name ?? '').trim() || row.code,
+        symbol: row.symbol ?? '',
+      }),
+    );
     return { session, currencies };
   }
 
   getTally(sessionId: number | undefined, currencyCode: string): TellerTally {
     const companyId = this.companyId();
     const code = currencyCode.trim().toUpperCase();
+    if (!this.repo.currencyExists(code)) {
+      throw new AppError('INVALID_CURRENCY', 'INVALID_CURRENCY');
+    }
     const session = this.requireReadableSession(companyId, sessionId);
-    const denoms = this.repo.listDenominations(code);
+    const denoms = this.repo.listDenominationsForTally(code);
     const opening = this.repo.listOpeningLines(companyId, session.id);
     const movements = this.repo.listSessionInOutDenoms(companyId, session.id);
     const receivedExtra = new Map<number, number>();
@@ -494,9 +506,18 @@ export class TellerService {
   getLongBook(sessionId: number | undefined, currencyCode: string, page?: number, pageSize?: number): TellerLongBook {
     const companyId = this.companyId();
     const code = currencyCode.trim().toUpperCase();
+    if (!this.repo.currencyExists(code)) {
+      throw new AppError('INVALID_CURRENCY', 'INVALID_CURRENCY');
+    }
     const session = this.requireReadableSession(companyId, sessionId);
     const openingBalance = this.openingAmount(companyId, session.id, code);
-    const movements = this.repo.listLongBookMovements(companyId, session.id, code);
+    const movementCount = this.repo.countLongBookMovements(companyId, session.id, code);
+    const totals = this.repo
+      .getSessionTotals(companyId, session.id)
+      .find((row) => row.currency_code === code);
+    const totalReceived = totals?.cash_in_amount ?? ZERO_BALANCE;
+    const totalPaid = totals?.cash_out_amount ?? ZERO_BALANCE;
+    const closingBalance = subtractTellerAmounts(addTellerAmounts(openingBalance, totalReceived), totalPaid);
 
     const openingRow: TellerLongBookRow = {
       id: null,
@@ -511,32 +532,24 @@ export class TellerService {
       note: session.note,
     };
 
-    const movementRows: TellerLongBookRow[] = movements.map((row) => ({
-      id: row.id,
-      kind: row.direction === 'IN' ? 'RECEIVED' : 'PAID',
-      transactionNumber: row.transaction_number,
-      typeCode: row.type_code,
-      transactionDate: row.transaction_date,
-      customerName: row.customer_name,
-      received: row.direction === 'IN' ? row.amount : ZERO_BALANCE,
-      paid: row.direction === 'OUT' ? row.amount : ZERO_BALANCE,
-      runningBalance: row.running_balance,
-      note: row.note,
-    }));
-
-    const allRows = [openingRow, ...movementRows];
-    const totalReceived = movements
-      .filter((row) => row.direction === 'IN')
-      .reduce((sum, row) => addTellerAmounts(sum, row.amount), ZERO_BALANCE);
-    const totalPaid = movements
-      .filter((row) => row.direction === 'OUT')
-      .reduce((sum, row) => addTellerAmounts(sum, row.amount), ZERO_BALANCE);
-    const closingBalance = subtractTellerAmounts(addTellerAmounts(openingBalance, totalReceived), totalPaid);
-
-    const totalCount = allRows.length;
+    const totalCount = movementCount + 1;
     const pagination = resolvePagination(page, pageSize, totalCount, DEFAULT_PAGE_SIZE);
     const start = (pagination.page - 1) * pagination.pageSize;
-    const rows = allRows.slice(start, start + pagination.pageSize);
+    let rows: TellerLongBookRow[] = [];
+    if (start === 0) {
+      const limit = Math.max(pagination.pageSize - 1, 0);
+      const movements = this.repo.listLongBookMovements(companyId, session.id, code, limit, 0);
+      rows = [openingRow, ...movements.map((row) => this.toLongBookRow(row))];
+    } else {
+      const movements = this.repo.listLongBookMovements(
+        companyId,
+        session.id,
+        code,
+        pagination.pageSize,
+        start - 1,
+      );
+      rows = movements.map((row) => this.toLongBookRow(row));
+    }
 
     return {
       sessionId: session.id,
@@ -559,10 +572,14 @@ export class TellerService {
       ? this.requireReadableSession(companyId, sessionId)
       : this.repo.getOpenSession(companyId) ?? null;
 
-    const rows = DASHBOARD_CURRENCIES.map((code) => {
-      const dash = this.buildCurrencyDashboard(companyId, session, code);
+    const codes = this.repo.listDashboardCurrencies(companyId, session?.id ?? null);
+    const rows = codes.map((item) => {
+      const dash = this.buildCurrencyDashboard(companyId, session, item.code, {
+        displayName: (item.display_name ?? '').trim() || item.code,
+        symbol: item.symbol ?? '',
+      });
       return {
-        currencyCode: code,
+        currencyCode: item.code,
         expectedCash: dash.expectedCash,
         physicalTally: dash.physicalTally,
         difference: dash.difference,
@@ -595,7 +612,7 @@ export class TellerService {
   }
 
   private physicalAmount(companyId: number, currencyCode: string): string {
-    const positions = this.repo.listPositions(companyId).filter((row) => row.currency_code === currencyCode);
+    const positions = this.repo.listPositions(companyId, currencyCode);
     return positions.reduce(
       (sum, row) => addTellerAmounts(sum, remainingAmount(row.quantity, row.value)),
       ZERO_BALANCE,
@@ -606,19 +623,28 @@ export class TellerService {
     companyId: number,
     session: TellerSession | null,
     currencyCode: string,
+    meta?: { displayName: string; symbol: string },
   ): TellerCurrencyDashboard {
+    const resolvedMeta = meta ?? this.repo.getCurrencyMeta(currencyCode);
     const physicalTally = this.physicalAmount(companyId, currencyCode);
     if (!session) {
       return {
         currencyCode,
+        displayName: resolvedMeta.displayName,
+        symbol: resolvedMeta.symbol,
         openingBalance: ZERO_BALANCE,
         cashIn: ZERO_BALANCE,
         cashOut: ZERO_BALANCE,
         currentBalance: physicalTally,
+        cashInCount: 0,
+        cashOutCount: 0,
+        headTellerInCount: 0,
+        headTellerOutCount: 0,
         transactionCount: 0,
         physicalTally,
         expectedCash: physicalTally,
         difference: ZERO_BALANCE,
+        lastTransaction: null,
       };
     }
 
@@ -630,17 +656,51 @@ export class TellerService {
     const cashOut = totals?.cash_out_amount ?? ZERO_BALANCE;
     const expectedCash = subtractTellerAmounts(addTellerAmounts(openingBalance, cashIn), cashOut);
     const difference = subtractTellerAmounts(physicalTally, expectedCash);
+    const typeCounts = this.repo.listSessionTypeCounts(companyId, session.id, currencyCode);
+    const countByType = new Map(typeCounts.map((row) => [row.type_code, row.count]));
+    const last = this.repo.getLastMovement(companyId, session.id, currencyCode);
+    const lastTransaction: TellerLastTransaction | null = last
+      ? {
+          transactionNumber: last.transaction_number,
+          typeCode: last.type_code,
+          direction: last.direction,
+          amount: last.amount,
+          transactionDate: last.transaction_date,
+        }
+      : null;
 
     return {
       currencyCode,
+      displayName: resolvedMeta.displayName,
+      symbol: resolvedMeta.symbol,
       openingBalance,
       cashIn,
       cashOut,
       currentBalance: expectedCash,
+      cashInCount: totals?.cash_in_count ?? 0,
+      cashOutCount: totals?.cash_out_count ?? 0,
+      headTellerInCount: countByType.get('HEAD_TELLER_IN') ?? 0,
+      headTellerOutCount: countByType.get('HEAD_TELLER_OUT') ?? 0,
       transactionCount: (totals?.cash_in_count ?? 0) + (totals?.cash_out_count ?? 0),
       physicalTally,
       expectedCash,
       difference,
+      lastTransaction,
+    };
+  }
+
+  private toLongBookRow(row: TellerTransactionRecord): TellerLongBookRow {
+    return {
+      id: row.id,
+      kind: row.direction === 'IN' ? 'RECEIVED' : 'PAID',
+      transactionNumber: row.transaction_number,
+      typeCode: row.type_code,
+      transactionDate: row.transaction_date,
+      customerName: row.customer_name,
+      received: row.direction === 'IN' ? row.amount : ZERO_BALANCE,
+      paid: row.direction === 'OUT' ? row.amount : ZERO_BALANCE,
+      runningBalance: row.running_balance,
+      note: row.note,
     };
   }
 

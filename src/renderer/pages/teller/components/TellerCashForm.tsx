@@ -1,28 +1,39 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { calculateDenominationTotal } from '@shared/teller/denominationMath';
+import { amountsEqual, calculateDenominationTotal } from '@shared/teller/denominationMath';
+import type { Currency } from '@shared/types/currency';
 import type { TellerDenomination, TellerTransactionTypeCode } from '@shared/types/teller';
 import type { CustomerListItem } from '@shared/types/customer';
 import { useAuth } from '../../../context/AuthContext';
 import { DenominationGrid, quantitiesFromFields } from './DenominationGrid';
+import { TellerCurrencySelect } from './TellerCurrencySelect';
 
-type PartyKind = 'CUSTOMER' | 'HEAD_TELLER';
+type PartyKind = 'CUSTOMER' | 'HEAD_TELLER' | 'INTERNAL';
 
 interface TellerCashFormProps {
   mode: 'in' | 'out';
+  currencies: Currency[];
+  currencyCode: string;
+  onCurrencyChange: (code: string) => void;
   onSaved: () => void;
 }
 
-export function TellerCashForm({ mode, onSaved }: TellerCashFormProps): JSX.Element {
+export function TellerCashForm({
+  mode,
+  currencies,
+  currencyCode,
+  onCurrencyChange,
+  onSaved,
+}: TellerCashFormProps): JSX.Element {
   const { t } = useTranslation('teller');
   const { t: tCommon } = useTranslation('common');
   const { t: tErrors } = useTranslation('errors');
   const { sessionId } = useAuth();
   const [party, setParty] = useState<PartyKind>('CUSTOMER');
-  const [currencyCode, setCurrencyCode] = useState('AFN');
   const [denominations, setDenominations] = useState<TellerDenomination[]>([]);
   const [quantities, setQuantities] = useState<Record<number, string>>({});
   const [available, setAvailable] = useState<Record<number, number>>({});
+  const [declaredAmount, setDeclaredAmount] = useState('');
   const [customerQuery, setCustomerQuery] = useState('');
   const [customerResults, setCustomerResults] = useState<CustomerListItem[]>([]);
   const [customer, setCustomer] = useState<CustomerListItem | null>(null);
@@ -44,13 +55,14 @@ export function TellerCashForm({ mode, onSaved }: TellerCashFormProps): JSX.Elem
   }, [sessionId]);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!sessionId || !currencyCode) {
       return;
     }
     void window.api.teller.listDenominations({ sessionId, currencyCode }).then((result) => {
       if (result.ok) {
         setDenominations(result.data.denominations);
         setQuantities({});
+        setDeclaredAmount('');
       }
     });
     if (mode === 'out') {
@@ -92,6 +104,11 @@ export function TellerCashForm({ mode, onSaved }: TellerCashFormProps): JSX.Elem
     return lines ? calculateDenominationTotal(lines) : null;
   }, [denominations, quantities]);
 
+  const amountMatches =
+    declaredAmount.trim().length === 0
+      ? calc?.ok === true
+      : calc?.ok === true && amountsEqual(declaredAmount.trim(), calc.total);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (!sessionId || isSubmitting) {
@@ -110,15 +127,28 @@ export function TellerCashForm({ mode, onSaved }: TellerCashFormProps): JSX.Elem
       setError(tErrors(computed.error));
       return;
     }
+    if (declaredAmount.trim().length > 0 && !amountsEqual(declaredAmount.trim(), computed.total)) {
+      setError(tErrors('TELLER_AMOUNT_MISMATCH'));
+      return;
+    }
+
+    if (party === 'CUSTOMER' && !customer) {
+      setError(t('form.selectCustomer'));
+      return;
+    }
 
     const typeCode: TellerTransactionTypeCode =
       mode === 'in'
         ? party === 'CUSTOMER'
           ? 'CUSTOMER_CASH_IN'
-          : 'HEAD_TELLER_IN'
+          : party === 'HEAD_TELLER'
+            ? 'HEAD_TELLER_IN'
+            : 'INTERNAL_TRANSFER_IN'
         : party === 'CUSTOMER'
           ? 'CUSTOMER_CASH_OUT'
-          : 'HEAD_TELLER_OUT';
+          : party === 'HEAD_TELLER'
+            ? 'HEAD_TELLER_OUT'
+            : 'INTERNAL_TRANSFER_OUT';
 
     setIsSubmitting(true);
     const result = await window.api.teller.createTransaction({
@@ -126,7 +156,7 @@ export function TellerCashForm({ mode, onSaved }: TellerCashFormProps): JSX.Elem
       typeCode,
       currencyCode,
       customerId: party === 'CUSTOMER' ? customer?.id ?? null : null,
-      amount: computed.total,
+      amount: declaredAmount.trim().length > 0 ? declaredAmount.trim() : computed.total,
       quantities: lines
         .filter((line) => line.quantity > 0)
         .map((line) => ({ denominationId: line.denominationId, quantity: line.quantity })),
@@ -141,6 +171,7 @@ export function TellerCashForm({ mode, onSaved }: TellerCashFormProps): JSX.Elem
 
     setSuccess(mode === 'in' ? t('form.savedIn') : t('form.savedOut'));
     setQuantities({});
+    setDeclaredAmount('');
     setNote('');
     onSaved();
     if (mode === 'out' && sessionId) {
@@ -171,18 +202,27 @@ export function TellerCashForm({ mode, onSaved }: TellerCashFormProps): JSX.Elem
           <select value={party} onChange={(event) => setParty(event.target.value as PartyKind)}>
             <option value="CUSTOMER">{t('form.partyCustomer')}</option>
             <option value="HEAD_TELLER">{t('form.partyHeadTeller')}</option>
+            <option value="INTERNAL">{t('form.partyInternal')}</option>
           </select>
         </label>
         <label className="form-field">
           <span>{t('form.currency')}</span>
-          <select value={currencyCode} onChange={(event) => setCurrencyCode(event.target.value)}>
-            <option value="AFN">AFN</option>
-            <option value="USD">USD</option>
-          </select>
+          <TellerCurrencySelect currencies={currencies} value={currencyCode} onChange={onCurrencyChange} />
+        </label>
+        <label className="form-field">
+          <span>{t('form.enteredAmount')}</span>
+          <input
+            inputMode="decimal"
+            autoComplete="off"
+            value={declaredAmount}
+            onChange={(event) => setDeclaredAmount(event.target.value)}
+            placeholder={calc?.ok ? calc.total : ''}
+          />
         </label>
       </div>
 
       {party === 'HEAD_TELLER' ? <p className="hint-text">{t('form.headTellerHint')}</p> : null}
+      {party === 'INTERNAL' ? <p className="hint-text">{t('form.internalHint')}</p> : null}
 
       {party === 'CUSTOMER' ? (
         <div className="form-field">
@@ -233,6 +273,7 @@ export function TellerCashForm({ mode, onSaved }: TellerCashFormProps): JSX.Elem
           denominations={denominations}
           quantities={quantities}
           available={mode === 'out' ? available : undefined}
+          declaredAmount={declaredAmount.trim().length > 0 ? declaredAmount : null}
           onChange={(id, value) => setQuantities((current) => ({ ...current, [id]: value }))}
           disabled={isSubmitting}
         />
@@ -247,7 +288,7 @@ export function TellerCashForm({ mode, onSaved }: TellerCashFormProps): JSX.Elem
         <button
           type="submit"
           className={mode === 'in' ? 'button button-cash-in' : 'button button-cash-out'}
-          disabled={isSubmitting || !calc?.ok}
+          disabled={isSubmitting || !calc?.ok || !amountMatches}
         >
           {mode === 'in' ? t('form.saveIn') : t('form.saveOut')}
         </button>

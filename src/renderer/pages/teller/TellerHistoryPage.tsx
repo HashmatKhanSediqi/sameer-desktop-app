@@ -1,8 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { Currency } from '@shared/types/currency';
 import type { TellerTransactionListItem, TellerTransactionTypeCode } from '@shared/types/teller';
 import { useAuth } from '../../context/AuthContext';
 import { useLocaleFormat } from '../../hooks/useLocaleFormat';
+import { TellerCurrencySelect } from './components/TellerCurrencySelect';
 
 const TYPE_KEYS: Record<TellerTransactionTypeCode, string> = {
   CUSTOMER_CASH_IN: 'type.customerCashIn',
@@ -18,9 +20,17 @@ const TYPE_KEYS: Record<TellerTransactionTypeCode, string> = {
 
 interface TellerHistoryPageProps {
   refreshKey: number;
+  currencies: Currency[];
+  currencyCode: string;
+  onCurrencyChange: (code: string) => void;
 }
 
-export function TellerHistoryPage({ refreshKey }: TellerHistoryPageProps): JSX.Element {
+export function TellerHistoryPage({
+  refreshKey,
+  currencies,
+  currencyCode,
+  onCurrencyChange,
+}: TellerHistoryPageProps): JSX.Element {
   const { t } = useTranslation('teller');
   const { t: tErrors } = useTranslation('errors');
   const { sessionId } = useAuth();
@@ -29,7 +39,7 @@ export function TellerHistoryPage({ refreshKey }: TellerHistoryPageProps): JSX.E
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [transactionNumber, setTransactionNumber] = useState('');
-  const [currencyCode, setCurrencyCode] = useState('');
+  const [filterAllCurrencies, setFilterAllCurrencies] = useState(false);
   const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -45,7 +55,7 @@ export function TellerHistoryPage({ refreshKey }: TellerHistoryPageProps): JSX.E
         page: nextPage,
         pageSize: 50,
         transactionNumber: transactionNumber.trim() || undefined,
-        currencyCode: currencyCode || undefined,
+        currencyCode: filterAllCurrencies ? undefined : currencyCode || undefined,
         direction: direction || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
@@ -65,7 +75,7 @@ export function TellerHistoryPage({ refreshKey }: TellerHistoryPageProps): JSX.E
   useEffect(() => {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, refreshKey]);
+  }, [sessionId, refreshKey, currencyCode, filterAllCurrencies]);
 
   function handleSearch(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -84,11 +94,25 @@ export function TellerHistoryPage({ refreshKey }: TellerHistoryPageProps): JSX.E
         </label>
         <label className="form-field">
           <span>{t('form.currency')}</span>
-          <select value={currencyCode} onChange={(event) => setCurrencyCode(event.target.value)}>
-            <option value="">{t('history.all')}</option>
-            <option value="AFN">AFN</option>
-            <option value="USD">USD</option>
-          </select>
+          <div className="teller-history-currency">
+            <TellerCurrencySelect
+              currencies={currencies}
+              value={currencyCode}
+              onChange={(code) => {
+                setFilterAllCurrencies(false);
+                onCurrencyChange(code);
+              }}
+              disabled={filterAllCurrencies}
+            />
+            <label className="teller-inline-check">
+              <input
+                type="checkbox"
+                checked={filterAllCurrencies}
+                onChange={(event) => setFilterAllCurrencies(event.target.checked)}
+              />
+              {t('history.all')}
+            </label>
+          </div>
         </label>
         <label className="form-field">
           <span>{t('history.direction')}</span>
@@ -132,7 +156,14 @@ export function TellerHistoryPage({ refreshKey }: TellerHistoryPageProps): JSX.E
                 <td>{formatDateTime(row.transactionDate)}</td>
                 <td>{t(TYPE_KEYS[row.typeCode])}</td>
                 <td>{row.currencyCode}</td>
-                <td>{row.customerName ?? (row.partyKind === 'HEAD_TELLER' ? t('form.partyHeadTeller') : '—')}</td>
+                <td>
+                  {row.customerName ??
+                    (row.partyKind === 'HEAD_TELLER'
+                      ? t('form.partyHeadTeller')
+                      : row.partyKind === 'INTERNAL'
+                        ? t('form.partyInternal')
+                        : '—')}
+                </td>
                 <td className={row.direction === 'IN' ? 'numeric amount-in' : row.direction === 'OUT' ? 'numeric amount-out' : 'numeric'}>
                   {formatMoney(row.amount)}
                 </td>

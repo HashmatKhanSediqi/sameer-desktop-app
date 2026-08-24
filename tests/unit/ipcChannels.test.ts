@@ -56,6 +56,15 @@ describe('IPC channel registry', () => {
     expect(ALLOWED_IPC_CHANNELS).toContain('currencies:delete');
   });
 
+  it('registers currency denomination management channels', () => {
+    expect(ALLOWED_IPC_CHANNELS).toContain('currencies:denominations.list');
+    expect(ALLOWED_IPC_CHANNELS).toContain('currencies:denominations.create');
+    expect(ALLOWED_IPC_CHANNELS).toContain('currencies:denominations.deactivate');
+    expect(ALLOWED_IPC_CHANNELS).toContain('currencies:denominations.reactivate');
+    expect(ALLOWED_IPC_CHANNELS).toContain('currencies:denominations.delete');
+    expect(IPC_CHANNELS.CURRENCIES_DENOMINATIONS_CREATE).toBe('currencies:denominations.create');
+  });
+
   it('registers reports:generate for PDF and Excel export', () => {
     expect(ALLOWED_IPC_CHANNELS).toContain('reports:generate');
     expect(IPC_CHANNELS.REPORTS_GENERATE).toBe('reports:generate');

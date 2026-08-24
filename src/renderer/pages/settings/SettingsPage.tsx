@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AppPaths, AppStatus } from '@shared/types/ipc';
 import type { Currency } from '@shared/types/currency';
@@ -6,7 +6,6 @@ import type { AppSettings } from '@shared/types/settings';
 import { PAGINATION_PAGE_SIZE_OPTIONS } from '@shared/types/settings';
 import { LanguageSelector } from '../../components/LanguageSelector';
 import { useAuth } from '../../context/AuthContext';
-import { ConfirmDialog } from '../customers/components/ConfirmDialog';
 import { RestorePage } from '../backup/RestorePage';
 import type { BackupCreateData, BackupProgress } from '@shared/types/backup';
 import {
@@ -16,6 +15,7 @@ import {
   SettingsExchangeSection,
 } from './SettingsPhase3Sections';
 import { SettingsUpdateSection } from './SettingsUpdateSection';
+import { CurrencyManagementSection } from './CurrencyManagementSection';
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -35,14 +35,6 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingPagination, setIsSavingPagination] = useState(false);
-  const [code, setCode] = useState('');
-  const [symbol, setSymbol] = useState('');
-  const [isAddingCurrency, setIsAddingCurrency] = useState(false);
-  const [pendingDeactivate, setPendingDeactivate] = useState<Currency | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<Currency | null>(null);
-  const [isDeactivating, setIsDeactivating] = useState(false);
-  const [isReactivating, setIsReactivating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showRestore, setShowRestore] = useState(false);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
@@ -109,18 +101,6 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
     return () => window.clearTimeout(timer);
   }, [createdBackup]);
 
-  useEffect(() => {
-    return window.api.backup.onProgress((next) => setBackupProgress(next));
-  }, []);
-
-  useEffect(() => {
-    if (!createdBackup) {
-      return;
-    }
-    const timer = window.setTimeout(() => setCreatedBackup(null), 8000);
-    return () => window.clearTimeout(timer);
-  }, [createdBackup]);
-
   async function savePagination(next: { paginationEnabled?: boolean; paginationPageSize?: number }): Promise<void> {
     if (!sessionId || isSavingPagination) {
       return;
@@ -138,105 +118,6 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
       setSuccess(t('saved'));
     } finally {
       setIsSavingPagination(false);
-    }
-  }
-
-  async function handleAddCurrency(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (!sessionId || isAddingCurrency) {
-      return;
-    }
-
-    setIsAddingCurrency(true);
-    setError(null);
-    try {
-      const result = await window.api.currencies.create({
-        sessionId,
-        code,
-        symbol: symbol.trim().length > 0 ? symbol : undefined,
-      });
-      if (!result.ok) {
-        setError(mapSettingsError(tErrors, result.errorCode, result.message));
-        return;
-      }
-      setCode('');
-      setSymbol('');
-      setSuccess(t('currencyAdded'));
-      await load();
-    } finally {
-      setIsAddingCurrency(false);
-    }
-  }
-
-  async function confirmDeactivate(): Promise<void> {
-    if (!sessionId || !pendingDeactivate) {
-      return;
-    }
-
-    setIsDeactivating(true);
-    setError(null);
-    try {
-      const result = await window.api.currencies.deactivate({
-        sessionId,
-        code: pendingDeactivate.code,
-      });
-      if (!result.ok) {
-        setError(mapSettingsError(tErrors, result.errorCode, result.message));
-        return;
-      }
-      setPendingDeactivate(null);
-      setSuccess(t('currencyDeactivated'));
-      await load();
-    } finally {
-      setIsDeactivating(false);
-    }
-  }
-
-  async function handleReactivate(currency: Currency): Promise<void> {
-    if (!sessionId || isReactivating) {
-      return;
-    }
-
-    setIsReactivating(true);
-    setError(null);
-    try {
-      const result = await window.api.currencies.reactivate({
-        sessionId,
-        code: currency.code,
-      });
-      if (!result.ok) {
-        setError(mapSettingsError(tErrors, result.errorCode, result.message));
-        return;
-      }
-      setSuccess(t('currencyReactivated'));
-      await load();
-    } finally {
-      setIsReactivating(false);
-    }
-  }
-
-  async function confirmDelete(): Promise<void> {
-    if (!sessionId || !pendingDelete) {
-      return;
-    }
-
-    setIsDeleting(true);
-    setError(null);
-    try {
-      const result = await window.api.currencies.delete({
-        sessionId,
-        code: pendingDelete.code,
-      });
-      if (!result.ok) {
-        setError(mapSettingsError(tErrors, result.errorCode, result.message));
-        setPendingDelete(null);
-        return;
-      }
-      setPendingDelete(null);
-      setSuccess(t('currencyDeleted'));
-      await load();
-    } finally {
-      setIsDeleting(false);
     }
   }
 
@@ -357,91 +238,13 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
         </div>
       </section>
 
-      <section className="card">
-        <h2>{t('currencies')}</h2>
-        <div className="table-wrap">
-          <table className="customer-table">
-            <thead>
-              <tr>
-                <th>{t('currencyCode')}</th>
-                <th>{t('currencyName')}</th>
-                <th>{t('currencySymbol')}</th>
-                <th>{t('currencyStatus')}</th>
-                <th className="col-actions">{t('actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currencies.map((currency) => (
-                <tr key={currency.code}>
-                  <td data-label={t('currencyCode')}>{currency.code}</td>
-                  <td data-label={t('currencyName')}>{tCommon(currency.nameKey, { defaultValue: currency.code })}</td>
-                  <td data-label={t('currencySymbol')}>{currency.symbol || tCommon('emptyValue')}</td>
-                  <td data-label={t('currencyStatus')}>{currency.isActive ? t('active') : t('inactive')}</td>
-                  <td className="col-actions" data-label={t('actions')}>
-                    {currency.isActive ? (
-                      <button
-                        type="button"
-                        className="button button-danger button-compact"
-                        onClick={() => setPendingDeactivate(currency)}
-                      >
-                        {t('deactivateCurrency')}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="button button-secondary button-compact"
-                        disabled={isReactivating}
-                        onClick={() => void handleReactivate(currency)}
-                      >
-                        {t('reactivateCurrency')}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="button button-danger button-compact"
-                      onClick={() => setPendingDelete(currency)}
-                    >
-                      {t('deleteCurrency')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <form className="currency-add-form" onSubmit={(event) => void handleAddCurrency(event)} autoComplete="off">
-          <h3>{t('addCurrency')}</h3>
-          <div className="action-bar">
-            <div className="form-field">
-              <label htmlFor="new-currency-code">{t('currencyCode')}</label>
-              <input
-                id="new-currency-code"
-                value={code}
-                maxLength={5}
-                onChange={(event) => setCode(event.target.value.toUpperCase())}
-                disabled={isAddingCurrency}
-                required
-              />
-            </div>
-            <div className="form-field">
-              <label htmlFor="new-currency-symbol">
-                {t('currencySymbol')} <span className="optional-label">({t('optional')})</span>
-              </label>
-              <input
-                id="new-currency-symbol"
-                value={symbol}
-                maxLength={8}
-                onChange={(event) => setSymbol(event.target.value)}
-                disabled={isAddingCurrency}
-              />
-            </div>
-            <button type="submit" className="button button-primary" disabled={isAddingCurrency}>
-              {t('addCurrency')}
-            </button>
-          </div>
-        </form>
-      </section>
+      <CurrencyManagementSection
+        currencies={currencies}
+        onReload={load}
+        onError={setError}
+        onSuccess={setSuccess}
+        mapError={(errorCode, message) => mapSettingsError(tErrors, errorCode, message)}
+      />
 
       <section className="card">
         <h2>{t('account')}</h2>
@@ -551,39 +354,6 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
         </button>
         {sessionId ? <SettingsUpdateSection sessionId={sessionId} /> : null}
       </section>
-
-      {pendingDeactivate ? (
-        <ConfirmDialog
-          title={t('deactivateTitle')}
-          message={t('deactivateConfirm', { code: pendingDeactivate.code })}
-          confirmLabel={t('deactivateCurrency')}
-          isBusy={isDeactivating}
-          onCancel={() => setPendingDeactivate(null)}
-          onConfirm={() => void confirmDeactivate()}
-        />
-      ) : null}
-
-      {pendingDelete ? (
-        <ConfirmDialog
-          title={t('deleteTitle')}
-          message={
-            pendingDelete.hasTransactions
-              ? t('deleteBlocked', { code: pendingDelete.code })
-              : t('deleteConfirm', { code: pendingDelete.code })
-          }
-          confirmLabel={pendingDelete.hasTransactions ? t('deactivateCurrency') : t('deleteCurrency')}
-          isBusy={isDeleting}
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={() => {
-            if (pendingDelete.hasTransactions) {
-              setPendingDelete(null);
-              setPendingDeactivate(pendingDelete);
-              return;
-            }
-            void confirmDelete();
-          }}
-        />
-      ) : null}
     </section>
   );
 }

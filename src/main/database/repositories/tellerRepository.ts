@@ -14,6 +14,7 @@ export interface TellerSessionRecord {
   id: number;
   company_id: number;
   teller_user_id: number;
+  teller_username?: string | null;
   opened_at: string;
   closed_at: string | null;
   status: TellerSessionStatus;
@@ -198,10 +199,12 @@ export class TellerRepository {
   getOpenSession(companyId: number): TellerSession | undefined {
     const row = this.db
       .prepare(
-        `SELECT id, company_id, teller_user_id, opened_at, closed_at, status, note,
-                created_at, created_by, updated_at, updated_by
-         FROM teller_sessions
-         WHERE company_id = ? AND status = 'OPEN'
+        `SELECT s.id, s.company_id, s.teller_user_id, u.username AS teller_username,
+                s.opened_at, s.closed_at, s.status, s.note,
+                s.created_at, s.created_by, s.updated_at, s.updated_by
+         FROM teller_sessions s
+         LEFT JOIN admin_users u ON u.id = s.teller_user_id
+         WHERE s.company_id = ? AND s.status = 'OPEN'
          LIMIT 1`,
       )
       .get(companyId) as TellerSessionRecord | undefined;
@@ -211,10 +214,13 @@ export class TellerRepository {
   getSession(companyId: number, sessionId: number): TellerSession | undefined {
     const row = this.db
       .prepare(
-        `SELECT id, company_id, teller_user_id, opened_at, closed_at, status, note,
-                created_at, created_by, updated_at, updated_by
-         FROM teller_sessions
-         WHERE company_id = ? AND id = ?`,
+        `SELECT s.id, s.company_id, s.teller_user_id, u.username AS teller_username,
+                s.opened_at, s.closed_at, s.status, s.note,
+                s.created_at, s.created_by, s.updated_at, s.updated_by
+         FROM teller_sessions s
+         LEFT JOIN admin_users u ON u.id = s.teller_user_id
+         WHERE s.company_id = ? AND s.id = ?
+         LIMIT 1`,
       )
       .get(companyId, sessionId) as TellerSessionRecord | undefined;
     return row ? toSession(row) : undefined;
@@ -304,7 +310,18 @@ export class TellerRepository {
     return row?.quantity ?? 0;
   }
 
-  listPositions(companyId: number): TellerPositionRecord[] {
+  listPositions(companyId: number, currencyCode?: string): TellerPositionRecord[] {
+    if (currencyCode) {
+      return this.db
+        .prepare(
+          `SELECT p.denomination_id, d.currency_code, d.value, p.quantity
+           FROM teller_cash_positions p
+           JOIN denominations d ON d.id = p.denomination_id
+           WHERE p.company_id = ? AND d.currency_code = ?
+           ORDER BY d.sort_order ASC, d.id ASC`,
+        )
+        .all(companyId, currencyCode) as TellerPositionRecord[];
+    }
     return this.db
       .prepare(
         `SELECT p.denomination_id, d.currency_code, d.value, p.quantity
@@ -473,11 +490,40 @@ export class TellerRepository {
       .all(...params, limit, offset) as TellerTransactionRecord[];
   }
 
+  countLongBookMovements(companyId: number, sessionId: number, currencyCode: string): number {
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM teller_transactions t
+         JOIN teller_transaction_types ty ON ty.code = t.type_code
+         WHERE t.company_id = ? AND t.session_id = ? AND t.currency_code = ?
+           AND ty.direction IN ('IN', 'OUT')`,
+      )
+      .get(companyId, sessionId, currencyCode) as { count: number };
+    return row.count;
+  }
+
   listLongBookMovements(
     companyId: number,
     sessionId: number,
     currencyCode: string,
+    limit?: number,
+    offset?: number,
   ): TellerTransactionRecord[] {
+    if (limit !== undefined && offset !== undefined) {
+      return this.db
+        .prepare(
+          `SELECT ${TX_SELECT}
+           FROM teller_transactions t
+           JOIN teller_transaction_types ty ON ty.code = t.type_code
+           LEFT JOIN customers c ON c.id = t.customer_id
+           WHERE t.company_id = ? AND t.session_id = ? AND t.currency_code = ?
+             AND ty.direction IN ('IN', 'OUT')
+           ORDER BY datetime(t.transaction_date) ASC, t.id ASC
+           LIMIT ? OFFSET ?`,
+        )
+        .all(companyId, sessionId, currencyCode, limit, offset) as TellerTransactionRecord[];
+    }
     return this.db
       .prepare(
         `SELECT ${TX_SELECT}
@@ -489,6 +535,81 @@ export class TellerRepository {
          ORDER BY datetime(t.transaction_date) ASC, t.id ASC`,
       )
       .all(companyId, sessionId, currencyCode) as TellerTransactionRecord[];
+  }
+
+  listDashboardCurrencies(
+    companyId: number,
+    sessionId: number | null,
+  ): Array<{ code: string; display_name: string | null; name_key: string; symbol: string | null }> {
+    return this.db
+      .prepare(
+        `SELECT c.code, c.display_name, c.name_key, c.symbol
+         FROM currencies c
+         WHERE c.is_active = 1
+            OR EXISTS (
+              SELECT 1 FROM teller_session_currency_totals tot
+              WHERE tot.currency_code = c.code AND tot.company_id = ? AND (? IS NULL OR tot.session_id = ?)
+            )
+            OR EXISTS (
+              SELECT 1 FROM teller_cash_positions p
+              JOIN denominations d ON d.id = p.denomination_id
+              WHERE d.currency_code = c.code AND p.company_id = ? AND p.quantity > 0
+            )
+         ORDER BY c.sort_order ASC, c.code ASC`,
+      )
+      .all(companyId, sessionId, sessionId, companyId) as Array<{
+      code: string;
+      display_name: string | null;
+      name_key: string;
+      symbol: string | null;
+    }>;
+  }
+
+  listSessionTypeCounts(
+    companyId: number,
+    sessionId: number,
+    currencyCode: string,
+  ): Array<{ type_code: string; count: number }> {
+    return this.db
+      .prepare(
+        `SELECT type_code, COUNT(*) AS count
+         FROM teller_transactions
+         WHERE company_id = ? AND session_id = ? AND currency_code = ?
+           AND type_code != 'OPENING_BALANCE'
+         GROUP BY type_code`,
+      )
+      .all(companyId, sessionId, currencyCode) as Array<{ type_code: string; count: number }>;
+  }
+
+  getLastMovement(
+    companyId: number,
+    sessionId: number,
+    currencyCode: string,
+  ): TellerTransactionRecord | undefined {
+    return this.db
+      .prepare(
+        `SELECT ${TX_SELECT}
+         FROM teller_transactions t
+         JOIN teller_transaction_types ty ON ty.code = t.type_code
+         LEFT JOIN customers c ON c.id = t.customer_id
+         WHERE t.company_id = ? AND t.session_id = ? AND t.currency_code = ?
+           AND ty.direction IN ('IN', 'OUT')
+         ORDER BY datetime(t.transaction_date) DESC, t.id DESC
+         LIMIT 1`,
+      )
+      .get(companyId, sessionId, currencyCode) as TellerTransactionRecord | undefined;
+  }
+
+  listDenominationsForTally(currencyCode: string): TellerDenomination[] {
+    const rows = this.db
+      .prepare(
+        `SELECT id, currency_code, value, sort_order, is_active
+         FROM denominations
+         WHERE currency_code = ?
+         ORDER BY sort_order ASC, id ASC`,
+      )
+      .all(currencyCode) as TellerDenominationRecord[];
+    return rows.map(toDenomination);
   }
 
   listSessionInOutDenoms(
@@ -567,6 +688,23 @@ export class TellerRepository {
     return row !== undefined;
   }
 
+  currencyExists(code: string): boolean {
+    const row = this.db.prepare('SELECT code FROM currencies WHERE code = ?').get(code) as
+      | { code: string }
+      | undefined;
+    return row !== undefined;
+  }
+
+  getCurrencyMeta(code: string): { displayName: string; symbol: string } {
+    const row = this.db
+      .prepare('SELECT display_name, symbol FROM currencies WHERE code = ?')
+      .get(code) as { display_name: string | null; symbol: string | null } | undefined;
+    return {
+      displayName: (row?.display_name ?? '').trim() || code,
+      symbol: row?.symbol ?? '',
+    };
+  }
+
   hasCurrencyUsage(code: string): boolean {
     const row = this.db
       .prepare('SELECT 1 AS present FROM teller_transactions WHERE currency_code = ? LIMIT 1')
@@ -590,6 +728,7 @@ function toSession(row: TellerSessionRecord): TellerSession {
     id: row.id,
     companyId: row.company_id,
     tellerUserId: row.teller_user_id,
+    tellerUsername: row.teller_username ?? null,
     openedAt: row.opened_at,
     closedAt: row.closed_at,
     status: row.status,

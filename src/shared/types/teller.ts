@@ -47,6 +47,7 @@ export interface TellerSession {
   id: number;
   companyId: number;
   tellerUserId: number;
+  tellerUsername: string | null;
   openedAt: string;
   closedAt: string | null;
   status: TellerSessionStatus;
@@ -180,16 +181,31 @@ export interface TellerLongBook {
   totalPages: number;
 }
 
+export interface TellerLastTransaction {
+  transactionNumber: string;
+  typeCode: TellerTransactionTypeCode;
+  direction: TellerDirection;
+  amount: string;
+  transactionDate: string;
+}
+
 export interface TellerCurrencyDashboard {
   currencyCode: string;
+  displayName: string;
+  symbol: string;
   openingBalance: string;
   cashIn: string;
   cashOut: string;
   currentBalance: string;
+  cashInCount: number;
+  cashOutCount: number;
+  headTellerInCount: number;
+  headTellerOutCount: number;
   transactionCount: number;
   physicalTally: string;
   expectedCash: string;
   difference: string;
+  lastTransaction: TellerLastTransaction | null;
 }
 
 export interface TellerDashboard {

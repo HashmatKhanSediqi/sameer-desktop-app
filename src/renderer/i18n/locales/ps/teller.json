@@ -1,8 +1,11 @@
 {
   "nav": {
     "dashboard": "ډشبورډ",
+    "workspace": "د نغدو میز",
     "cashIn": "نغدې راتلل",
     "cashOut": "نغدې ورکول",
+    "cashInAction": "+ نغدې راتلل",
+    "cashOutAction": "− نغدې ورکول",
     "tally": "تلي",
     "longBook": "اوږد کتاب",
     "history": "تاریخچه"
@@ -28,20 +31,28 @@
     "title": "د صندوق ډشبورډ",
     "currentSession": "اوسنۍ ناسته",
     "currentCurrency": "اسعار",
+    "opening": "پرانېستونکی موجود",
     "cashIn": "نغدې راتلل",
     "cashOut": "نغدې ورکول",
     "currentBalance": "اوسنی موجود",
     "transactionCount": "معاملات",
-    "physicalTally": "فزیکي تلي",
+    "cashInCount": "راتلل",
+    "cashOutCount": "ورکول",
+    "headTellerIn": "له لوړ صندوق‌دار",
+    "headTellerOut": "لوړ صندوق‌دار ته",
+    "physicalTally": "فزیکي نغدې",
     "expected": "تمه شوې نغدې",
     "difference": "توپیر",
-    "matched": "متوازن",
-    "unmatched": "اختلاف"
+    "matched": "تطبیق شوی",
+    "unmatched": "اختلاف",
+    "lastTransaction": "وروستۍ معامله",
+    "noneLast": "لا نشته"
   },
   "form": {
     "party": "سرچینه / منزل",
     "partyCustomer": "پېرېدونکی",
     "partyHeadTeller": "لوړ صندوق‌دار",
+    "partyInternal": "داخلي / ICBA",
     "customer": "پېرېدونکی",
     "customerSearch": "پېرېدونکی لټون",
     "currency": "اسعار",
@@ -50,6 +61,10 @@
     "value": "ارزښت",
     "lineTotal": "مبلغ",
     "calculated": "حساب شوې مجموعه",
+    "enteredAmount": "لیکل شوی مبلغ",
+    "amountVerified": "مبلغ تایید شو",
+    "amountMismatch": "د مبلغ ناسموالی",
+    "difference": "توپیر",
     "available": "شته",
     "note": "یادښت",
     "saveIn": "نغدې راتلل ثبت کړئ",
@@ -58,7 +73,8 @@
     "savedOut": "نغدې ورکول ثبت شول.",
     "noDenoms": "د دې اسعارو لپاره واحدونه نه دي ټاکل شوي.",
     "selectCustomer": "یو پېرېدونکی وټاکئ",
-    "headTellerHint": "د لوړ صندوق‌دار سره د نغدو حرکت — د پېرېدونکي حساب معامله نه ده."
+    "headTellerHint": "د لوړ صندوق‌دار سره د نغدو حرکت — د پېرېدونکي حساب معامله نه ده.",
+    "internalHint": "داخلي یا د اړیکه‌وال بانک (ICBA) نغدې — د پېرېدونکي له معاملاتو جلا ساتل کېږي."
   },
   "tally": {
     "title": "تلي",
