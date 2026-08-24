@@ -242,4 +242,22 @@ describe('TransactionService', () => {
       harness.cleanup();
     }
   });
+
+  it('saves an explicitly chosen create date and time instead of the current clock', async () => {
+    const harness = await createCustomerTestHarness();
+
+    try {
+      const customer = harness.customerService.create({ name: 'Ahmad' });
+      const created = harness.transactionService.create({
+        customerId: customer.id,
+        type: 'CASH_OUT',
+        amount: '15',
+        currencyCode: 'AFN',
+        transactionDate: '2024-12-31T18:07',
+      });
+      expect(created.transactionDate).toBe('2024-12-31 18:07:00');
+    } finally {
+      harness.cleanup();
+    }
+  });
 });

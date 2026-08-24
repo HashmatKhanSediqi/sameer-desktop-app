@@ -91,6 +91,23 @@ describe('teller service', () => {
     }
   });
 
+  it('stores an explicitly chosen teller transaction date and time', async () => {
+    const harness = await createTellerHarness();
+    try {
+      harness.tellerService.openSession(harness.userId, {});
+      const created = harness.tellerService.createTransaction(harness.userId, {
+        typeCode: 'CUSTOMER_CASH_IN',
+        currencyCode: 'AFN',
+        customerId: harness.customerId,
+        quantities: afnQuantities(harness.tellerService, { '100': 1 }),
+        transactionDate: '2025-02-01T07:15',
+      });
+      expect(created.transactionDate).toBe('2025-02-01 07:15:00');
+    } finally {
+      harness.testDb.cleanup();
+    }
+  });
+
   it('rejects cash in when declared amount does not match denominations', async () => {
     const harness = await createTellerHarness();
     try {

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] — 2026-08-24 (transaction date/time and module select)
+
+### Added
+- Cash In, Cash Out, transfers, and Teller cash movements let the user choose date and time. If both fields are left empty, the current local date and time are applied when the transaction is saved.
+
+### Changed
+- Post-login module selection cards are more prominent, with clearer hierarchy, larger icons, and refined hover/press treatment.
+
+---
+
 ## [1.1.0] — 2026-08-24 (teller cash management)
 
 ### Added

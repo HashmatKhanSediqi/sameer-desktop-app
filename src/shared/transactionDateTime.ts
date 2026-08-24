@@ -85,3 +85,35 @@ export function sqliteFromWallClockString(value: string): string | null {
     Number(match[6] ?? '0'),
   );
 }
+
+export function splitDateAndTime(value: string | undefined): { date: string; time: string } {
+  const local = toDateTimeLocalValue(value);
+  if (!local) {
+    return { date: '', time: '' };
+  }
+  const [date, time] = local.split('T');
+  return { date: date ?? '', time: (time ?? '').slice(0, 5) };
+}
+
+/**
+ * Combine optional date and time fields into a datetime-local string.
+ * Returns undefined when both are empty so callers can fall back to "now" on save.
+ */
+export function combineDateAndTime(
+  dateValue: string,
+  timeValue: string,
+  now = new Date(),
+): string | undefined {
+  const date = dateValue.trim();
+  const time = timeValue.trim();
+  if (!date && !time) {
+    return undefined;
+  }
+  if (date && time) {
+    return `${date}T${time}`;
+  }
+  if (date) {
+    return `${date}T00:00`;
+  }
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}T${time}`;
+}

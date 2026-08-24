@@ -10,6 +10,7 @@
   "amount": "Amount",
   "currency": "Currency",
   "date": "Date",
+  "time": "Time",
   "dateTime": "Date and time",
   "note": "Note",
   "edited": "Edited",

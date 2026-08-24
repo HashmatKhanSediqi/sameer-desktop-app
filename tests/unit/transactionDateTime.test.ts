@@ -3,6 +3,8 @@ import {
   nowSqliteDateTime,
   sqliteFromDateOnly,
   sqliteFromWallClockString,
+  combineDateAndTime,
+  splitDateAndTime,
   toDateTimeLocalValue,
   toSqliteDateTime,
 } from '../../src/shared/transactionDateTime';
@@ -39,6 +41,15 @@ describe('transaction date/time helpers', () => {
 
   it('parses datetime-local values without converting them through UTC', () => {
     expect(parseTransactionDate('2026-08-22T18:07')).toBe('2026-08-22 18:07:00');
+  });
+
+  it('combines optional date and time fields without overwriting a chosen value', () => {
+    expect(combineDateAndTime('', '')).toBeUndefined();
+    expect(combineDateAndTime('2026-01-10', '14:30')).toBe('2026-01-10T14:30');
+    expect(combineDateAndTime('2024-12-31', '')).toBe('2024-12-31T00:00');
+    expect(combineDateAndTime('', '08:15', new Date(2026, 7, 24, 12, 0, 0))).toBe('2026-08-24T08:15');
+    expect(splitDateAndTime('2026-03-15 09:45:00')).toEqual({ date: '2026-03-15', time: '09:45' });
+    expect(splitDateAndTime(undefined)).toEqual({ date: '', time: '' });
   });
 });
 

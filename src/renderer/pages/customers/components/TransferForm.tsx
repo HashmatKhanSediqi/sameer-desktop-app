@@ -1,8 +1,10 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sanitizeAmountInput } from '@shared/amountInput';
+import { combineDateAndTime } from '@shared/transactionDateTime';
 import type { Currency } from '@shared/types/currency';
 import type { CustomerIdentity } from '@shared/types/customer';
+import { TransactionDateTimeFields } from '../../../components/TransactionDateTimeFields';
 import { useAuth } from '../../../context/AuthContext';
 
 interface TransferFormProps {
@@ -33,6 +35,8 @@ export function TransferForm({
   const [currencyCode, setCurrencyCode] = useState(currencies[0]?.code ?? 'AFN');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [dateValue, setDateValue] = useState('');
+  const [timeValue, setTimeValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -118,6 +122,7 @@ export function TransferForm({
         currencyCode,
         amount,
         note,
+        transactionDate: combineDateAndTime(dateValue, timeValue),
       });
       if (!result.ok) {
         setError(t(`validation.${result.message}`, { defaultValue: tErrors(result.errorCode) }));
@@ -199,6 +204,18 @@ export function TransferForm({
             required
           />
         </div>
+        <TransactionDateTimeFields
+          dateId="transfer-date"
+          timeId="transfer-time"
+          dateLabel={t('date')}
+          timeLabel={t('time')}
+          optionalLabel={t('optional')}
+          dateValue={dateValue}
+          timeValue={timeValue}
+          onDateChange={setDateValue}
+          onTimeChange={setTimeValue}
+          disabled={isSubmitting}
+        />
         <div className="form-field">
           <label htmlFor="transfer-note">{t('note')}</label>
           <textarea id="transfer-note" value={note} onChange={(event) => setNote(event.target.value)} rows={3} />

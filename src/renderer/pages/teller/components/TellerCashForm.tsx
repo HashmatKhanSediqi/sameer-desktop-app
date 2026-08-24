@@ -1,9 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { amountsEqual, calculateDenominationTotal } from '@shared/teller/denominationMath';
+import { combineDateAndTime } from '@shared/transactionDateTime';
 import type { Currency } from '@shared/types/currency';
 import type { TellerDenomination, TellerTransactionTypeCode } from '@shared/types/teller';
 import type { CustomerListItem } from '@shared/types/customer';
+import { TransactionDateTimeFields } from '../../../components/TransactionDateTimeFields';
 import { useAuth } from '../../../context/AuthContext';
 import { DenominationGrid, quantitiesFromFields } from './DenominationGrid';
 import { TellerCurrencySelect } from './TellerCurrencySelect';
@@ -38,6 +40,8 @@ export function TellerCashForm({
   const [customerResults, setCustomerResults] = useState<CustomerListItem[]>([]);
   const [customer, setCustomer] = useState<CustomerListItem | null>(null);
   const [note, setNote] = useState('');
+  const [dateValue, setDateValue] = useState('');
+  const [timeValue, setTimeValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -161,6 +165,7 @@ export function TellerCashForm({
         .filter((line) => line.quantity > 0)
         .map((line) => ({ denominationId: line.denominationId, quantity: line.quantity })),
       note,
+      transactionDate: combineDateAndTime(dateValue, timeValue),
     });
     setIsSubmitting(false);
 
@@ -173,6 +178,8 @@ export function TellerCashForm({
     setQuantities({});
     setDeclaredAmount('');
     setNote('');
+    setDateValue('');
+    setTimeValue('');
     onSaved();
     if (mode === 'out' && sessionId) {
       void window.api.teller.getTally({ sessionId, currencyCode }).then((tally) => {
@@ -220,6 +227,18 @@ export function TellerCashForm({
           />
         </label>
       </div>
+      <TransactionDateTimeFields
+        dateId="teller-tx-date"
+        timeId="teller-tx-time"
+        dateLabel={t('form.date')}
+        timeLabel={t('form.time')}
+        optionalLabel={t('form.optional')}
+        dateValue={dateValue}
+        timeValue={timeValue}
+        onDateChange={setDateValue}
+        onTimeChange={setTimeValue}
+        disabled={isSubmitting}
+      />
 
       {party === 'HEAD_TELLER' ? <p className="hint-text">{t('form.headTellerHint')}</p> : null}
       {party === 'INTERNAL' ? <p className="hint-text">{t('form.internalHint')}</p> : null}

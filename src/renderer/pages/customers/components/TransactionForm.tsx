@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isLatinAmountInsert, sanitizeAmountInput } from '@shared/amountInput';
-import { toDateTimeLocalValue } from '@shared/transactionDateTime';
+import { combineDateAndTime, splitDateAndTime } from '@shared/transactionDateTime';
 import type { Currency } from '@shared/types/currency';
 import type { Transaction, TransactionType } from '@shared/types/transaction';
+import { TransactionDateTimeFields } from '../../../components/TransactionDateTimeFields';
 import { useAuth } from '../../../context/AuthContext';
 
 interface TransactionFormProps {
@@ -35,10 +36,10 @@ export function TransactionForm({
   const [currencyCode, setCurrencyCode] = useState(
     transaction?.currencyCode ?? currencies[0]?.code ?? 'AFN',
   );
-  const [transactionDate, setTransactionDate] = useState(
-    toDateTimeLocalValue(transaction?.transactionDate),
-  );
   const [note, setNote] = useState(transaction?.note ?? '');
+  const initialDateTime = splitDateAndTime(transaction?.transactionDate);
+  const [dateValue, setDateValue] = useState(initialDateTime.date);
+  const [timeValue, setTimeValue] = useState(initialDateTime.time);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -61,6 +62,10 @@ export function TransactionForm({
     setError(null);
     setIsSubmitting(true);
 
+    const selectedDateTime = combineDateAndTime(dateValue, timeValue);
+    const transactionDate =
+      mode === 'edit' ? selectedDateTime ?? transaction?.transactionDate : selectedDateTime;
+
     try {
       const result =
         mode === 'create'
@@ -70,6 +75,7 @@ export function TransactionForm({
               type,
               amount,
               currencyCode,
+              transactionDate,
               note,
             })
           : await window.api.transactions.update({
@@ -189,23 +195,19 @@ export function TransactionForm({
               </select>
             </div>
 
-            {mode === 'edit' ? (
-              <div className="form-field">
-                <label htmlFor="transaction-date">{t('dateTime')}</label>
-                <input
-                  id="transaction-date"
-                  type="datetime-local"
-                  className="money"
-                  dir="ltr"
-                  lang="en"
-                  step="60"
-                  value={transactionDate}
-                  onChange={(event) => setTransactionDate(event.target.value)}
-                  disabled={isSubmitting}
-                  required
-                />
-              </div>
-            ) : null}
+            <TransactionDateTimeFields
+              dateId="transaction-date"
+              timeId="transaction-time"
+              dateLabel={t('date')}
+              timeLabel={t('time')}
+              optionalLabel={mode === 'create' ? t('optional') : undefined}
+              dateValue={dateValue}
+              timeValue={timeValue}
+              onDateChange={setDateValue}
+              onTimeChange={setTimeValue}
+              disabled={isSubmitting}
+              required={mode === 'edit'}
+            />
 
             <div className="form-field">
               <label htmlFor="transaction-note">
