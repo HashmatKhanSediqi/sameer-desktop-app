@@ -13,5 +13,12 @@ describe('isNoUpdateAvailableError', () => {
     expect(isNoUpdateAvailableError(new Error('status code 404'))).toBe(false);
     expect(isNoUpdateAvailableError(new Error('not found: latest.yml'))).toBe(false);
     expect(isNoUpdateAvailableError(new Error('offline'))).toBe(false);
+    expect(
+      isNoUpdateAvailableError(
+        new Error(
+          '404 \n"method: GET url: https://github.com/HashmatKhanSediqi/sameer-desktop-app/releases.atom\\n\\nPlease double check that your authentication token is correct."',
+        ),
+      ),
+    ).toBe(false);
   });
 });

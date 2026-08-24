@@ -122,7 +122,7 @@ When a newer installer is run over an existing install:
 - Do **not** delete `%APPDATA%\CustomerAccounting\`
 - On launch, migration runner applies pending SQL migrations
 
-In-app `electron-updater` is **not** shipped in v1.0 — see `update-system.md`.
+In-app `electron-updater` is shipped. NSIS replaces files under `%LOCALAPPDATA%\Programs\CustomerAccounting\` only. `%APPDATA%\CustomerAccounting\` is never deleted by the installer or updater (`deleteAppDataOnUninstall: false`). See `update-system.md`.
 
 ---
 

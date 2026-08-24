@@ -7,7 +7,7 @@ Offline desktop customer accounting for Windows.
 | | |
 |-|-|
 | Product name | **FMT** |
-| Version | 1.0.1 |
+| Version | 1.0.2 |
 | Platform | Windows 10/11 x64 |
 | Installer | `dist/FMT-Setup.exe` (after `npm run build:win`) |
 | Database | Local SQLite (WAL) |
@@ -47,7 +47,7 @@ Authoritative product and architecture documentation lives in [`project-context/
 
 Release assessment: [`project-context/release-readiness.md`](./project-context/release-readiness.md).
 
-In-app updates (GitHub Releases / `electron-updater`): [`project-context/update-system.md`](./project-context/update-system.md). Architecture is implemented; end-to-end install from a real GitHub Release has not been verified yet.
+In-app updates (GitHub Releases / `electron-updater`): [`project-context/update-system.md`](./project-context/update-system.md). The packaged app reads `app-update.yml` and the public GitHub Releases feed (`releases.atom` + `latest.yml`). The repository must remain **public** so end users do not need `GH_TOKEN`.
 
 ## Default credentials
 

@@ -10,5 +10,6 @@ describe('appConfig', () => {
     expect(config.version).toBe(APP_VERSION);
     expect(config.logMaxFiles).toBe(5);
     expect(config.sessionIdleTimeoutMs).toBe(8 * 60 * 60 * 1000);
+    expect(config.isDev).toBe(process.env.NODE_ENV === 'development');
   });
 });

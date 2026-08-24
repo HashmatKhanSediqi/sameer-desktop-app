@@ -11,7 +11,9 @@ export interface AppConfig {
 }
 
 export function loadAppConfig(): AppConfig {
-  const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+  // Packaged Electron does not always set NODE_ENV. Treat only an explicit
+  // development env as dev so production logs/update paths stay production.
+  const isDev = process.env.NODE_ENV === 'development';
 
   return {
     appName: 'FMT',

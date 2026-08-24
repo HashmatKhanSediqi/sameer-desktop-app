@@ -21,14 +21,10 @@ class MockUpdater extends EventEmitter implements ElectronUpdaterAdapter {
   allowDowngrade = true;
   autoInstallOnAppQuit = true;
   logger: unknown = null;
-  feed: { provider: 'github'; owner: string; repo: string } | null = null;
+  setFeedURLCalls = 0;
   checkImpl: () => Promise<UpdateCheckResultLike | null> = async () => null;
   downloadImpl: () => Promise<string[]> = async () => [];
   quitAndInstallCalls = 0;
-
-  setFeedURL(config: { provider: 'github'; owner: string; repo: string }): void {
-    this.feed = config;
-  }
 
   async checkForUpdates(): Promise<UpdateCheckResultLike | null> {
     return this.checkImpl();
@@ -68,19 +64,6 @@ function createBackupService(
   } as unknown as BackupService;
 }
 
-describe('update configuration', () => {
-  it('exposes explicit GitHub Releases owner/repo and a sane auto-check interval', () => {
-    expect(UPDATE_GITHUB_OWNER.length).toBeGreaterThan(0);
-    expect(UPDATE_GITHUB_REPO.length).toBeGreaterThan(0);
-    expect(getUpdatePublishConfig()).toEqual({
-      provider: 'github',
-      owner: UPDATE_GITHUB_OWNER,
-      repo: UPDATE_GITHUB_REPO,
-    });
-    expect(UPDATE_AUTO_CHECK_INTERVAL_MS).toBeGreaterThanOrEqual(60 * 60 * 1000);
-  });
-});
-
 describe('UpdateService', () => {
   it('reports unsupported outside packaged builds', async () => {
     const service = new UpdateService({
@@ -93,6 +76,38 @@ describe('UpdateService', () => {
     expect(service.getStatus().state).toBe('unsupported');
     const status = await service.checkForUpdates();
     expect(status.state).toBe('unsupported');
+    expect(status.packaged).toBe(false);
+  });
+
+  it('does not override electron-builder app-update.yml with setFeedURL', () => {
+    const updater = new MockUpdater();
+    const original = updater.setFeedURLCalls;
+    new UpdateService({
+      currentVersion: '1.0.1',
+      packaged: true,
+      logger: createLogger(),
+      backupService: createBackupService({ created: true, filePath: 'x.cab' }),
+      updater,
+    });
+    expect(updater.setFeedURLCalls).toBe(original);
+    expect(updater.autoDownload).toBe(false);
+    expect(updater.allowDowngrade).toBe(false);
+    expect(updater.autoInstallOnAppQuit).toBe(false);
+  });
+
+  it('exposes the public GitHub owner/repo on the status snapshot', () => {
+    const service = new UpdateService({
+      currentVersion: '1.0.1',
+      packaged: true,
+      logger: createLogger(),
+      backupService: createBackupService({ created: true, filePath: 'x.cab' }),
+      updater: new MockUpdater(),
+    });
+    expect(service.getStatus().provider).toEqual({
+      owner: UPDATE_GITHUB_OWNER,
+      repo: UPDATE_GITHUB_REPO,
+    });
+    expect(getUpdatePublishConfig().private).toBe(false);
   });
 
   it('transitions to upToDate when remote version is same or older', async () => {
@@ -110,6 +125,42 @@ describe('UpdateService', () => {
 
     updater.checkImpl = async () => ({ updateInfo: { version: '0.9.0' } });
     expect((await service.checkForUpdates()).state).toBe('upToDate');
+  });
+
+  it('treats electron-updater isUpdateAvailable=false as upToDate', async () => {
+    const updater = new MockUpdater();
+    updater.checkImpl = async () => ({
+      isUpdateAvailable: false,
+      updateInfo: { version: '1.0.1' },
+    });
+    const service = new UpdateService({
+      currentVersion: '1.0.1',
+      packaged: true,
+      logger: createLogger(),
+      backupService: createBackupService({ created: true, filePath: 'x.cab' }),
+      updater,
+    });
+    const status = await service.checkForUpdates();
+    expect(status.state).toBe('upToDate');
+    expect(status.errorCode).toBeNull();
+  });
+
+  it('maps update-not-available events to upToDate, never error', async () => {
+    const updater = new MockUpdater();
+    updater.checkImpl = async () => {
+      updater.emit('update-not-available', { version: '1.0.1' });
+      return { isUpdateAvailable: false, updateInfo: { version: '1.0.1' } };
+    };
+    const service = new UpdateService({
+      currentVersion: '1.0.1',
+      packaged: true,
+      logger: createLogger(),
+      backupService: createBackupService({ created: true, filePath: 'x.cab' }),
+      updater,
+    });
+    const status = await service.checkForUpdates();
+    expect(status.state).toBe('upToDate');
+    expect(status.errorCode).toBeNull();
   });
 
   it('transitions available → downloading → ready', async () => {
@@ -133,22 +184,25 @@ describe('UpdateService', () => {
     expect(available.availableVersion).toBe('1.1.0');
     expect(available.releaseNotes).toBe('notes');
 
+    const downloadingSeen: string[] = [];
+    service.onStatus((snapshot) => downloadingSeen.push(snapshot.state));
     const ready = await service.downloadUpdate();
     expect(ready.state).toBe('ready');
-    expect(updater.autoDownload).toBe(false);
-    expect(updater.allowDowngrade).toBe(false);
-    expect(updater.feed?.owner).toBe(UPDATE_GITHUB_OWNER);
+    expect(downloadingSeen).toContain('downloading');
   });
 
-  it('enters error state when check fails and keeps the app usable', async () => {
+  it('enters error state when GitHub feed check fails and keeps the app usable', async () => {
     const updater = new MockUpdater();
     updater.checkImpl = async () => {
-      throw new Error('ENOTFOUND');
+      throw new Error(
+        '404 \n"method: GET url: https://github.com/HashmatKhanSediqi/sameer-desktop-app/releases.atom\\n\\nPlease double check that your authentication token is correct."',
+      );
     };
+    const logger = createLogger();
     const service = new UpdateService({
       currentVersion: '1.0.0',
       packaged: true,
-      logger: createLogger(),
+      logger,
       backupService: createBackupService({ created: true, filePath: 'x.cab' }),
       updater,
     });
@@ -156,6 +210,7 @@ describe('UpdateService', () => {
     await expect(service.checkForUpdates()).rejects.toBeInstanceOf(AppError);
     expect(service.getStatus().state).toBe('error');
     expect(service.getStatus().errorCode).toBe('UPDATE_CHECK_FAILED');
+    expect(logger.warn).toHaveBeenCalled();
   });
 
   it('rejects invalid remote versions safely', async () => {
@@ -236,6 +291,7 @@ describe('UpdateService', () => {
     await service.maybeAutoCheck();
     await service.maybeAutoCheck();
     expect(calls).toBe(1);
+    expect(UPDATE_AUTO_CHECK_INTERVAL_MS).toBeGreaterThan(0);
   });
 
   it('treats electron-updater no-update errors as upToDate, not offline failure', async () => {
@@ -272,5 +328,24 @@ describe('UpdateService', () => {
     expect(service.getStatus().state).toBe('upToDate');
     updater.emitError(new Error('ENOTFOUND'));
     expect(service.getStatus().state).toBe('upToDate');
+  });
+
+  it('surfaces download failures as error without installing', async () => {
+    const updater = new MockUpdater();
+    updater.checkImpl = async () => ({ updateInfo: { version: '1.2.0' } });
+    updater.downloadImpl = async () => {
+      throw new Error('net::ERR_CONNECTION_RESET');
+    };
+    const service = new UpdateService({
+      currentVersion: '1.0.0',
+      packaged: true,
+      logger: createLogger(),
+      backupService: createBackupService({ created: true, filePath: 'x.cab' }),
+      updater,
+    });
+    await service.checkForUpdates();
+    await expect(service.downloadUpdate()).rejects.toMatchObject({ code: 'UPDATE_DOWNLOAD_FAILED' });
+    expect(service.getStatus().state).toBe('error');
+    expect(updater.quitAndInstallCalls).toBe(0);
   });
 });

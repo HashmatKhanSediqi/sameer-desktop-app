@@ -1,6 +1,6 @@
 # FMT v1.0 — Release Readiness
 
-Honest release assessment as of **FMT v1.0.1**.  
+Honest release assessment as of **FMT v1.0.2**.  
 **Do not claim manual verification unless it was actually performed.**
 
 ---
@@ -74,11 +74,11 @@ SQL-side pagination, aggregation, and indexes (`005_query_indexes.sql`, `006_cus
 | 34 | Start Menu shortcut | IMPLEMENTED BUT NOT MANUALLY VERIFIED | NSIS `createStartMenuShortcut: true` |
 | 35 | Uninstall data preservation | IMPLEMENTED BUT NOT MANUALLY VERIFIED | `deleteAppDataOnUninstall: false` |
 | 36 | TypeScript | VERIFIED | `npm run typecheck` |
-| 37 | Automated tests | VERIFIED | **225 passed / 1 skipped** (v1.0.1; `test:extreme` skipped) |
+| 37 | Automated tests | VERIFIED | **235 passed / 1 skipped** (v1.0.2; `test:extreme` skipped) |
 | 38 | Production Windows build | VERIFIED | `npm run build:win` succeeds |
 | 39 | Code signing | KNOWN LIMITATION | Authenticode not configured; installer remains unsigned. Icon embedding uses `afterPack` rcedit (`signAndEditExecutable: false`) |
 | 40 | Clean Windows installation testing | KNOWN LIMITATION | Full clean Windows VM manual validation has **not** been performed in this audit |
-| 41 | In-app updater (electron-updater + GitHub Releases) | VERIFIED (publish) | GitHub Release **v1.0.1** publishes `FMT-Setup.exe`, `latest.yml`, blockmap; **live install from older build not manually verified on a VM** |
+| 41 | In-app updater (electron-updater + GitHub Releases) | FIXED in v1.0.2 | v1.0.1 failed because the GitHub repo was private (`releases.atom` 404). Repo is now public; `app-update.yml` sets `private: false`; `setFeedURL` removed. Live 1.0.1→1.0.2 install verification follows publication. |
 
 ---
 

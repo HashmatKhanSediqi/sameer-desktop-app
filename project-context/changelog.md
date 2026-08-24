@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] — 2026-08-24 (in-app GitHub updater)
+
+### Fixed
+- Packaged Settings → Check for Updates failed with "Could not check for updates" because electron-updater could not read the GitHub Releases Atom feed. Root cause: `HashmatKhanSediqi/sameer-desktop-app` was not publicly readable (`releases.atom` returned 404 to unauthenticated clients). The public GitHub Releases feed is required; end users must not need `GH_TOKEN`.
+- Stopped calling `autoUpdater.setFeedURL()` so packaged builds use electron-builder's generated `resources/app-update.yml`.
+- electron-builder GitHub publish config now sets `private: false` / `releaseType: release` explicitly. npm `"private": true` is not GitHub visibility.
+- `update-not-available` is mapped to "You are up to date." GitHub/network 404s remain a real error. Underlying updater errors are logged.
+
+### Release artifacts
+- `FMT-Setup.exe`, `latest.yml`, `FMT-Setup.exe.blockmap` from the same Windows build
+
+---
+
 ## Version Format
 
 ```

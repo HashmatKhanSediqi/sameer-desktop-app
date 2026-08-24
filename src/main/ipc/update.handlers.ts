@@ -18,7 +18,13 @@ function parseSessionRequest(input: unknown): { sessionId: string } {
 }
 
 function broadcastUpdateStatus(status: UpdateStatusSnapshot): void {
-  for (const window of BrowserWindow.getAllWindows()) {
+  let windows: BrowserWindow[] = [];
+  try {
+    windows = BrowserWindow.getAllWindows();
+  } catch {
+    return;
+  }
+  for (const window of windows) {
     window.webContents.send(UPDATE_STATUS_EVENT, status);
   }
 }
