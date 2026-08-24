@@ -9,11 +9,10 @@ import { useAuth } from '../../context/AuthContext';
 import { TellerCashForm } from './components/TellerCashForm';
 import { TellerSummaryBar } from './components/TellerSummaryBar';
 import { OpenSessionForm } from './components/OpenSessionForm';
-import { TellerHistoryPage } from './TellerHistoryPage';
 import { TellerLongBookPage } from './TellerLongBookPage';
 import { TellerTallyPage } from './TellerTallyPage';
 
-type TellerView = 'workspace' | 'tally' | 'longBook' | 'history';
+type TellerView = 'workspace' | 'tally' | 'longBook';
 
 interface TellerShellProps {
   onSwitchModule: (module: AppModule) => void;
@@ -108,7 +107,7 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
   const summary = dashboard?.currencies.find((row) => row.currencyCode === currencyCode) ?? dashboard?.currencies[0] ?? null;
 
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell-teller">
       <header className="app-header app-header-bar">
         <div className="header-brand">
           {logoSrc ? <img className="header-logo" src={logoSrc} alt="" /> : null}
@@ -150,7 +149,6 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
             ['workspace', t('nav.workspace')],
             ['tally', t('nav.tally')],
             ['longBook', t('nav.longBook')],
-            ['history', t('nav.history')],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -187,10 +185,8 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
           </section>
         ) : view === 'tally' ? (
           <TellerTallyPage refreshKey={refreshKey} currencies={currencies} currencyCode={currencyCode} onCurrencyChange={setCurrencyCode} />
-        ) : view === 'longBook' ? (
-          <TellerLongBookPage refreshKey={refreshKey} currencies={currencies} currencyCode={currencyCode} onCurrencyChange={setCurrencyCode} />
         ) : (
-          <TellerHistoryPage refreshKey={refreshKey} currencies={currencies} currencyCode={currencyCode} onCurrencyChange={setCurrencyCode} />
+          <TellerLongBookPage refreshKey={refreshKey} currencies={currencies} currencyCode={currencyCode} onCurrencyChange={setCurrencyCode} />
         )}
       </main>
     </div>
