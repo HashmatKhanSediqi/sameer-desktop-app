@@ -1,8 +1,8 @@
 # Update System
 
-Online application update architecture with local data preservation for **FMT**.
+In-app update architecture for **FMT** using **electron-updater** and **GitHub Releases**.
 
-> **v1.0 status:** In-app updates are **not shipped**. This document remains RELEASE-RELEVANT for v1.1+. Manual install of a newer `FMT-Setup.exe` over an existing install must still preserve `%APPDATA%\CustomerAccounting\` user data.
+> **v1.0 status:** In-app updates **shipped** via GitHub Releases (`electron-updater`). GitHub Release **v1.0.0** publishes `FMT-Setup.exe`, `latest.yml`, and blockmap. Live update install from an older build on a clean VM has **not** been manually verified in this audit.
 
 ---
 
@@ -11,302 +11,162 @@ Online application update architecture with local data preservation for **FMT**.
 | Attribute | Value |
 |-----------|-------|
 | Product | FMT |
-| Normal operation | Fully offline |
-| Update server | Online endpoint for app updates ONLY (future) |
+| Normal operation | Fully offline-first |
+| Update source | GitHub Releases (`provider: github`) |
+| Owner / repo | `HashmatKhanSediqi/sameer-desktop-app` (override via `FMT_UPDATE_OWNER` / `FMT_UPDATE_REPO`) |
 | Customer data | Always local (SQLite) — never cloud |
-| Update tool | `electron-updater` (planned) |
-| Installer artifact | `FMT-Setup.exe` |
+| Update tool | `electron-updater` |
+| Installer artifact | `FMT-Setup.exe` (+ `latest.yml` / blockmap from electron-builder) |
 | Compatibility paths | `%LOCALAPPDATA%\Programs\CustomerAccounting\`, `%APPDATA%\CustomerAccounting\` |
 
 The update system distributes **application binaries** — not customer accounting data.
 
 ---
 
-## 2. Principles
-
-1. **Updates must NEVER delete customer data**
-2. **Application files and user data are separate**
-3. **Database preserved across updates**
-4. **Profile images preserved**
-5. **Settings preserved**
-6. **Admin credentials preserved**
-7. **Schema migrations run safely after update**
-8. **Update packages must be verified** (signature/checksum)
-
----
-
-## 3. Version Detection
-
-### Current Version Sources
-
-| Source | Purpose |
-|--------|---------|
-| `package.json` version | Build-time version |
-| `app_metadata.app_version` | Runtime recorded version |
-| Windows file properties | Installer display version |
-
-On startup, compare installed version with last recorded; update `app_metadata` if changed.
-
----
-
-## 4. Update Check Flow
+## 2. Architecture
 
 ```
-User: Settings → Check for Updates (or automatic periodic check)
+Settings → Update UI
         │
         ▼
-UpdateService.check():
-  GET https://updates.example.com/customer-accounting/latest.yml
-  (or electron-updater generic provider)
+preload window.api.update.*
         │
         ▼
-Compare semver with current version
+IPC: update:getStatus | update:check | update:download | update:install
+        │
+        ▼
+UpdateService (main)
+  - semver compare (shared/semver)
+  - electron-updater adapter (GitHub feed)
+  - states: idle | checking | upToDate | available | downloading | ready | error | unsupported
+        │
+        ▼ (install only)
+BackupService.createPreUpdateBackup()  →  validated .cab under backups/pre-update/
         │
    ┌────┴────┐
-   ▼         ▼
- Up to     Update
- date      available
+ fail      success
    │         │
    ▼         ▼
- Message   Show version notes + Download button
+ block    quitAndInstall()
+ install
 ```
 
-### Update Server Response (electron-updater format)
-
-```yaml
-version: 1.1.0
-files:
-  - url: FMT-Setup-1.1.0.exe
-    sha512: ...
-    size: ...
-path: FMT-Setup-1.1.0.exe
-sha512: ...
-releaseDate: '2025-09-01T00:00:00.000Z'
-releaseNotes: |
-  - Added currency XYZ support
-  - Bug fixes
-```
-
-**Note:** Replace `updates.example.com` with actual update server URL during deployment.
+- **Dev / unpackaged:** state is `unsupported` (no network update attempts that claim success).
+- **Packaged:** auto-check once after ~30s startup delay; then at most once per 24 hours.
+- **Manual check:** Settings → About → Check for Updates (any time).
 
 ---
 
-## 5. Download and Verify
+## 3. GitHub Release configuration
 
-```
-Download installer to temp directory
-        │
-        ▼
-Verify SHA512 checksum against manifest
-        │
-        ▼
-Verify code signature (Authenticode on Windows)
-        │
-   ┌────┴────┐
-   ▼         ▼
- Fail      Pass
-   │         │
-   ▼         ▼
- Error    Prompt install
-```
+### Repository
 
-**Never install unverified updates.**
+Configured in:
 
----
+- `package.json` → `build.publish` (`provider: github`, owner/repo)
+- `src/shared/constants/updateConfig.ts` (runtime feed + env overrides)
 
-## 6. Install Update
+### Required release format
 
-### Recommended: electron-updater with NSIS
+1. Create a **GitHub Release** with tag matching semver, e.g. `v1.0.1` or `1.0.1`.
+2. Publish **electron-builder** Windows artifacts for that version, typically:
+   - `FMT-Setup.exe`
+   - `latest.yml` (and related checksum / blockmap files electron-builder emits)
+3. Release must be discoverable as the **latest** release for the configured repo (electron-updater GitHub provider).
 
-- Download delta or full installer
-- Quit application gracefully:
-  1. Close SQLite connection (WAL checkpoint)
-  2. Flush logs
-  3. Launch installer in silent/one-click mode
-- NSIS installer updates `%LOCALAPPDATA%/Programs/CustomerAccounting/` (application files)
-- User data in `%APPDATA%/CustomerAccounting/` **untouched**
+### How discovery works
 
-### Install Directory Separation
+`electron-updater` reads the GitHub Releases feed / `latest.yml` for the configured owner/repo, compares remote `version` to the running app version (`APP_VERSION` / `package.json`), and only offers a download when the remote version is **newer** valid semver.
 
-| Location | Updated? |
-|----------|----------|
-| `C:\Users\{user}\AppData\Local\Programs\CustomerAccounting\` | Yes — app binaries |
-| `C:\Users\{user}\AppData\Roaming\CustomerAccounting\` | **No** — user data |
+### What this step does **not** do
+
+- Does **not** publish a GitHub Release
+- Does **not** push release tags
+- Does **not** declare v1.0 final
 
 ---
 
-## 7. Post-Update Startup
+## 4. Update flow
 
-```
-Application starts new version
-        │
-        ▼
-Open existing SQLite database (unchanged path)
-        │
-        ▼
-Run MigrationRunner:
-  - Apply pending schema migrations
-  - If migration fails → restore from pre-update safety backup
-        │
-        ▼
-Update app_metadata.app_version
-        │
-        ▼
-Normal login flow
-```
+1. **Check** — `autoUpdater.checkForUpdates()` (no auto-download).
+2. **Available** — remote semver newer than current → UI shows download.
+3. **Download** — user-triggered; progress via `download-progress`.
+4. **Ready** — update staged locally.
+5. **Install** — create + validate pre-update `.cab` backup; only then `quitAndInstall`.
+6. **Post-update startup** — existing `%APPDATA%\CustomerAccounting\` DB remains; normal migrations + integrity checks run. Updater does **not** modify the database.
 
 ---
 
-## 8. SQLite Schema Migration Strategy
+## 5. Backup-before-update safety
 
-### Rules
+Before `quitAndInstall`:
 
-1. **Forward-only migrations** — numbered SQL files
-2. **Never DROP data** without explicit migration script that preserves data
-3. **Backup before migrate** — automatic safety backup on first launch after update if schema version changes
-4. **Transactional migrations** — each migration in BEGIN/COMMIT
-5. **Test migrations** against copy of production DB structure
+1. `BackupService.createPreUpdateBackup()` writes `FMT_PreUpdate_*.cab` under `backups/pre-update/`
+2. Backup must complete and pass existing validation (manifest, signature, SQLite integrity)
+3. Retention: last **5** pre-update backups
+4. If backup fails → **install is blocked**; user is informed; app and DB unchanged
 
-### Migration Failure Recovery
-
-```
-Migration fails
-        │
-        ▼
-Log error to update-migration.log
-        │
-        ▼
-Restore database from pre-update safety backup
-        │
-        ▼
-Show error dialog:
-  "Update could not complete database upgrade.
-   Your previous data has been restored.
-   Please contact support."
-        │
-        ▼
-Do not leave DB in partial state
-```
-
-### Example Migration
-
-```sql
--- 002_add_currency_display_format.sql
-ALTER TABLE currencies ADD COLUMN display_format TEXT DEFAULT 'standard';
-UPDATE schema_migrations ... -- handled by runner
-```
-
-SQLite `ALTER TABLE` limitations: use table-rebuild pattern for complex changes.
+Uses the existing `.cab` format — no second backup format.
 
 ---
 
-## 9. Pre-Update Safety Backup
+## 6. Offline / failure behavior
 
-Before applying update that includes schema changes:
+| Condition | Behavior |
+|-----------|----------|
+| No internet / GitHub down | Check → `error` / checkFailed; app remains usable |
+| No newer release | `upToDate` |
+| Malformed / invalid version | `error` / invalidVersion; no install |
+| Download failure / interrupt | `error` / downloadFailed; install not started |
+| Backup failure before install | Install blocked (`UPDATE_BACKUP_FAILED`) |
+| Update failure on startup path | Auto-check errors are swallowed; DB startup unaffected |
 
-1. Create `%APPDATA%/CustomerAccounting/backups/pre-update/FMT_PreUpdate_{version}_{timestamp}.cab`
-2. Proceed with update only if backup succeeds
-3. Retain last 3 pre-update backups; prune older
-
----
-
-## 10. Data Preservation Checklist
-
-After every update, verify:
-
-- [ ] `accounting.db` exists and opens
-- [ ] Customer count unchanged
-- [ ] Transaction count unchanged
-- [ ] Profile images accessible
-- [ ] Settings preserved (language, pagination)
-- [ ] Admin login works with same credentials
-- [ ] Existing `.cab` backups still restorable
+Update failures must **never** prevent FMT from starting or using the existing database.
 
 ---
 
-## 11. Offline Behavior
+## 7. Versioning
 
-- Update check fails gracefully: "Could not check for updates. Please check your internet connection."
-- No update forced
-- App fully functional offline
-
----
-
-## 12. IPC API
-
-### `update:check`
-
-**Input:** `{ sessionId }`
-
-**Output:**
-```typescript
-{
-  currentVersion: string;
-  updateAvailable: boolean;
-  latestVersion?: string;
-  releaseNotes?: string;
-  error?: string;
-}
-```
-
-### `update:downloadAndInstall`
-
-**Input:** `{ sessionId }`
-
-**Output:** Triggers download; emits progress events; launches installer on success
+- Semantic versioning: `MAJOR.MINOR.PATCH`
+- Same or older remote versions are not offered
+- Invalid versions are rejected
+- Source of truth for running version: `src/shared/constants/version.ts` / `package.json`
 
 ---
 
-## 13. Rollback Strategy
+## 8. Security
 
-If update causes critical bug:
-
-1. User installs previous version installer manually (distributed separately)
-2. Pre-update safety backup available for DB rollback
-3. Downgrade installer must not delete user data (same NSIS rules)
+- Uses electron-updater’s normal GitHub Releases + `latest.yml` checksum verification
+- No custom download-and-run of arbitrary URLs
+- Downgrades disabled (`allowDowngrade = false`)
+- **Code signing:** currently unsigned (`signAndEditExecutable: false`). SmartScreen / Authenticode remains a **separate** release concern. Unsigned installers are **not** fully trusted by Windows.
 
 ---
 
-## 14. Versioning and Release Channels (Future)
+## 9. IPC
 
 | Channel | Purpose |
 |---------|---------|
-| stable | Default production |
-| beta | Optional opt-in |
+| `update:getStatus` | Current snapshot |
+| `update:check` | Manual / programmatic check |
+| `update:download` | Download available update |
+| `update:install` | Safety backup then quitAndInstall |
+| `update:status` (event) | Push status to renderer |
 
-Architecture hook in Settings; v1.0 ships stable only.
-
----
-
-## 15. Security
-
-- HTTPS only for update server
-- Certificate pinning optional
-- Verify Authenticode signature on Windows
-- Reject downgrades if policy requires (optional)
-
-See `security.md`.
+All invoke channels require an authenticated `sessionId`.
 
 ---
 
-## 16. Implementation Timeline
+## 10. UI / localization
 
-| Phase | Scope |
-|-------|-------|
-| v1.0 | Architecture ready; manual update via new installer acceptable |
-| v1.1 | In-app update check and install |
-| v1.2 | Delta updates, release channels |
+Settings → About → Application updates section shows current version, status, check / download / restart actions, progress, and errors.
 
-Document actual implementation version in `changelog.md`.
+Locales: English, Dari (`fa-AF`), Pashto (`ps`) — no hard-coded user-facing English strings.
 
 ---
 
-## 17. Testing Checklist
+## 11. Testing status
 
-- [ ] Update preserves database file
-- [ ] Update preserves images
-- [ ] Update preserves settings and admin hash
-- [ ] Schema migration applies correctly
-- [ ] Migration failure restores safety backup
-- [ ] Invalid checksum rejected
-- [ ] Offline update check shows friendly error
+**Covered in automated tests:** semver compare, state transitions, no-update, available → ready, check/download errors, invalid version, backup-blocks-install, backup-before-install success path, config validation, i18n keys, IPC channel registration, pre-update backup create/validate.
+
+**Not verified without a real GitHub Release:** live check against GitHub, full download of a published artifact, interrupted network download on Windows, SmartScreen behavior, and end-to-end restart-after-install on a clean Windows machine.

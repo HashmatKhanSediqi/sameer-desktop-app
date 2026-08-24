@@ -28,7 +28,7 @@ Mandatory rules for AI coding agents implementing **FMT**. Violating these rules
 8. **Never modify unrelated features** when implementing a requested change.
 9. **Never introduce MongoDB** or any cloud database for accounting data.
 10. **Do not add an Audit Log system.**
-11. **Do not add cloud dependencies** for normal operation. In-app updates are v1.1+.
+11. **Do not add cloud dependencies** for normal operation. In-app updates use GitHub Releases only for application binaries.
 12. **Preserve backward compatibility** for backups, database schema, and import formats whenever possible.
 
 ---

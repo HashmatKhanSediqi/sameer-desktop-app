@@ -74,7 +74,7 @@ Folder name `CustomerAccounting` is an intentional compatibility identifier.
 ├── backups\
 │   ├── auto\          # FMT_SafetyBackup_* (retention 5)
 │   ├── scheduled\     # FMT_AutoClose_* (retention 10)
-│   └── pre-update\    # reserved for v1.1+
+│   └── pre-update\    # validated .cab before in-app update install (retention 5)
 ├── logs\
 ├── cache\
 └── .crash             # unclean-shutdown sentinel (implementation detail)

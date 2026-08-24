@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { join } from 'node:path';
+import { UPDATE_AUTO_CHECK_STARTUP_DELAY_MS } from '@shared/constants/updateConfig';
 import { loadAppConfig } from './config/appConfig';
 import { resolveAppIconPath } from './config/appIconPath';
 import { resolveAppPaths } from './config/paths';
@@ -64,6 +65,20 @@ async function createMainWindow(ctx: ApplicationContext): Promise<BrowserWindow>
   return window;
 }
 
+function scheduleAutomaticUpdateCheck(ctx: ApplicationContext): void {
+  if (!ctx.packaged) {
+    return;
+  }
+
+  setTimeout(() => {
+    void ctx.updateService.maybeAutoCheck().catch((error: unknown) => {
+      ctx.logger.warn('Automatic update check failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, UPDATE_AUTO_CHECK_STARTUP_DELAY_MS);
+}
+
 async function bootstrap(): Promise<void> {
   configureAppIdentity();
 
@@ -73,10 +88,11 @@ async function bootstrap(): Promise<void> {
 
   logger.info('Application starting', { version: config.version, isDev: config.isDev });
 
-  appContext = await createApplicationContext(config, logger);
+  appContext = await createApplicationContext(config, logger, { packaged: app.isPackaged });
   registerIpcHandlers(ipcMain, appContext);
 
   mainWindow = await createMainWindow(appContext);
+  scheduleAutomaticUpdateCheck(appContext);
 
   logger.info('Application ready', {
     userData: appContext.paths.userData,
@@ -121,6 +137,15 @@ if (!gotSingleInstanceLock) {
 
   app.on('before-quit', (event) => {
     if (!appContext || isQuitting) {
+      return;
+    }
+
+    // Allow electron-updater quitAndInstall to proceed without auto-close backup delay.
+    if (appContext.updateService.isInstallPending()) {
+      isQuitting = true;
+      const ctx = appContext;
+      shutdownApplicationContext(ctx);
+      appContext = null;
       return;
     }
 

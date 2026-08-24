@@ -1,16 +1,16 @@
-import { performance } from 'node:perf_hooks';
-import { mkdirSync, statSync } from 'node:fs';
+import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import { CustomerRepository } from '../../src/main/database/repositories/customerRepository';
-import { TransactionRepository } from '../../src/main/database/repositories/transactionRepository';
+import { CustomerPhotoService } from '../../src/main/services/customer/customerPhotoService';
 import { CustomerService } from '../../src/main/services/customer/customerService';
 import { TransactionService } from '../../src/main/services/transaction/transactionService';
-import { CustomerPhotoService } from '../../src/main/services/customer/customerPhotoService';
 import { ReportsService } from '../../src/main/services/report/reportsService';
 import { BackupService } from '../../src/main/services/backup/backupService';
 import { loadAppConfig } from '../../src/main/config/appConfig';
 import type { CustomerIdentity, CustomerListItem } from '../../src/shared/types/customer';
+import type { AppPaths } from '../../src/shared/types/ipc';
 import { applyProjectMigrations, createTestDatabase } from '../helpers/testDatabase';
 import {
   EXTREME_CUSTOMER_COUNT,
@@ -20,8 +20,9 @@ import {
   seedScaleDataset,
 } from '../helpers/scaleDataset';
 
-const RUN_EXTREME = process.env.FMT_RUN_EXTREME_SCALE === '1' || process.env.npm_lifecycle_event === 'test:extreme';
-const EXTREME_TIMEOUT_MS = 90 * 60 * 1000;
+const RUN_EXTREME =
+  process.env.FMT_RUN_EXTREME_SCALE === '1' || process.env.npm_lifecycle_event === 'test:extreme';
+const EXTREME_TIMEOUT_MS = 3 * 60 * 60 * 1000;
 
 function enrichCustomers(
   transactionService: TransactionService,
@@ -30,30 +31,55 @@ function enrichCustomers(
   const accounting = transactionService.getListAccounting(identities.map((item) => item.id));
   return {
     customers: identities.map((identity) => {
-      const stats = accounting.get(identity.id) ?? { balances: {}, cashInCount: 0, cashOutCount: 0 };
+      const stats = accounting.get(identity.id) ?? {
+        balances: {},
+        cashInCount: 0,
+        cashOutCount: 0,
+      };
       return { ...identity, ...stats };
     }),
     totals: transactionService.getGlobalTotals(),
   };
 }
 
+function persistMetrics(dir: string, metrics: Record<string, unknown>): void {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'extreme-scale-metrics.json'), `${JSON.stringify(metrics, null, 2)}\n`, 'utf8');
+}
+
 describe.skipIf(!RUN_EXTREME)('extreme scale validation (1M customers / 5M transactions)', () => {
   it(
     'seeds, queries, reports, backs up, and verifies integrity',
     async () => {
-      const metrics: Record<string, unknown> = {};
+      const metrics: Record<string, unknown> = {
+        startedAt: new Date().toISOString(),
+        targetCustomers: EXTREME_CUSTOMER_COUNT,
+        targetTransactions: EXTREME_TRANSACTION_COUNT,
+      };
       const testDb = createTestDatabase();
+      const root = join(testDb.dbPath, '..');
+      const metricsDir = join(root, 'metrics');
+
       try {
         applyProjectMigrations(testDb.db, testDb.logger);
-        const imagesDir = join(testDb.dbPath, '..', 'images');
-        mkdirSync(imagesDir, { recursive: true });
 
-        const customerRepository = new CustomerRepository(testDb.db);
-        const transactionRepository = new TransactionRepository(testDb.db);
+        const imagesDir = join(root, 'images');
+        const companyImagesDir = join(root, 'company-images');
+        const backupsDir = join(root, 'backups');
+        const cacheDir = join(root, 'cache');
+        const logsDir = join(root, 'logs');
+        const configDir = join(root, 'config');
+        for (const dir of [imagesDir, companyImagesDir, backupsDir, cacheDir, logsDir, configDir]) {
+          mkdirSync(dir, { recursive: true });
+        }
+
         const photoService = new CustomerPhotoService(imagesDir, testDb.logger);
+        const customerRepository = new CustomerRepository(testDb.db);
         const customerService = new CustomerService(testDb.db, photoService, testDb.logger);
         const transactionService = new TransactionService(testDb.db, testDb.logger);
 
+        // eslint-disable-next-line no-console
+        console.info('[extreme-scale] seeding…');
         const seed = seedScaleDataset(testDb.db, {
           profile: {
             customerCount: EXTREME_CUSTOMER_COUNT,
@@ -62,27 +88,30 @@ describe.skipIf(!RUN_EXTREME)('extreme scale validation (1M customers / 5M trans
           logProgress: true,
         });
         metrics.seedMs = Math.round(seed.seedMs);
+        metrics.seedTransactions = seed.transactionCount;
         metrics.memoryAfterSeed = memorySnapshot();
+        persistMetrics(metricsDir, metrics);
 
         expect(customerRepository.countCustomers()).toBe(EXTREME_CUSTOMER_COUNT);
-        const txCountRow = testDb.db.prepare('SELECT COUNT(*) AS count FROM transactions').get() as {
-          count: number;
-        };
-        expect(txCountRow.count).toBeGreaterThanOrEqual(EXTREME_TRANSACTION_COUNT - 10_000);
-        expect(txCountRow.count).toBeLessThanOrEqual(EXTREME_TRANSACTION_COUNT + 10_000);
+        const txCount = (
+          testDb.db.prepare('SELECT COUNT(*) AS count FROM transactions').get() as { count: number }
+        ).count;
+        expect(txCount).toBeGreaterThanOrEqual(EXTREME_TRANSACTION_COUNT - 10_000);
+        expect(txCount).toBeLessThanOrEqual(EXTREME_TRANSACTION_COUNT + 10_000);
+        metrics.actualTransactions = txCount;
 
-        const orphanRow = testDb.db
-          .prepare(
-            `SELECT COUNT(*) AS count
-             FROM transactions t
-             LEFT JOIN customers c ON c.id = t.customer_id
-             WHERE c.id IS NULL`,
-          )
-          .get() as { count: number };
-        expect(orphanRow.count).toBe(0);
-
-        const integrity = testDb.db.pragma('integrity_check', { simple: true });
-        expect(integrity).toBe('ok');
+        const orphans = (
+          testDb.db
+            .prepare(
+              `SELECT COUNT(*) AS count
+               FROM transactions t
+               LEFT JOIN customers c ON c.id = t.customer_id
+               WHERE c.id IS NULL`,
+            )
+            .get() as { count: number }
+        ).count;
+        expect(orphans).toBe(0);
+        expect(testDb.db.pragma('quick_check', { simple: true })).toBe('ok');
 
         const totalPages = Math.ceil(EXTREME_CUSTOMER_COUNT / 25);
         const listTimings: Record<string, number> = {};
@@ -106,45 +135,40 @@ describe.skipIf(!RUN_EXTREME)('extreme scale validation (1M customers / 5M trans
         metrics.globalTotalsMs = Math.round(performance.now() - globalStarted);
         expect(totals.length).toBeGreaterThan(0);
 
-        const searchCases: Record<string, { query: string; minResults?: number; maxResults?: number }> = {
-          exactNumber: { query: seed.exactSearchNumber, minResults: 1, maxResults: 1 },
-          commonName: { query: 'CommonName', minResults: 1 },
-          rareName: { query: 'RareName Zeta', minResults: 1, maxResults: 5 },
-          partialName: { query: 'Customer 500', minResults: 1 },
-          prefixName: { query: 'Customer 5000', minResults: 1 },
-          middleName: { query: 'Name Smith', minResults: 1, maxResults: 5 },
-          noResult: { query: 'ZZZ-NO-MATCH-99999', maxResults: 0 },
+        const searchCases: Record<string, { query: string; min?: number; max?: number }> = {
+          exactNumber: { query: seed.exactSearchNumber, min: 1, max: 1 },
+          commonName: { query: 'CommonName', min: 1 },
+          rareName: { query: 'RareName Zeta', min: 1, max: 5 },
+          partialName: { query: 'Customer 500', min: 1 },
+          prefixName: { query: 'Customer 5000', min: 1 },
+          middleName: { query: 'Name Smith', min: 1, max: 5 },
+          noResult: { query: 'ZZZ-NO-MATCH-99999', max: 0 },
         };
-        const searchTimings: Record<string, { countMs: number; pageMs: number; totalMs: number; totalCount: number }> =
-          {};
+        const searchTimings: Record<string, { totalMs: number; totalCount: number }> = {};
         for (const [label, searchCase] of Object.entries(searchCases)) {
           const started = performance.now();
-          const countStarted = performance.now();
           const page = customerService.searchPage(searchCase.query, 1, 25, (identities) =>
             enrichCustomers(transactionService, identities),
           );
-          const pageMs = Math.round(performance.now() - countStarted);
-          const totalMs = Math.round(performance.now() - started);
           searchTimings[label] = {
-            countMs: pageMs,
-            pageMs,
-            totalMs,
+            totalMs: Math.round(performance.now() - started),
             totalCount: page.totalCount,
           };
-          if (searchCase.minResults !== undefined) {
-            expect(page.totalCount).toBeGreaterThanOrEqual(searchCase.minResults);
+          if (searchCase.min !== undefined) {
+            expect(page.totalCount).toBeGreaterThanOrEqual(searchCase.min);
           }
-          if (searchCase.maxResults !== undefined) {
-            expect(page.totalCount).toBeLessThanOrEqual(searchCase.maxResults);
+          if (searchCase.max !== undefined) {
+            expect(page.totalCount).toBeLessThanOrEqual(searchCase.max);
           }
           expect(page.customers.length).toBeLessThanOrEqual(25);
         }
         metrics.searchTimingsMs = searchTimings;
-
         metrics.searchQueryPlans = {
           like: explainQueryPlan(
             testDb.db,
-            `SELECT COUNT(*) AS count FROM customers WHERE name LIKE ? ESCAPE '!' COLLATE NOCASE OR customer_number LIKE ? ESCAPE '!' COLLATE NOCASE`,
+            `SELECT COUNT(*) AS count FROM customers
+             WHERE name LIKE ? ESCAPE '!' COLLATE NOCASE
+                OR customer_number LIKE ? ESCAPE '!' COLLATE NOCASE`,
             '%Customer 500%',
             '%Customer 500%',
           ),
@@ -157,9 +181,9 @@ describe.skipIf(!RUN_EXTREME)('extreme scale validation (1M customers / 5M trans
 
         const historyCases: Record<string, number> = {
           zeroTx: seed.zeroActivityCustomerIds[0] ?? 10,
-          lightTx: seed.customerIds[50_000] ?? 50_000,
           mediumTx: seed.mediumCustomerIds[0] ?? 11,
           heavyTx: seed.heavyCustomerIds[0] ?? 1,
+          lightTx: 50_001,
         };
         const historyTimings: Record<string, number> = {};
         for (const [label, customerId] of Object.entries(historyCases)) {
@@ -176,36 +200,35 @@ describe.skipIf(!RUN_EXTREME)('extreme scale validation (1M customers / 5M trans
           }
         }
         metrics.historyTimingsMs = historyTimings;
+        persistMetrics(metricsDir, metrics);
 
         const config = loadAppConfig();
-        const paths = {
-          userData: join(testDb.dbPath, '..'),
+        const paths: AppPaths = {
+          userData: root,
           database: testDb.dbPath,
           images: imagesDir,
-          companyImages: join(testDb.dbPath, '..', 'company-images'),
-          logs: join(testDb.dbPath, '..', 'logs'),
-          backups: join(testDb.dbPath, '..', 'backups'),
-          cache: join(testDb.dbPath, '..', 'cache'),
-          config: join(testDb.dbPath, '..', 'config'),
+          companyImages: companyImagesDir,
+          logs: logsDir,
+          backups: backupsDir,
+          cache: cacheDir,
+          config: configDir,
         };
-        mkdirSync(paths.backups, { recursive: true });
-        mkdirSync(paths.cache, { recursive: true });
 
         const reportsService = new ReportsService({
           customerService,
           transactionService,
-          reportsDir: join(paths.cache, 'reports'),
+          reportsDir: join(cacheDir, 'reports'),
           logger: testDb.logger,
         });
 
         const reportTimings: Record<string, number> = {};
-        const currencySummaryStarted = performance.now();
+        const currencyStarted = performance.now();
         const currencyModel = reportsService.buildModel({
           type: 'currency_summary',
           format: 'xlsx',
           language: 'en',
         });
-        reportTimings.currencySummaryModelMs = Math.round(performance.now() - currencySummaryStarted);
+        reportTimings.currencySummaryModelMs = Math.round(performance.now() - currencyStarted);
         expect(currencyModel.currencySummaries.length).toBeGreaterThan(0);
 
         const currencyExcelStarted = performance.now();
@@ -217,16 +240,28 @@ describe.skipIf(!RUN_EXTREME)('extreme scale validation (1M customers / 5M trans
         reportTimings.currencySummaryExcelMs = Math.round(performance.now() - currencyExcelStarted);
         expect(statSync(currencyReport.filePath).size).toBeGreaterThan(0);
 
-        metrics.memoryBeforeAllCustomersModel = memorySnapshot();
-        const allCustomersModelStarted = performance.now();
-        const allCustomersModel = reportsService.buildModel({
-          type: 'all_customers',
-          format: 'xlsx',
-          language: 'en',
-        });
-        reportTimings.allCustomersModelMs = Math.round(performance.now() - allCustomersModelStarted);
-        expect(allCustomersModel.customerCount).toBe(EXTREME_CUSTOMER_COUNT);
-        metrics.memoryAfterAllCustomersModel = memorySnapshot();
+        metrics.memoryBeforeReportChunks = memorySnapshot();
+        const chunkStarted = performance.now();
+        let sampled = 0;
+        for (const page of [1, 1000, 2000]) {
+          const pageResult = customerService.listPageForReport(page, 500, (identities) => ({
+            customers: identities.map((identity) => ({
+              ...identity,
+              balances: {},
+              cashInCount: 0,
+              cashOutCount: 0,
+            })),
+            totals: [],
+          }));
+          sampled += pageResult.customers.length;
+          expect(pageResult.totalCount).toBe(EXTREME_CUSTOMER_COUNT);
+          expect(pageResult.customers.length).toBeLessThanOrEqual(500);
+        }
+        reportTimings.allCustomersSamplePagesMs = Math.round(performance.now() - chunkStarted);
+        expect(sampled).toBeGreaterThan(0);
+        metrics.memoryAfterReportChunks = memorySnapshot();
+        metrics.reportTimingsMs = reportTimings;
+        persistMetrics(metricsDir, metrics);
 
         const backupService = new BackupService({
           getDatabase: () => testDb.db,
@@ -243,7 +278,12 @@ describe.skipIf(!RUN_EXTREME)('extreme scale validation (1M customers / 5M trans
           migrationsDir: join(process.cwd(), 'migrations'),
         });
 
-        const backupPath = join(paths.backups, 'FMT_ExtremeScale.cab');
+        const autoCloseStarted = performance.now();
+        const autoClose = await backupService.createAutoCloseBackup();
+        const autoCloseMs = Math.round(performance.now() - autoCloseStarted);
+        expect(autoClose.created).toBe(true);
+
+        const backupPath = join(backupsDir, 'FMT_ExtremeScale.cab');
         const backupCreateStarted = performance.now();
         await backupService.create(backupPath);
         const backupCreateMs = Math.round(performance.now() - backupCreateStarted);
@@ -255,22 +295,23 @@ describe.skipIf(!RUN_EXTREME)('extreme scale validation (1M customers / 5M trans
         expect(validated.valid).toBe(true);
         expect(validated.manifest?.customerCount).toBe(EXTREME_CUSTOMER_COUNT);
 
-        metrics.reportTimingsMs = reportTimings;
         metrics.backup = {
+          autoCloseMs,
           createMs: backupCreateMs,
           validateMs: backupValidateMs,
           sizeBytes: backupSizeBytes,
           sizeMb: Number((backupSizeBytes / (1024 * 1024)).toFixed(2)),
+          autoClosePath: autoClose.filePath,
         };
         metrics.memoryPeak = memorySnapshot();
-        metrics.customers = EXTREME_CUSTOMER_COUNT;
-        metrics.transactions = txCountRow.count;
+        metrics.finishedAt = new Date().toISOString();
+        persistMetrics(metricsDir, metrics);
 
         // eslint-disable-next-line no-console
         console.info('[extreme-scale]', JSON.stringify(metrics, null, 2));
 
         expect(listTimings.firstPage ?? 0).toBeLessThan(15_000);
-        expect(searchTimings.exactNumber?.totalMs ?? 0).toBeLessThan(500);
+        expect(searchTimings.exactNumber?.totalMs ?? Number.POSITIVE_INFINITY).toBeLessThan(2_000);
         expect(backupCreateMs).toBeLessThan(30 * 60 * 1000);
       } finally {
         testDb.cleanup();

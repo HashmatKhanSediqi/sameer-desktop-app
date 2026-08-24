@@ -56,7 +56,7 @@ The end customer receives **one installer file** (`FMT-Setup.exe`) and uses the 
 - Not a multi-user server application
 - Not using MongoDB
 - **Does not include an Audit Log** (explicitly removed from scope)
-- Does **not** ship an in-app online update system in v1.0 (architecture documented; implementation deferred to v1.1+)
+- Does **not** require internet for daily accounting; updates use GitHub Releases when the user checks for them
 
 ## Document Index
 
@@ -74,7 +74,7 @@ The end customer receives **one installer file** (`FMT-Setup.exe`) and uses the 
 | 10 | [reports.md](./reports.md) | PDF/Excel generation, RTL, report types | CURRENT |
 | 11 | [import-export.md](./import-export.md) | Excel import format, validation, and export | CURRENT |
 | 12 | [backup-restore.md](./backup-restore.md) | Backup format, auto-close, restore, retention | CURRENT |
-| 13 | [update-system.md](./update-system.md) | Online update architecture (v1.1+) | RELEASE-RELEVANT |
+| 13 | [update-system.md](./update-system.md) | GitHub Releases in-app update system | CURRENT |
 | 14 | [localization.md](./localization.md) | Dari, Pashto, English; RTL/LTR | CURRENT |
 | 15 | [security.md](./security.md) | Hashing, validation, known risks | CURRENT |
 | 16 | [desktop-app.md](./desktop-app.md) | Lifecycle, directories, logs, crash recovery | CURRENT |
@@ -90,12 +90,21 @@ Core v1.0 scope is **implemented**. See [release-readiness.md](./release-readine
 
 ### Empirically validated scale
 
-- **100,000 customers**
-- **300,000 transactions**
+| Dataset | Status |
+|---------|--------|
+| 100,000 customers / 300,000 transactions | **Empirically validated** (default CI stress tests) |
+| 1,000,000 customers / ~5,000,000 transactions | See `release-readiness.md` / STEP 10 report — run via `npm run test:extreme` |
 
-**1,000,000+ customer capacity has not been empirically validated.**
+**Do not claim 1M/5M support unless `npm run test:extreme` completed successfully on the target machine.**
 
-Architecture (SQL-side pagination, aggregation indexes, no full-table load into the renderer) is expected to scale further; remaining bottlenecks include all-customer report memory use, backup time/size growth, and `LIKE` search (FTS5 not implemented).
+Architecture (SQL-side pagination, aggregation indexes, no full-table load into the renderer for lists) is designed to scale further. Remaining bottlenecks include:
+
+- Customer search still uses SQL `LIKE '%term%'` for name/partial matches (exact `C-####` numbers use indexed equality)
+- FTS5 was **not** added — only implement after extreme benchmarks prove LIKE is inadequate for the required UX
+- Full all-customer PDF/Excel still materializes every customer row in JS (chunked SQL reads; O(N) memory for the final model)
+- Backup time/size growth with DB size
+
+Migration `006_customer_number_nocase.sql` adds a case-insensitive index for exact customer-number search.
 
 ## Key Defaults (Do Not Change Without Explicit Instruction)
 
@@ -114,7 +123,7 @@ Architecture (SQL-side pagination, aggregation indexes, no full-table load into 
 1. **Single administrator** — One admin account with full access; no role-based access control in v1.0.
 2. **Single computer** — One SQLite database on one machine; no sync between devices.
 3. **Windows 10/11 x64** — Primary target platform for v1.0.
-4. **Internet optional** — Not required for daily use. In-app updates are deferred to v1.1+.
+4. **Internet optional** — Not required for daily use. Update check/download requires internet when the user chooses to update.
 5. **Customer profile photos** — Stored as local image files referenced by database; included in backups.
 6. **Timestamps** — Transaction dates stored as local wall-clock `TEXT`; displayed with locale-appropriate formatting and Latin digits.
 7. **Amount precision** — Monetary amounts stored as decimal `TEXT` strings; business logic uses `decimal.js`. Aggregation SQL may use `CAST(amount AS REAL)` — see known risks in `security.md` / `release-readiness.md`.
@@ -129,7 +138,7 @@ requirements.md ──► architecture.md ──► database.md
         │                  │
         ├─ customers.md    ├─ installer.md
         ├─ transactions.md ├─ backup-restore.md
-        ├─ currencies.md   ├─ update-system.md (v1.1+)
+        ├─ currencies.md   ├─ update-system.md
         ├─ reports.md      └─ security.md
         ├─ import-export.md
         └─ localization.md
@@ -140,4 +149,4 @@ requirements.md ──► architecture.md ──► database.md
 
 ## Version
 
-Documentation package version: **1.0.0** (synchronized with application release readiness audit — STEP 9).
+Documentation package version: **1.0.0** (synchronized with FMT v1.0.0 release — STEP 12).

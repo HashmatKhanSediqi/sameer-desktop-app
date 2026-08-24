@@ -14,7 +14,7 @@ Functional and non-functional requirements for **FMT**.
 | Platform | Windows 10/11 (64-bit) for v1.0 |
 | Distribution | Single installer: `FMT-Setup.exe` |
 | Database | SQLite (local, embedded) |
-| Network | Offline during normal operation; in-app updates deferred to v1.1+ |
+| Network | Offline during normal operation; optional internet for update check/download |
 
 Compatibility paths such as `%APPDATA%\CustomerAccounting\` remain for existing installs — see `README.md`.
 
@@ -73,7 +73,7 @@ Notable clarifications:
 | BAK-02 | Filename pattern is `FMT_Backup_YYYY-MM-DD.cab` |
 | BAK-09 | Automatic backup on application close | Implemented |
 | BAK-10 | Safety backup retention (5) and auto-close retention (10) | Implemented |
-| UPD-* | In-app updates | Deferred to v1.1+ |
+| UPD-* | In-app updates | **Shipped in v1.0** (GitHub Releases; see `update-system.md`) |
 | TXN balance gate | Transfers enforce insufficient balance; cash-out/edit may go negative | Documented limitation |
 
 ---

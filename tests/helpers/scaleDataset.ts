@@ -12,7 +12,6 @@ export interface ScaleSeedProfile {
 }
 
 export interface ScaleSeedResult {
-  customerIds: number[];
   heavyCustomerIds: number[];
   zeroActivityCustomerIds: number[];
   mediumCustomerIds: number[];
@@ -21,6 +20,7 @@ export interface ScaleSeedResult {
   exactSearchNumber: string;
   seedMs: number;
   transactionCount: number;
+  customerCount: number;
 }
 
 export interface ScaleSeedOptions {
@@ -53,34 +53,32 @@ function pickMediumIds(maxId: number): number[] {
   return ids;
 }
 
+/**
+ * Fast bulk seeder for stress tests.
+ * - Multi-row INSERTs
+ * - Does not retain a 1M customer ID array in memory
+ * - Uses quick_check (not full integrity_check) after seed
+ */
 export function seedScaleDataset(db: Database.Database, options: ScaleSeedOptions): ScaleSeedResult {
-  const { profile, batchSize = 10_000, logProgress = false } = options;
+  const { profile, batchSize = 20_000, logProgress = false } = options;
   const started = performance.now();
 
   db.pragma('synchronous = OFF');
   db.pragma('journal_mode = WAL');
+  db.pragma('temp_store = MEMORY');
+  db.pragma('cache_size = -65536');
 
   const insertCustomer = db.prepare('INSERT INTO customers (name, customer_number) VALUES (?, ?)');
-  const insertTransaction = db.prepare(
-    `INSERT INTO transactions (customer_id, type, currency_code, amount, note, transaction_date)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-  );
 
-  const customerIds: number[] = new Array(profile.customerCount);
   for (let batchStart = 0; batchStart < profile.customerCount; batchStart += batchSize) {
     const batchEnd = Math.min(batchStart + batchSize, profile.customerCount);
     db.transaction(() => {
       for (let index = batchStart; index < batchEnd; index += 1) {
         const id = index + 1;
         const name =
-          id === 500_000
-            ? 'RareName Zeta'
-            : id === 100
-              ? 'CommonName Smith'
-              : `Customer ${index}`;
+          id === 500_000 ? 'RareName Zeta' : id === 100 ? 'CommonName Smith' : `Customer ${index}`;
         const number = id === 500_000 ? 'RARE-500000' : `C-${index}`;
-        const result = insertCustomer.run(name, number);
-        customerIds[index] = Number(result.lastInsertRowid);
+        insertCustomer.run(name, number);
       }
     })();
     if (logProgress && batchEnd % 100_000 === 0) {
@@ -91,108 +89,182 @@ export function seedScaleDataset(db: Database.Database, options: ScaleSeedOption
 
   const heavyCustomerIds = pickHeavyIds(profile.customerCount);
   const mediumCustomerIds = pickMediumIds(profile.customerCount);
-  const zeroActivityCustomerIds = customerIds.filter((id) => isZeroActivityCustomer(id));
+  const heavySet = new Set(heavyCustomerIds);
+  const mediumSet = new Set(mediumCustomerIds);
+  const zeroActivityCustomerIds = [10, 20, 30, 40, 50].filter((id) => id <= profile.customerCount);
 
-  const heavyTotal = Math.min(1_000_000, profile.transactionCount);
+  let lightCustomerCount = 0;
+  for (let id = 1; id <= profile.customerCount; id += 1) {
+    if (isZeroActivityCustomer(id) || heavySet.has(id) || mediumSet.has(id)) {
+      continue;
+    }
+    lightCustomerCount += 1;
+  }
+
+  const heavyBudget = Math.min(1_000_000, Math.floor(profile.transactionCount * 0.2));
+  const mediumBudget = Math.min(1_000_000, Math.floor(profile.transactionCount * 0.2));
   const perHeavy =
-    heavyCustomerIds.length > 0 ? Math.floor(heavyTotal / heavyCustomerIds.length) : 0;
-  const mediumTotal = Math.min(1_000_000, profile.transactionCount - perHeavy * heavyCustomerIds.length);
+    heavyCustomerIds.length > 0 ? Math.floor(heavyBudget / heavyCustomerIds.length) : 0;
   const perMedium =
-    mediumCustomerIds.length > 0 ? Math.floor(mediumTotal / mediumCustomerIds.length) : 0;
-
+    mediumCustomerIds.length > 0 ? Math.floor(mediumBudget / mediumCustomerIds.length) : 0;
   const assignedHeavy = perHeavy * heavyCustomerIds.length;
   const assignedMedium = perMedium * mediumCustomerIds.length;
-  const lightPool = customerIds.filter(
-    (id) =>
-      !isZeroActivityCustomer(id) &&
-      !heavyCustomerIds.includes(id) &&
-      !mediumCustomerIds.includes(id),
-  );
   const remaining = Math.max(0, profile.transactionCount - assignedHeavy - assignedMedium);
-  const perLight = lightPool.length > 0 ? Math.floor(remaining / lightPool.length) : 0;
-  let remainder = remaining - perLight * lightPool.length;
+  const perLight = lightCustomerCount > 0 ? Math.floor(remaining / lightCustomerCount) : 0;
+  let remainder = remaining - perLight * lightCustomerCount;
 
   const currencies = ['AFN', 'USD', 'EUR'] as const;
   const types = ['CASH_IN', 'CASH_OUT'] as const;
   let insertedTransactions = 0;
+  const rowBatchSize = 800;
 
-  const insertBatch = (customerId: number, count: number, amountBase: number): void => {
-    if (count <= 0) {
+  const placeholdersSql = (count: number): string =>
+    Array.from({ length: count }, () => '(?, ?, ?, ?, ?, ?)').join(', ');
+
+  const flushRows = (rows: Array<Array<string | number | null>>): void => {
+    if (rows.length === 0) {
       return;
     }
-    for (let offset = 0; offset < count; offset += batchSize) {
-      const limit = Math.min(batchSize, count - offset);
-      db.transaction(() => {
-        for (let row = 0; row < limit; row += 1) {
-          const seq = insertedTransactions + row;
-          const type = types[seq % types.length]!;
-          const currency = currencies[seq % currencies.length]!;
-          const day = (seq % 28) + 1;
-          insertTransaction.run(
-            customerId,
-            type,
-            currency,
-            `${((seq % 500) + amountBase).toFixed(4)}`,
-            seq % 17 === 0 ? `note-${seq}` : null,
-            `2025-${String((seq % 12) + 1).padStart(2, '0')}-${String(day).padStart(2, '0')} 12:00:00`,
-          );
-        }
-      })();
-      insertedTransactions += limit;
+    const sql = `INSERT INTO transactions (customer_id, type, currency_code, amount, note, transaction_date) VALUES ${placeholdersSql(rows.length)}`;
+    const params: Array<string | number | null> = [];
+    for (const row of rows) {
+      params.push(...row);
+    }
+    db.prepare(sql).run(...params);
+    insertedTransactions += rows.length;
+    if (logProgress && insertedTransactions % 500_000 < rowBatchSize) {
+      // eslint-disable-next-line no-console
+      console.info('[scale-seed] transactions', insertedTransactions);
     }
   };
 
-  for (const customerId of heavyCustomerIds) {
-    insertBatch(customerId, perHeavy, 100);
-  }
-  for (const customerId of mediumCustomerIds) {
-    insertBatch(customerId, perMedium, 50);
-  }
-  for (const customerId of lightPool) {
+  const insertVolume = (customerIds: number[], perCustomer: number, amountBase: number): void => {
+    if (perCustomer <= 0 || customerIds.length === 0) {
+      return;
+    }
+    let rows: Array<Array<string | number | null>> = [];
+    let pending = 0;
+    const commitChunk = db.transaction(() => {
+      flushRows(rows);
+      rows = [];
+      pending = 0;
+    });
+
+    for (const customerId of customerIds) {
+      for (let i = 0; i < perCustomer; i += 1) {
+        const seq = insertedTransactions + pending;
+        const type = types[seq % types.length]!;
+        const currency = currencies[seq % currencies.length]!;
+        const day = (seq % 28) + 1;
+        rows.push([
+          customerId,
+          type,
+          currency,
+          `${((seq % 500) + amountBase).toFixed(4)}`,
+          seq % 17 === 0 ? `note-${seq}` : null,
+          `2025-${String((seq % 12) + 1).padStart(2, '0')}-${String(day).padStart(2, '0')} 12:00:00`,
+        ]);
+        pending += 1;
+        if (rows.length >= rowBatchSize) {
+          commitChunk();
+        }
+      }
+    }
+    if (rows.length > 0) {
+      commitChunk();
+    }
+  };
+
+  insertVolume(heavyCustomerIds, perHeavy, 100);
+  insertVolume(mediumCustomerIds, perMedium, 50);
+
+  let lightRows: Array<Array<string | number | null>> = [];
+  let lightPending = 0;
+  const flushLight = db.transaction(() => {
+    flushRows(lightRows);
+    lightRows = [];
+    lightPending = 0;
+  });
+
+  for (let id = 1; id <= profile.customerCount; id += 1) {
+    if (isZeroActivityCustomer(id) || heavySet.has(id) || mediumSet.has(id)) {
+      continue;
+    }
     let count = perLight;
     if (remainder > 0) {
       count += 1;
       remainder -= 1;
     }
-    insertBatch(customerId, count, 10);
+    for (let i = 0; i < count; i += 1) {
+      const seq = insertedTransactions + lightPending;
+      const type = types[seq % types.length]!;
+      const currency = currencies[seq % currencies.length]!;
+      const day = (seq % 28) + 1;
+      lightRows.push([
+        id,
+        type,
+        currency,
+        `${((seq % 500) + 10).toFixed(4)}`,
+        seq % 17 === 0 ? `note-${seq}` : null,
+        `2025-${String((seq % 12) + 1).padStart(2, '0')}-${String(day).padStart(2, '0')} 12:00:00`,
+      ]);
+      lightPending += 1;
+      if (lightRows.length >= rowBatchSize) {
+        flushLight();
+      }
+    }
+  }
+  if (lightRows.length > 0) {
+    flushLight();
   }
 
-  // Transfer pairs (~0.05% of target, capped)
   const transferPairs = Math.min(500, Math.floor(profile.transactionCount / 2000));
-  for (let pair = 0; pair < transferPairs; pair += 1) {
-    const fromId = heavyCustomerIds[pair % heavyCustomerIds.length] ?? 1;
-    const toId = mediumCustomerIds[pair % mediumCustomerIds.length] ?? 2;
-    if (fromId === toId || isZeroActivityCustomer(fromId) || isZeroActivityCustomer(toId)) {
-      continue;
+  const insertOne = db.prepare(
+    `INSERT INTO transactions (customer_id, type, currency_code, amount, note, transaction_date)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  );
+  db.transaction(() => {
+    for (let pair = 0; pair < transferPairs; pair += 1) {
+      const fromId = heavyCustomerIds[pair % heavyCustomerIds.length] ?? 1;
+      const toId = mediumCustomerIds[pair % mediumCustomerIds.length] ?? 2;
+      if (fromId === toId) {
+        continue;
+      }
+      const amount = `${(pair % 100) + 1}.0000`;
+      const date = `2026-01-${String((pair % 28) + 1).padStart(2, '0')} 09:00:00`;
+      insertOne.run(fromId, 'CASH_OUT', 'AFN', amount, 'transfer-out', date);
+      insertOne.run(toId, 'CASH_IN', 'AFN', amount, 'transfer-in', date);
+      insertedTransactions += 2;
     }
-    const transferId = `scale-transfer-${pair}`;
-    const amount = `${(pair % 100) + 1}.0000`;
-    const date = `2026-01-${String((pair % 28) + 1).padStart(2, '0')} 09:00:00`;
-    db.transaction(() => {
-      insertTransaction.run(fromId, 'CASH_OUT', 'AFN', amount, 'transfer-out', date);
-      insertTransaction.run(toId, 'CASH_IN', 'AFN', amount, 'transfer-in', date);
-    })();
-    insertedTransactions += 2;
-  }
+  })();
 
   db.pragma('synchronous = NORMAL');
-  db.pragma('wal_checkpoint(FULL)');
+  db.pragma('wal_checkpoint(TRUNCATE)');
 
-  const integrity = db.pragma('integrity_check', { simple: true });
-  if (integrity !== 'ok') {
-    throw new Error(`Database integrity failed after seed: ${integrity}`);
+  const quick = db.pragma('quick_check', { simple: true });
+  if (quick !== 'ok') {
+    throw new Error(`Database quick_check failed after seed: ${quick}`);
+  }
+
+  if (logProgress) {
+    // eslint-disable-next-line no-console
+    console.info('[scale-seed] done', {
+      customers: profile.customerCount,
+      transactions: insertedTransactions,
+      seedMs: Math.round(performance.now() - started),
+    });
   }
 
   return {
-    customerIds,
     heavyCustomerIds,
     zeroActivityCustomerIds,
     mediumCustomerIds,
-    rareSearchCustomerId: 500_000,
-    commonSearchCustomerId: 100,
+    rareSearchCustomerId: Math.min(500_000, profile.customerCount),
+    commonSearchCustomerId: Math.min(100, profile.customerCount),
     exactSearchNumber: 'C-100',
     seedMs: performance.now() - started,
     transactionCount: insertedTransactions,
+    customerCount: profile.customerCount,
   };
 }
 

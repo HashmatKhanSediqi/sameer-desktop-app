@@ -21,6 +21,42 @@ MAJOR.MINOR.PATCH
 
 ---
 
+## [1.0.0] — 2026-08-24 (FMT v1.0.0 — GitHub Release)
+
+### Released
+- **FMT v1.0.0** Windows installer (`FMT-Setup.exe`) published on GitHub Releases
+- GitHub updater feed: `latest.yml` + blockmap for `electron-updater`
+- Full v1.0 feature set: customers, Cash In/Out, transfers, currencies, reports (PDF/Excel), import, backup/restore, EN/Dari/Pashto, security/recovery hardening
+
+### Scale (honest)
+- **Empirically validated:** 100,000 customers / 300,000 transactions (automated stress tests)
+- **Not empirically validated:** 1,000,000 customers / ~5,000,000 transactions
+
+### Known limitations at release
+- Unsigned installer (SmartScreen)
+- Unencrypted `.cab` backups
+- No clean-VM manual install sign-off in this audit
+- Negative cash-out balances allowed (transfers enforce balance)
+- Live update install from prior build not manually verified on VM
+
+---
+
+## [1.0.0] — 2026-08-24 (STEP 11 updater architecture)
+
+### Added
+- In-app update system via `electron-updater` + GitHub Releases (`HashmatKhanSediqi/sameer-desktop-app`)
+- Settings → About update UI (check / download progress / restart & install) in EN / fa-AF / ps
+- Validated pre-update `.cab` backup (`FMT_PreUpdate_*` under `backups/pre-update/`) required before install
+- Update IPC: `update:getStatus`, `update:check`, `update:download`, `update:install`, `update:status` event
+- Unit tests for semver, update state machine, backup-before-install gating, update i18n keys
+
+### Notes
+- No GitHub Release was published in this step; end-to-end update install is **not** verified
+- Code signing / SmartScreen remains a separate release concern (`signAndEditExecutable: false`)
+- Automatic updates are **not** claimed production-ready until a real release is tested
+
+---
+
 ## [1.0.0] — 2026-08-23 (Release candidate documentation sync)
 
 ### Added

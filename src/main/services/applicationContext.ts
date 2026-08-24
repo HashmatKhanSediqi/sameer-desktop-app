@@ -16,6 +16,7 @@ import { ImportService } from '../services/import/importService';
 import { BackupService } from '../services/backup/backupService';
 import { CompanyLogoService } from '../services/company/companyLogoService';
 import { CompanyService } from '../services/company/companyService';
+import { UpdateService } from '../services/update/updateService';
 import { getFontsDirectory } from '../config/fontsPath';
 import { clearCrashSentinel, hadUncleanShutdown, setCrashSentinel } from '../utils/crashSentinel';
 import type { AppPaths } from '@shared/types/ipc';
@@ -27,6 +28,7 @@ export interface ApplicationContext {
   paths: AppPaths;
   logger: Logger;
   database: DatabaseConnection;
+  packaged: boolean;
   authService: AuthService;
   customerService: CustomerService;
   transactionService: TransactionService;
@@ -36,11 +38,13 @@ export interface ApplicationContext {
   importService: ImportService;
   backupService: BackupService;
   companyService: CompanyService;
+  updateService: UpdateService;
 }
 
 export async function createApplicationContext(
   config: AppConfig,
   logger: Logger,
+  options?: { packaged?: boolean },
 ): Promise<ApplicationContext> {
   const paths = resolveAppPaths();
   ensureUserDataDirectories(paths);
@@ -62,6 +66,7 @@ export async function createApplicationContext(
     paths,
     logger,
     database,
+    packaged: options?.packaged ?? false,
   } as ApplicationContext;
 
   bindApplicationServices(ctx, migrationsDir);
@@ -101,6 +106,16 @@ export function bindApplicationServices(ctx: ApplicationContext, migrationsDir?:
     logger: ctx.logger,
     migrationsDir: resolvedMigrationsDir,
   });
+  if (ctx.updateService) {
+    ctx.updateService.setBackupService(ctx.backupService);
+  } else {
+    ctx.updateService = new UpdateService({
+      currentVersion: ctx.config.version,
+      packaged: ctx.packaged,
+      logger: ctx.logger,
+      backupService: ctx.backupService,
+    });
+  }
 }
 
 export function shutdownApplicationContext(ctx: ApplicationContext): void {

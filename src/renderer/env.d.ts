@@ -72,9 +72,18 @@ import type {
   TransactionsUpdateResult,
   TransfersCreateRequest,
   TransfersCreateResult,
+  UpdateCheckRequest,
+  UpdateCheckResult,
+  UpdateDownloadRequest,
+  UpdateDownloadResult,
+  UpdateGetStatusRequest,
+  UpdateGetStatusResult,
+  UpdateInstallRequest,
+  UpdateInstallResult,
 } from '@shared/types/ipc';
 import type { ReportProgress } from '@shared/types/report';
 import type { BackupProgress } from '@shared/types/backup';
+import type { UpdateStatusSnapshot } from '@shared/types/update';
 
 export interface PreloadApi {
   app: {
@@ -136,6 +145,13 @@ export interface PreloadApi {
     validate: (request?: BackupValidateRequest) => Promise<BackupValidateResult>;
     restore: (request: RestoreExecuteRequest) => Promise<RestoreExecuteResult>;
     onProgress: (callback: (progress: BackupProgress) => void) => () => void;
+  };
+  update: {
+    getStatus: (request: UpdateGetStatusRequest) => Promise<UpdateGetStatusResult>;
+    check: (request: UpdateCheckRequest) => Promise<UpdateCheckResult>;
+    download: (request: UpdateDownloadRequest) => Promise<UpdateDownloadResult>;
+    install: (request: UpdateInstallRequest) => Promise<UpdateInstallResult>;
+    onStatus: (callback: (status: UpdateStatusSnapshot) => void) => () => void;
   };
 }
 

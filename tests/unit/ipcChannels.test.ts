@@ -88,6 +88,15 @@ describe('IPC channel registry', () => {
     expect(ALLOWED_IPC_CHANNELS).toContain('transfers:create');
   });
 
+  it('registers update status, check, download, and install channels', () => {
+    expect(ALLOWED_IPC_CHANNELS).toContain('update:getStatus');
+    expect(ALLOWED_IPC_CHANNELS).toContain('update:check');
+    expect(ALLOWED_IPC_CHANNELS).toContain('update:download');
+    expect(ALLOWED_IPC_CHANNELS).toContain('update:install');
+    expect(IPC_CHANNELS.UPDATE_GET_STATUS).toBe('update:getStatus');
+    expect(IPC_CHANNELS.UPDATE_INSTALL).toBe('update:install');
+  });
+
   it('has unique channel names', () => {
     const unique = new Set(ALLOWED_IPC_CHANNELS);
     expect(unique.size).toBe(ALLOWED_IPC_CHANNELS.length);

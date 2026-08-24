@@ -74,9 +74,19 @@ import {
   type RestoreExecuteResult,
   type TransfersCreateRequest,
   type TransfersCreateResult,
+  type UpdateCheckRequest,
+  type UpdateCheckResult,
+  type UpdateDownloadRequest,
+  type UpdateDownloadResult,
+  type UpdateGetStatusRequest,
+  type UpdateGetStatusResult,
+  type UpdateInstallRequest,
+  type UpdateInstallResult,
+  UPDATE_STATUS_EVENT,
 } from '@shared/types/ipc';
 import type { ReportProgress } from '@shared/types/report';
 import type { BackupProgress } from '@shared/types/backup';
+import type { UpdateStatusSnapshot } from '@shared/types/update';
 
 const ALLOWED_INVOKE_CHANNELS = new Set<string>(Object.values(IPC_CHANNELS));
 
@@ -198,6 +208,25 @@ const api = {
       ipcRenderer.on('backup:progress', listener);
       return () => {
         ipcRenderer.removeListener('backup:progress', listener);
+      };
+    },
+  },
+  update: {
+    getStatus: (request: UpdateGetStatusRequest): Promise<UpdateGetStatusResult> =>
+      invoke(IPC_CHANNELS.UPDATE_GET_STATUS, request),
+    check: (request: UpdateCheckRequest): Promise<UpdateCheckResult> =>
+      invoke(IPC_CHANNELS.UPDATE_CHECK, request),
+    download: (request: UpdateDownloadRequest): Promise<UpdateDownloadResult> =>
+      invoke(IPC_CHANNELS.UPDATE_DOWNLOAD, request),
+    install: (request: UpdateInstallRequest): Promise<UpdateInstallResult> =>
+      invoke(IPC_CHANNELS.UPDATE_INSTALL, request),
+    onStatus: (callback: (status: UpdateStatusSnapshot) => void): (() => void) => {
+      const listener = (_event: unknown, payload: UpdateStatusSnapshot): void => {
+        callback(payload);
+      };
+      ipcRenderer.on(UPDATE_STATUS_EVENT, listener);
+      return () => {
+        ipcRenderer.removeListener(UPDATE_STATUS_EVENT, listener);
       };
     },
   },

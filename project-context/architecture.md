@@ -56,7 +56,7 @@ This document defines the technology stack, module boundaries, and system design
 - Custom `.cab` = ZIP-compatible archive via in-process ZIP writer/reader (path allow-list, bomb limits, CRC). Not shell `archiver` extraction.
 
 **Updates**
-- Architecture ready (`update-system.md`); **not shipped in v1.0**
+- Implemented in v1.0 (`update-system.md`, GitHub Releases via `electron-updater`)
 
 **Installer**
 - `electron-builder` NSIS → `FMT-Setup.exe`, productName `FMT`, icon `assets/icons/icon.ico`

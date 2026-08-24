@@ -47,6 +47,8 @@ Authoritative product and architecture documentation lives in [`project-context/
 
 Release assessment: [`project-context/release-readiness.md`](./project-context/release-readiness.md).
 
+In-app updates (GitHub Releases / `electron-updater`): [`project-context/update-system.md`](./project-context/update-system.md). Architecture is implemented; end-to-end install from a real GitHub Release has not been verified yet.
+
 ## Default credentials
 
 | Username | Password |

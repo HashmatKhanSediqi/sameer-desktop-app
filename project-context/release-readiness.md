@@ -1,6 +1,6 @@
 # FMT v1.0 — Release Readiness
 
-Honest release assessment as of STEP 9 documentation synchronization.  
+Honest release assessment as of **STEP 12 — FMT v1.0.0 published on GitHub**.  
 **Do not claim manual verification unless it was actually performed.**
 
 ---
@@ -11,18 +11,26 @@ Honest release assessment as of STEP 9 documentation synchronization.
 |-------|--------|
 | Stress-tested with **100,000 customers** | VERIFIED (automated integration tests) |
 | Stress-tested with **300,000 transactions** | VERIFIED (automated integration tests) |
-| Backup create ~2.2s / ~18 MB at that scale | VERIFIED (automated) |
+| Backup create ~2–7s / ~18 MB at that scale | VERIFIED (automated; latest run ~7.2s / 18.08 MB) |
 | Customer list / search / history at that scale without loading full tables into renderer | VERIFIED (automated) |
-| **1,000,000+ customers** | **Not empirically validated** |
+| **1,000,000 customers / ~5,000,000 transactions** | **Not empirically validated** — `npm run test:extreme` did not complete successfully (runs failed or were stopped mid-seed / mid-suite) |
+
+### STEP 10 hardening (code present; extreme run incomplete)
+
+- Report paging uses `listPageForReport` (avoids UI `MAX_PAGE_SIZE` clamp under-count)
+- Exact customer-number search shortcut + migration `006_customer_number_nocase.sql`
+- Extreme suite gated behind `test:extreme` / `FMT_RUN_EXTREME_SCALE=1`
+- Crash-recovery scale smoke + IPC user-flow smoke in default suite
 
 ### Expected behavior beyond tested scale
 
-SQL-side pagination, aggregation, and indexes (`005_query_indexes.sql`) are designed to continue scaling. Remaining bottlenecks before claiming 1M readiness:
+SQL-side pagination, aggregation, and indexes (`005_query_indexes.sql`, `006_customer_number_nocase.sql`) are designed to continue scaling. Remaining bottlenecks before claiming 1M readiness:
 
-- Customer search uses `LIKE` (no FTS5)
-- All-customer PDF/Excel reports may still consume substantial memory
+- Customer search uses `LIKE` for partial matches (no FTS5); exact `C-####` / `RARE-####` use equality
+- All-customer PDF/Excel reports may still consume substantial memory (chunked SQL; full model still O(N))
 - Backup time and archive size grow with DB + images
 - Aggregate SQL uses `CAST(amount AS REAL)` (theoretical precision drift at extreme totals)
+- Full 1M/5M seed is multi-hour and memory-heavy; prior runs were killed or failed before a green suite
 
 ---
 
@@ -44,7 +52,7 @@ SQL-side pagination, aggregation, and indexes (`005_query_indexes.sql`) are desi
 | 12 | SQLite WAL | VERIFIED | Connection pragmas + tests |
 | 13 | Foreign keys | VERIFIED | `PRAGMA foreign_keys = ON` |
 | 14 | Busy timeout | VERIFIED | `busy_timeout = 5000` |
-| 15 | Database migrations | VERIFIED | 001–005; failure does not record version |
+| 15 | Database migrations | VERIFIED | 001–006; failure does not record version |
 | 16 | 100k+ customer scalability | VERIFIED | Automated stress test |
 | 17 | 300k+ transaction scalability | VERIFIED | Automated stress test |
 | 18 | Backup creation | VERIFIED | Manual + validated create |
@@ -66,10 +74,11 @@ SQL-side pagination, aggregation, and indexes (`005_query_indexes.sql`) are desi
 | 34 | Start Menu shortcut | IMPLEMENTED BUT NOT MANUALLY VERIFIED | NSIS `createStartMenuShortcut: true` |
 | 35 | Uninstall data preservation | IMPLEMENTED BUT NOT MANUALLY VERIFIED | `deleteAppDataOnUninstall: false` |
 | 36 | TypeScript | VERIFIED | `npm run typecheck` |
-| 37 | Automated tests | VERIFIED | 198/198 (as of STEP 8/9 baseline) |
+| 37 | Automated tests | VERIFIED | **215 passed / 1 skipped** (STEP 12 final run) |
 | 38 | Production Windows build | VERIFIED | `npm run build:win` succeeds |
 | 39 | Code signing | KNOWN LIMITATION | Not configured (`signAndEditExecutable: false`); unsigned builds |
 | 40 | Clean Windows installation testing | KNOWN LIMITATION | Full clean Windows VM manual validation has **not** been performed in this audit |
+| 41 | In-app updater (electron-updater + GitHub Releases) | VERIFIED (publish) | GitHub Release **v1.0.0** published with `FMT-Setup.exe`, `latest.yml`, blockmap; **live install from older build not manually verified on a VM** |
 
 ---
 
@@ -87,6 +96,7 @@ These STEP 8 findings remain true unless separately fixed and re-verified:
 8. **Code signing is not configured.**
 9. **FTS5 is not currently implemented** for customer search.
 10. **Extremely large all-customer reports may still consume substantial memory.**
+11. **Live in-app update install from an older FMT build has not been manually verified on a clean Windows VM.** GitHub Release metadata and artifacts are published; end-user update UX should be spot-checked after distribution.
 
 ---
 
@@ -109,12 +119,12 @@ These STEP 8 findings remain true unless separately fixed and re-verified:
 - Backup encryption (password-protected `.cab`)
 - FTS5 customer search
 - Streaming / chunked all-customer reports
-- In-app update system (`electron-updater`) — see `update-system.md`
 - Authenticode code signing
 - Dedicated corruption recovery UI
 - Rate limiting on password recovery IPC
 - Playwright E2E suite
 - Insufficient-balance gate on cash-out/edit (if required by business)
+- Live in-app update install smoke test on a clean Windows VM (Release is published)
 
 ---
 

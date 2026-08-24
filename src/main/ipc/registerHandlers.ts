@@ -9,6 +9,7 @@ import { registerReportHandlers } from './reports.handlers';
 import { registerImportHandlers } from './import.handlers';
 import { registerBackupHandlers } from './backup.handlers';
 import { registerCompanyHandlers } from './company.handlers';
+import { registerUpdateHandlers } from './update.handlers';
 
 export function registerIpcHandlers(ipcMain: IpcMain, ctx: ApplicationContext): void {
   registerAuthHandlers(ipcMain, ctx);
@@ -20,4 +21,5 @@ export function registerIpcHandlers(ipcMain: IpcMain, ctx: ApplicationContext): 
   registerImportHandlers(ipcMain, ctx);
   registerBackupHandlers(ipcMain, ctx);
   registerCompanyHandlers(ipcMain, ctx);
+  registerUpdateHandlers(ipcMain, ctx);
 }

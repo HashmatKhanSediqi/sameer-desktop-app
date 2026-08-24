@@ -74,5 +74,38 @@
   "databasePath": "Database path",
   "copyPath": "Copy path",
   "copied": "Copied",
-  "saved": "Settings saved"
+  "saved": "Settings saved",
+  "updates": {
+    "title": "Application updates",
+    "currentVersion": "Current version",
+    "availableVersion": "Available version",
+    "status": "Update status",
+    "checkForUpdates": "Check for Updates",
+    "checking": "Checking...",
+    "download": "Download update",
+    "restartAndInstall": "Restart and Install",
+    "downloadingProgress": "Downloading… {{percent}}%",
+    "readyHint": "Update downloaded. A validated safety backup will be created before installation.",
+    "unsupportedHint": "In-app updates are available in the installed Windows build. Development mode does not download releases.",
+    "states": {
+      "idle": "Ready to check",
+      "checking": "Checking for updates…",
+      "upToDate": "No update available",
+      "available": "New version available",
+      "downloading": "Downloading update…",
+      "ready": "Ready to install",
+      "error": "Update error",
+      "unsupported": "Updates unavailable in this environment"
+    },
+    "errors": {
+      "generic": "The update could not be completed.",
+      "checkFailed": "Could not check for updates. You can keep using FMT offline.",
+      "downloadFailed": "Download failed. Your current installation was not changed.",
+      "backupFailed": "Update was not installed because the safety backup could not be completed.",
+      "unsupported": "Updates are not available in this environment.",
+      "notAvailable": "No update is available to download.",
+      "notReady": "Download an update before installing.",
+      "invalidVersion": "The update server returned an invalid version."
+    }
+  }
 }

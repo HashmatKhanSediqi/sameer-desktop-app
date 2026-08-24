@@ -32,6 +32,7 @@ import type {
   UpdateTransactionInput,
 } from './transaction';
 import type { CreateTransferInput, TransferResult } from './transfer';
+import type { UpdateStatusSnapshot } from './update';
 
 export type { TransactionType };
 
@@ -65,7 +66,14 @@ export type IpcErrorCode =
   | 'INSUFFICIENT_BALANCE'
   | 'TRANSFER_SAME_CUSTOMER'
   | 'INVALID_COLOR'
-  | 'COMPANY_NAME_REQUIRED';
+  | 'COMPANY_NAME_REQUIRED'
+  | 'UPDATE_UNSUPPORTED'
+  | 'UPDATE_CHECK_FAILED'
+  | 'UPDATE_DOWNLOAD_FAILED'
+  | 'UPDATE_NOT_AVAILABLE'
+  | 'UPDATE_NOT_READY'
+  | 'UPDATE_BACKUP_FAILED'
+  | 'UPDATE_INVALID_VERSION';
 
 export interface AppPaths {
   userData: string;
@@ -490,6 +498,21 @@ export interface TransfersCreateSuccessResponse {
 
 export type TransfersCreateResult = TransfersCreateSuccessResponse | IpcErrorResponse;
 
+export type UpdateGetStatusRequest = AuthenticatedRequest;
+export type UpdateCheckRequest = AuthenticatedRequest;
+export type UpdateDownloadRequest = AuthenticatedRequest;
+export type UpdateInstallRequest = AuthenticatedRequest;
+
+export interface UpdateStatusSuccessResponse {
+  ok: true;
+  data: UpdateStatusSnapshot;
+}
+
+export type UpdateGetStatusResult = UpdateStatusSuccessResponse | IpcErrorResponse;
+export type UpdateCheckResult = UpdateStatusSuccessResponse | IpcErrorResponse;
+export type UpdateDownloadResult = UpdateStatusSuccessResponse | IpcErrorResponse;
+export type UpdateInstallResult = UpdateStatusSuccessResponse | IpcErrorResponse;
+
 export const IPC_CHANNELS = {
   APP_GET_PATHS: 'app:getPaths',
   APP_GET_STATUS: 'app:getStatus',
@@ -529,9 +552,14 @@ export const IPC_CHANNELS = {
   COMPANY_UPDATE: 'company:update',
   COMPANY_GET_LOGO: 'company:getLogo',
   TRANSFERS_CREATE: 'transfers:create',
+  UPDATE_GET_STATUS: 'update:getStatus',
   UPDATE_CHECK: 'update:check',
   UPDATE_DOWNLOAD: 'update:download',
+  UPDATE_INSTALL: 'update:install',
 } as const;
+
+/** Renderer push channel for update status snapshots (not an invoke channel). */
+export const UPDATE_STATUS_EVENT = 'update:status';
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
 

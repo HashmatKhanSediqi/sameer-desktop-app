@@ -1487,6 +1487,37 @@ body {
   font-size: 13px;
 }
 
+.update-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+  display: grid;
+  gap: 12px;
+}
+
+.update-section h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.update-section .button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.update-section .form-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.update-section .form-error {
+  margin: 0;
+  color: var(--color-danger, #b42318);
+  font-size: 13px;
+}
+
 .button:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;

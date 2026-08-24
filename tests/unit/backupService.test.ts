@@ -107,6 +107,31 @@ describe('backup service', () => {
     }
   });
 
+  it('creates validated pre-update backups under backups/pre-update', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      harness.customerService.create({
+        name: 'Pre Update User',
+        customerNumber: 'PU-1',
+      });
+
+      const preUpdateDir = join(harness.ctx.paths.backups, 'pre-update');
+      const result = await harness.backupService.createPreUpdateBackup();
+      expect(result.created).toBe(true);
+      if (!result.created) {
+        return;
+      }
+      expect(result.filePath.startsWith(preUpdateDir)).toBe(true);
+      expect(result.filePath.includes('FMT_PreUpdate_')).toBe(true);
+      expect(existsSync(result.filePath)).toBe(true);
+
+      const validated = await harness.backupService.validate(result.filePath);
+      expect(validated.valid).toBe(true);
+    } finally {
+      harness.cleanup();
+    }
+  });
+
   it('restores customers, transactions, photos, and admin login', async () => {
     const source = await createCustomerTestHarness();
     const target = await createCustomerTestHarness();

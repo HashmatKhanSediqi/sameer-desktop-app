@@ -15,6 +15,7 @@ import {
   SettingsCompanySection,
   SettingsExchangeSection,
 } from './SettingsPhase3Sections';
+import { SettingsUpdateSection } from './SettingsUpdateSection';
 
 interface SettingsPageProps {
   onBack: () => void;
@@ -481,6 +482,7 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
         <button type="button" className="button button-secondary" onClick={() => void copyDataDirectory()} disabled={!paths}>
           {copied ? t('copied') : t('copyPath')}
         </button>
+        {sessionId ? <SettingsUpdateSection sessionId={sessionId} /> : null}
       </section>
 
       {pendingDeactivate ? (

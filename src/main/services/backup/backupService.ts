@@ -30,8 +30,11 @@ import {
   AUTO_CLOSE_BACKUP_RETENTION,
   SAFETY_BACKUP_FILE_PREFIX,
   SAFETY_BACKUP_RETENTION,
+  PRE_UPDATE_BACKUP_FILE_PREFIX,
+  PRE_UPDATE_BACKUP_RETENTION,
   defaultAutoCloseBackupFileName,
   defaultSafetyBackupFileName,
+  defaultPreUpdateBackupFileName,
   type BackupCreateData,
   type BackupManifest,
   type BackupManifestFile,
@@ -115,6 +118,41 @@ export class BackupService {
         error: error instanceof Error ? error.message : String(error),
       });
       return { created: false };
+    }
+  }
+
+  /**
+   * Validated safety backup required before applying an application update.
+   * Uses the existing .cab format under backups/pre-update/.
+   */
+  async createPreUpdateBackup(): Promise<{ created: true; filePath: string } | { created: false; error: string }> {
+    const preUpdateDir = join(this.deps.paths.backups, 'pre-update');
+    mkdirSync(preUpdateDir, { recursive: true });
+
+    let fileName = defaultPreUpdateBackupFileName();
+    let destination = join(preUpdateDir, fileName);
+    let attempt = 0;
+    while (existsSync(destination)) {
+      attempt += 1;
+      fileName = defaultPreUpdateBackupFileName(new Date(Date.now() + attempt * 1000));
+      destination = join(preUpdateDir, fileName);
+    }
+
+    try {
+      await this.create(destination);
+      const validated = await this.validate(destination);
+      if (!validated.valid) {
+        unlinkIfExists(destination);
+        return { created: false, error: 'Pre-update backup failed validation' };
+      }
+      this.pruneBackupFiles(preUpdateDir, PRE_UPDATE_BACKUP_FILE_PREFIX, PRE_UPDATE_BACKUP_RETENTION);
+      this.deps.logger.info('Pre-update backup created', { path: destination });
+      return { created: true, filePath: destination };
+    } catch (error) {
+      unlinkIfExists(destination);
+      const message = error instanceof Error ? error.message : String(error);
+      this.deps.logger.error('Pre-update backup failed', { error: message });
+      return { created: false, error: message };
     }
   }
 

@@ -104,8 +104,16 @@ export const AUTO_CLOSE_BACKUP_RETENTION = 10;
 export const SAFETY_BACKUP_FILE_PREFIX = 'FMT_SafetyBackup_';
 export const SAFETY_BACKUP_RETENTION = 5;
 
+/** Pre-update safety backups under backups/pre-update/ */
+export const PRE_UPDATE_BACKUP_FILE_PREFIX = 'FMT_PreUpdate_';
+export const PRE_UPDATE_BACKUP_RETENTION = 5;
+
 export function defaultAutoCloseBackupFileName(date = new Date()): string {
   return `${AUTO_CLOSE_BACKUP_FILE_PREFIX}${formatLocalDate(date)}_${formatLocalTime(date)}.cab`;
+}
+
+export function defaultPreUpdateBackupFileName(date = new Date()): string {
+  return `${PRE_UPDATE_BACKUP_FILE_PREFIX}${formatLocalDate(date)}_${formatLocalTime(date)}.cab`;
 }
 
 function formatLocalDate(date: Date): string {

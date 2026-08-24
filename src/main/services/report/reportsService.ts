@@ -203,7 +203,7 @@ export class ReportsService {
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
     for (let page = 1; page <= totalPages; page += 1) {
-      const pageResult = this.deps.customerService.listPage(page, pageSize, (identities) => {
+      const pageResult = this.deps.customerService.listPageForReport(page, pageSize, (identities) => {
         const accounting = this.deps.transactionService.getListAccounting(identities.map((item) => item.id));
         return {
           customers: identities.map((identity) => {

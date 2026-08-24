@@ -48,8 +48,38 @@ export class CustomerService {
       totals: GlobalCurrencyTotal[];
     },
   ): PaginatedCustomerListResult {
+    return this.listPageWithLimit(pageInput, pageSizeInput, enrich, DEFAULT_PAGE_SIZE, true);
+  }
+
+  /**
+   * Main-process chunked iteration for reports. Allows larger batches than UI MAX_PAGE_SIZE
+   * so all-customer reports do not under-count when paging.
+   */
+  listPageForReport(
+    pageInput: number,
+    pageSizeInput: number,
+    enrich: (customers: CustomerIdentity[]) => {
+      customers: CustomerListItem[];
+      totals: GlobalCurrencyTotal[];
+    },
+  ): PaginatedCustomerListResult {
+    return this.listPageWithLimit(pageInput, pageSizeInput, enrich, pageSizeInput, false);
+  }
+
+  private listPageWithLimit(
+    pageInput: number | undefined,
+    pageSizeInput: number | undefined,
+    enrich: (customers: CustomerIdentity[]) => {
+      customers: CustomerListItem[];
+      totals: GlobalCurrencyTotal[];
+    },
+    defaultPageSize: number,
+    clampToUiMax: boolean,
+  ): PaginatedCustomerListResult {
     const totalCount = this.repository.countCustomers();
-    const pagination = resolvePagination(pageInput, pageSizeInput, totalCount, DEFAULT_PAGE_SIZE);
+    const pagination = clampToUiMax
+      ? resolvePagination(pageInput, pageSizeInput, totalCount, defaultPageSize)
+      : resolveReportPagination(pageInput, pageSizeInput, totalCount, defaultPageSize);
     const records = this.repository.listCustomersPaginated(
       pagination.pageSize,
       (pagination.page - 1) * pagination.pageSize,
@@ -293,6 +323,21 @@ function toListItem(record: CustomerRecord): CustomerIdentity {
     customerNumber: record.customer_number,
     hasPhoto: Boolean(record.photo_filename),
   };
+}
+
+const REPORT_MAX_PAGE_SIZE = 2000;
+
+function resolveReportPagination(
+  pageInput: number | undefined,
+  pageSizeInput: number | undefined,
+  totalCount: number,
+  defaultPageSize: number,
+): { page: number; pageSize: number; totalPages: number } {
+  const rawSize = pageSizeInput ?? defaultPageSize;
+  const pageSize = Math.min(REPORT_MAX_PAGE_SIZE, Math.max(1, Math.floor(rawSize)));
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const page = Math.min(Math.max(1, pageInput ?? 1), totalPages);
+  return { page, pageSize, totalPages };
 }
 
 function toCustomer(record: CustomerRecord): Customer {

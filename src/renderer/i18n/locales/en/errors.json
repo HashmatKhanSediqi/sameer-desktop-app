@@ -60,5 +60,12 @@
   "WEBSITE_TOO_LONG": "Website is too long.",
   "NOTES_TOO_LONG": "Additional information is too long.",
   "NAME_TOO_LONG": "Name is too long.",
-  "TRANSFER_IMMUTABLE": "Transfer records cannot be edited. Delete the transfer instead."
+  "TRANSFER_IMMUTABLE": "Transfer records cannot be edited. Delete the transfer instead.",
+  "UPDATE_UNSUPPORTED": "Updates are not available in this environment.",
+  "UPDATE_CHECK_FAILED": "Could not check for updates. You can keep using FMT offline.",
+  "UPDATE_DOWNLOAD_FAILED": "Download failed. Your current installation was not changed.",
+  "UPDATE_NOT_AVAILABLE": "No update is available to download.",
+  "UPDATE_NOT_READY": "Download an update before installing.",
+  "UPDATE_BACKUP_FAILED": "Update was not installed because the safety backup could not be completed.",
+  "UPDATE_INVALID_VERSION": "The update server returned an invalid version."
 }

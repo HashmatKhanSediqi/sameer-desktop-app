@@ -12,7 +12,7 @@ Security architecture for the offline **FMT** desktop application.
 | SQL injection | IPC → SQLite queries | High |
 | Malicious import file | Excel upload | Medium |
 | Malicious backup file | Restore flow | High |
-| Malicious update package | Update server (v1.1+) | Critical |
+| Malicious update package | GitHub Releases feed | Critical — mitigated by electron-updater checksums; code signing not configured |
 | Path traversal | Backup/archive extraction | High |
 | XSS in renderer | React app | Medium |
 | Data loss | Failed migration/import/restore | High |
@@ -156,7 +156,7 @@ This is a **known accepted risk** for local disaster recovery when the database 
 
 ---
 
-## 12. Update Verification (v1.1+)
+## 12. Update Verification (v1.0+)
 
 When updates ship: HTTPS, checksum, Authenticode. **Not active in v1.0.**
 
