@@ -1,6 +1,6 @@
 {
   "name": "customer-accounting",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "FMT — offline desktop customer accounting application",
   "main": "./out/main/index.js",
   "author": "FMT",

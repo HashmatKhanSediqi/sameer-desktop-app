@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.2.4] — 2026-08-25 (version display and dark mode)
+
 ### Added
 - Light/Dark color mode in Settings → Appearance, persisted with the existing theme settings.
 
