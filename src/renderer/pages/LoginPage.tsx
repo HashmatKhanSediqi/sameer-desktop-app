@@ -47,7 +47,7 @@ export function LoginPage({ onImportExisting, onForgotPassword, recovered }: Log
       </div>
       <div className="login-card">
         <div className="login-brand">
-          <img className="login-app-icon" src={appIconUrl} alt="" width={64} height={64} />
+          <img className="login-app-icon" src={appIconUrl} alt="" width={56} height={56} />
           <h1>{t('title')}</h1>
           <p className="login-subtitle">{t('subtitle')}</p>
         </div>
@@ -87,6 +87,7 @@ export function LoginPage({ onImportExisting, onForgotPassword, recovered }: Log
                 className="password-toggle"
                 onClick={() => setPasswordVisible((visible) => !visible)}
                 aria-label={passwordVisible ? t('hidePassword') : t('showPassword')}
+                title={passwordVisible ? t('hidePassword') : t('showPassword')}
                 aria-pressed={passwordVisible}
                 disabled={isSubmitting}
               >

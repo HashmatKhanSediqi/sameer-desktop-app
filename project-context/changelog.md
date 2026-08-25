@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.2] — 2026-08-25 (UI layout and scrolling)
+
+### Changed
+- Application chrome background is pure white (`#FFFFFF`). Green brand, accent, card, and status colors are unchanged.
+- Login fits the window without page scrolling, and the password field includes a show/hide control.
+- Customer list uses a compact responsive card grid and keeps the Actions toolbar stationary while the list scrolls.
+- Customer details keeps the profile and Edit Transaction column in place while the transaction list scrolls.
+- Post-login Accounting / Teller module cards are smaller and more compact.
+
+---
+
 ## [1.2.1] — 2026-08-24 (update install, accounting scroll)
 
 ### Fixed

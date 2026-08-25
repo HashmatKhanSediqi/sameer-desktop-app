@@ -22,61 +22,52 @@ export function CustomerTable({
   const { t: tCommon } = useTranslation('common');
 
   return (
-    <div className="table-wrap">
-      <table className="customer-table">
-        <thead>
-          <tr>
-            <th className="col-photo">{t('list.photo')}</th>
-            <th>{t('list.name')}</th>
-            <th>{t('list.number')}</th>
-            {currencyCodes.map((code) => (
-              <th key={code} className="col-amount">
-                {code}
-              </th>
-            ))}
-            <th className="col-actions">{t('list.actions')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {customers.map((customer) => (
-            <tr key={customer.id}>
-              <td className="col-photo" data-label={t('list.photo')}>
-                <CustomerAvatar
-                  customerId={customer.id}
-                  name={customer.name}
-                  hasPhoto={customer.hasPhoto}
-                />
-              </td>
-              <td data-label={t('list.name')}>
-                <button type="button" className="link-button" onClick={() => onView(customer.id)}>
-                  {customer.name?.trim() ? customer.name : t('noName')}
+    <div className="customer-card-grid">
+      {customers.map((customer) => {
+        const displayName = customer.name?.trim() ? customer.name : t('noName');
+        return (
+          <article key={customer.id} className="customer-card">
+            <div className="customer-card-head">
+              <CustomerAvatar
+                customerId={customer.id}
+                name={customer.name}
+                hasPhoto={customer.hasPhoto}
+              />
+              <div className="customer-card-identity">
+                <button type="button" className="link-button customer-card-name" onClick={() => onView(customer.id)}>
+                  {displayName}
                 </button>
-              </td>
-              <td data-label={t('list.number')}>{customer.customerNumber ?? tCommon('emptyValue')}</td>
-              {currencyCodes.map((code) => (
-                <td key={code} className="col-amount" data-label={code}>
-                  <BalanceAmount amount={customer.balances[code] ?? '0'} />
-                </td>
-              ))}
-              <td className="col-actions" data-label={t('list.actions')}>
-                <button type="button" className="button button-secondary button-compact" onClick={() => onView(customer.id)}>
-                  {t('view')}
-                </button>
-                <button type="button" className="button button-secondary button-compact" onClick={() => onEdit(customer.id)}>
-                  {t('edit')}
-                </button>
-                <button
-                  type="button"
-                  className="button button-danger button-compact"
-                  onClick={() => onDelete(customer)}
-                >
-                  {t('delete')}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                <p className="customer-card-number">{customer.customerNumber ?? tCommon('emptyValue')}</p>
+              </div>
+            </div>
+
+            {currencyCodes.length > 0 ? (
+              <dl className="customer-card-balances">
+                {currencyCodes.map((code) => (
+                  <div key={code} className="customer-card-balance">
+                    <dt>{code}</dt>
+                    <dd>
+                      <BalanceAmount amount={customer.balances[code] ?? '0'} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+
+            <div className="customer-card-actions">
+              <button type="button" className="button button-secondary button-compact" onClick={() => onView(customer.id)}>
+                {t('view')}
+              </button>
+              <button type="button" className="button button-secondary button-compact" onClick={() => onEdit(customer.id)}>
+                {t('edit')}
+              </button>
+              <button type="button" className="button button-danger button-compact" onClick={() => onDelete(customer)}>
+                {t('delete')}
+              </button>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }

@@ -33,7 +33,7 @@ Brand: green primary (`#1F7A4D` family), Cash In green / Cash Out red, FMT logo/
 | `--color-balance-positive` | Positive customer balances on the list | `#15803D` |
 | `--color-balance-negative` | Negative customer balances on the list | `#B91C1C` |
 | `--color-danger` | Delete confirmations | `#DC2626` |
-| `--color-background` | App background | `#F4F7F5` |
+| `--color-background` | App background | `#FFFFFF` |
 | `--color-surface` | Cards, panels | `#FFFFFF` |
 | `--color-text` | Primary text | `#0F172A` |
 | `--color-text-muted` | Secondary text | `#64748B` |
