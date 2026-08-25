@@ -76,6 +76,7 @@ describe('SettingsService language persistence', () => {
       const updated = service.update({
         exchangeEnabled: true,
         theme: {
+          mode: 'light',
           primary: '#123456',
           accent: '#654321',
           cards: {
@@ -87,6 +88,7 @@ describe('SettingsService language persistence', () => {
       });
       expect(updated.exchangeEnabled).toBe(true);
       expect(updated.theme.primary).toBe('#123456');
+      expect(updated.theme.mode).toBe('light');
       expect(service.get().theme.cards['2'].accent).toBe('#444444');
 
       expect(() =>
@@ -102,6 +104,31 @@ describe('SettingsService language persistence', () => {
       const reset = service.update({ resetAppearance: true });
       expect(reset.theme).toEqual(DEFAULT_THEME);
       expect(reset.exchangeEnabled).toBe(true);
+    } finally {
+      testDb.cleanup();
+    }
+  });
+
+  it('persists dark mode independently of custom colors and restores light on reset', () => {
+    const testDb = createTestDatabase();
+    try {
+      applyProjectMigrations(testDb.db, testDb.logger);
+      const service = new SettingsService(testDb.db);
+
+      const updated = service.update({
+        theme: {
+          ...DEFAULT_THEME,
+          mode: 'dark',
+          primary: '#123456',
+        },
+      });
+      expect(updated.theme.mode).toBe('dark');
+      expect(updated.theme.primary).toBe('#123456');
+      expect(service.get().theme.mode).toBe('dark');
+
+      const reset = service.update({ resetAppearance: true });
+      expect(reset.theme).toEqual(DEFAULT_THEME);
+      expect(reset.theme.mode).toBe('light');
     } finally {
       testDb.cleanup();
     }

@@ -155,9 +155,19 @@ export function CustomerListPage({ onViewCustomer }: CustomerListPageProps): JSX
     <section className="customer-page">
       <div className="page-header">
         <h2>{t('list.title')}</h2>
-        <button type="button" className="button button-primary" onClick={() => setFormMode('create')}>
-          {t('add')}
-        </button>
+        <div className="header-actions">
+          <button type="button" className="button button-primary" onClick={() => setFormMode('create')}>
+            {t('add')}
+          </button>
+          <button
+            type="button"
+            className="button button-secondary"
+            onClick={() => setShowTransfer(true)}
+            disabled={totalCount < 2}
+          >
+            {tTx('transfer.title')}
+          </button>
+        </div>
       </div>
 
       <GlobalTotalCards totals={totals} />
@@ -172,14 +182,6 @@ export function CustomerListPage({ onViewCustomer }: CustomerListPageProps): JSX
           placeholder={t('list.searchPlaceholder')}
           aria-label={t('list.searchPlaceholder')}
         />
-        <button
-          type="button"
-          className="button button-secondary"
-          onClick={() => setShowTransfer(true)}
-          disabled={totalCount < 2}
-        >
-          {tTx('transfer.title')}
-        </button>
       </div>
 
       {error ? (

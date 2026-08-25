@@ -4,6 +4,7 @@
   --color-primary-pressed: #17653f;
   --color-primary-shadow: rgba(31, 122, 77, 0.28);
   --color-focus-ring: rgba(31, 122, 77, 0.35);
+  --color-secondary: #258a58;
   --color-background: #ffffff;
   --color-surface: #ffffff;
   --color-text: #0f172a;
@@ -20,6 +21,23 @@
   --color-balance-negative-bg: #fef2f2;
   --color-balance-positive-border: #bbf7d0;
   --color-balance-negative-border: #fecaca;
+  --color-table-stripe: #f8fafc;
+  --color-hover-fill: #f3f7f4;
+  --color-hover-fill-strong: #e7efe9;
+  --color-avatar-fill: #e2e8f0;
+  --color-logo-fill: #ffffff;
+  --color-success-bg: #f0fdf4;
+  --color-success-border: #bbf7d0;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-warning-bg: #fff6e5;
+  --color-warning-text: #7a4a00;
+  --color-warning-border: #f0d19a;
+  --color-cash-in-soft: #ecfdf3;
+  --color-cash-out-soft: #fef2f2;
+  --color-type-cash-in-bg: #dcfce7;
+  --color-type-cash-out-bg: #fee2e2;
+  --color-modal-backdrop: rgba(15, 23, 42, 0.4);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -70,6 +88,8 @@ body,
 #root {
   height: 100%;
   max-width: 100%;
+  background: var(--color-background);
+  color: var(--color-text);
 }
 
 body {
@@ -134,6 +154,10 @@ body {
 .app-main-detail > .customer-page-detail {
   flex: 1 1 auto;
   min-height: 0;
+}
+
+.app-shell-no-header .app-main {
+  flex: 1 1 auto;
 }
 
 .app-main-list {
@@ -232,9 +256,9 @@ body {
 }
 
 .banner-error {
-  background: #fef2f2;
+  background: var(--color-danger-bg);
   color: var(--color-danger);
-  border: 1px solid #fecaca;
+  border: 1px solid var(--color-danger-border);
 }
 
 .text-danger {
@@ -520,7 +544,7 @@ html:has(.login-page-home) #root {
   height: 28px;
   object-fit: contain;
   border-radius: 6px;
-  background: #fff;
+  background: var(--color-logo-fill);
   flex: 0 0 auto;
 }
 
@@ -853,7 +877,7 @@ html:has(.login-page-home) #root {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #e2e8f0;
+  background: var(--color-avatar-fill);
   color: var(--color-text);
   font-size: 12px;
   font-weight: 700;
@@ -888,6 +912,7 @@ html:has(.login-page-home) #root {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.4);
+  background: var(--color-modal-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -960,9 +985,9 @@ html:has(.login-page-home) #root {
 }
 
 .banner-success {
-  background: #f0fdf4;
+  background: var(--color-success-bg);
   color: var(--color-success);
-  border: 1px solid #bbf7d0;
+  border: 1px solid var(--color-success-border);
 }
 
 .banner.banner-error,
@@ -1150,7 +1175,7 @@ html:has(.login-page-home) #root {
   box-shadow: var(--shadow-raised);
   border-inline-start-width: 4px;
   border-inline-start-color: var(--color-primary);
-  background: linear-gradient(180deg, #ffffff 0%, #f7faf8 100%);
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-background) 100%);
 }
 
 .customer-page-detail .customer-detail {
@@ -1184,7 +1209,7 @@ html:has(.login-page-home) #root {
 .customer-history-card {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
-  background: linear-gradient(180deg, #ffffff 0%, #f8faf9 100%);
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-background) 100%);
   min-width: 0;
 }
 
@@ -1302,12 +1327,12 @@ html:has(.login-page-home) #root {
 }
 
 .type-cash-in {
-  background: #dcfce7;
+  background: var(--color-type-cash-in-bg);
   color: var(--color-cash-in);
 }
 
 .type-cash-out {
-  background: #fee2e2;
+  background: var(--color-type-cash-out-bg);
   color: var(--color-cash-out);
 }
 
@@ -1316,7 +1341,7 @@ html:has(.login-page-home) #root {
   margin-inline-start: 8px;
   padding: 1px 8px;
   border-radius: 999px;
-  background: #e2e8f0;
+  background: var(--color-avatar-fill);
   color: var(--color-text-muted);
   font-size: 11px;
   font-weight: 700;
@@ -1346,7 +1371,7 @@ html:has(.login-page-home) #root {
 }
 
 .transaction-table tbody tr:nth-child(even) {
-  background: #f8fafc;
+  background: var(--color-table-stripe);
 }
 
 .type-toggle {
@@ -1569,6 +1594,16 @@ html:has(.login-page-home) #root {
   font-weight: 500;
 }
 
+.theme-mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.theme-mode-toggle .button {
+  min-width: 8rem;
+}
+
 .currency-add-form {
   margin-top: 16px;
   display: grid;
@@ -1721,12 +1756,12 @@ html:has(.login-page-home) #root {
 }
 
 .transaction-modal[data-type='CASH_IN'] {
-  border-color: #bbf7d0;
+  border-color: var(--color-success-border);
   border-inline-start: 4px solid var(--color-cash-in);
 }
 
 .transaction-modal[data-type='CASH_OUT'] {
-  border-color: #fecaca;
+  border-color: var(--color-danger-border);
   border-inline-start: 4px solid var(--color-cash-out);
 }
 
@@ -1737,13 +1772,13 @@ html:has(.login-page-home) #root {
 }
 
 .transaction-modal[data-type='CASH_IN'] .transaction-modal-header {
-  background: #ecfdf3;
-  border-bottom-color: #bbf7d0;
+  background: var(--color-cash-in-soft);
+  border-bottom-color: var(--color-success-border);
 }
 
 .transaction-modal[data-type='CASH_OUT'] .transaction-modal-header {
-  background: #fef2f2;
-  border-bottom-color: #fecaca;
+  background: var(--color-cash-out-soft);
+  border-bottom-color: var(--color-danger-border);
 }
 
 .transaction-modal-header h2 {
@@ -1811,13 +1846,13 @@ html:has(.login-page-home) #root {
 }
 
 .transaction-modal[data-type='CASH_IN'] .transaction-modal-footer {
-  background: #ecfdf3;
-  border-top-color: #bbf7d0;
+  background: var(--color-cash-in-soft);
+  border-top-color: var(--color-success-border);
 }
 
 .transaction-modal[data-type='CASH_OUT'] .transaction-modal-footer {
-  background: #fef2f2;
-  border-top-color: #fecaca;
+  background: var(--color-cash-out-soft);
+  border-top-color: var(--color-danger-border);
 }
 
 .transaction-form .type-option {
@@ -1844,14 +1879,14 @@ html:has(.login-page-home) #root {
 }
 
 .transaction-form .type-option.selected.type-cash-in {
-  background: #ecfdf3;
+  background: var(--color-cash-in-soft);
   color: var(--color-cash-in);
   border-color: var(--color-cash-in);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 0 0 2px rgba(22, 163, 74, 0.16);
 }
 
 .transaction-form .type-option.selected.type-cash-out {
-  background: #fef2f2;
+  background: var(--color-cash-out-soft);
   color: var(--color-cash-out);
   border-color: var(--color-cash-out);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 0 0 2px rgba(220, 38, 38, 0.14);
@@ -2101,9 +2136,9 @@ html:has(.login-page-home) #root {
 }
 
 .banner-warning {
-  background: #fff6e5;
-  color: #7a4a00;
-  border: 1px solid #f0d19a;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
 }
 
 .company-logo-preview {
@@ -2112,7 +2147,7 @@ html:has(.login-page-home) #root {
   object-fit: contain;
   border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--color-logo-fill);
 }
 
 .company-setup-page {
@@ -2270,7 +2305,7 @@ html:has(.login-page-home) #root {
   text-align: center;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: #fff;
+  background: var(--color-logo-fill);
 }
 
 .company-setup-page .company-logo-preview {
@@ -3195,13 +3230,13 @@ html:has(.login-page-home) #root {
 }
 
 .app-shell-accounting .button-secondary:hover:not(:disabled) {
-  background: #f3f7f4;
-  border-color: #c5d5cb;
+  background: var(--color-hover-fill);
+  border-color: var(--color-border);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .app-shell-accounting .button-secondary:active:not(:disabled) {
-  background: #e7efe9;
+  background: var(--color-hover-fill-strong);
   box-shadow: none;
 }
 
@@ -3236,8 +3271,8 @@ html:has(.login-page-home) #root {
 }
 
 .app-shell-accounting .type-option:hover {
-  border-color: #c5d5cb;
-  background: #f8fbf9;
+  border-color: var(--color-border);
+  background: var(--color-hover-fill);
 }
 
 .app-shell-accounting .app-header {
@@ -3672,4 +3707,66 @@ html:has(.login-page-home) #root {
   width: 18px;
   height: 18px;
   display: block;
+}
+
+html[data-theme='dark'] .login-card,
+html[data-theme='dark'] .company-setup-card {
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .login-app-icon,
+html[data-theme='dark'] .login-mark,
+html[data-theme='dark'] .login-submit,
+html[data-theme='dark'] .button-primary,
+html[data-theme='dark'] .module-card,
+html[data-theme='dark'] .module-card:hover,
+html[data-theme='dark'] .module-card:active,
+html[data-theme='dark'] .transaction-form .type-option,
+html[data-theme='dark'] .transaction-form .type-option.selected.type-cash-in,
+html[data-theme='dark'] .transaction-form .type-option.selected.type-cash-out {
+  box-shadow: none;
+}
+
+html[data-theme='dark'] .app-shell-accounting .app-header,
+html[data-theme='dark'] .app-shell-accounting .customer-page-detail .customer-detail,
+html[data-theme='dark'] .app-shell-accounting .customer-profile-card {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 1px 2px rgba(0, 0, 0, 0.22),
+    0 6px 14px rgba(0, 0, 0, 0.24);
+}
+
+html[data-theme='dark'] .form-field input,
+html[data-theme='dark'] .form-field select,
+html[data-theme='dark'] .form-field textarea,
+html[data-theme='dark'] .search-input,
+html[data-theme='dark'] .amount-field .amount-input-shell {
+  background: var(--color-background);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .customer-table th,
+html[data-theme='dark'] .transaction-table th {
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+}
+
+html[data-theme='dark'] .modal-dialog,
+html[data-theme='dark'] .card,
+html[data-theme='dark'] .table-wrap,
+html[data-theme='dark'] .empty-state,
+html[data-theme='dark'] .teller-panel,
+html[data-theme='dark'] .teller-dashboard,
+html[data-theme='dark'] .teller-form,
+html[data-theme='dark'] .teller-currency-card,
+html[data-theme='dark'] .teller-session-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+html[data-theme='dark'] .login-orb-a,
+html[data-theme='dark'] .login-orb-b {
+  opacity: 0.55;
 }

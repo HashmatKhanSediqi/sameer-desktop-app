@@ -44,33 +44,37 @@ export function AppShell({ onSwitchModule }: AppShellProps): JSX.Element {
     });
   }, [sessionId]);
 
+  const hideGlobalHeader = view.type === 'detail';
+
   return (
-    <div className="app-shell app-shell-accounting">
-      <header className="app-header app-header-bar">
-        <div className="header-brand">
-          {logoSrc ? <img className="header-logo" src={logoSrc} alt="" /> : null}
-          <div>
-            <h1>{company?.name?.trim() || tCommon('appName')}</h1>
-            <p className="subtitle">{username ? tCommon('signedInAs', { username }) : null}</p>
+    <div className={hideGlobalHeader ? 'app-shell app-shell-accounting app-shell-no-header' : 'app-shell app-shell-accounting'}>
+      {hideGlobalHeader ? null : (
+        <header className="app-header app-header-bar">
+          <div className="header-brand">
+            {logoSrc ? <img className="header-logo" src={logoSrc} alt="" /> : null}
+            <div>
+              <h1>{company?.name?.trim() || tCommon('appName')}</h1>
+              <p className="subtitle">{username ? tCommon('signedInAs', { username }) : null}</p>
+            </div>
           </div>
-        </div>
-        <div className="header-toolbar">
-          <ModuleSwitcher current="accounting" onSwitch={onSwitchModule} />
-          <LanguageSelector />
-          <button type="button" className="button button-secondary" onClick={() => setView({ type: 'import' })}>
-            {tCommon('import')}
-          </button>
-          <button type="button" className="button button-secondary" onClick={() => setView({ type: 'reports' })}>
-            {tCommon('reports')}
-          </button>
-          <button type="button" className="button button-secondary" onClick={() => setView({ type: 'settings' })}>
-            {tCommon('settings')}
-          </button>
-          <button type="button" className="button button-secondary" onClick={() => void logout()}>
-            {tCommon('logout')}
-          </button>
-        </div>
-      </header>
+          <div className="header-toolbar">
+            <ModuleSwitcher current="accounting" onSwitch={onSwitchModule} />
+            <LanguageSelector />
+            <button type="button" className="button button-secondary" onClick={() => setView({ type: 'import' })}>
+              {tCommon('import')}
+            </button>
+            <button type="button" className="button button-secondary" onClick={() => setView({ type: 'reports' })}>
+              {tCommon('reports')}
+            </button>
+            <button type="button" className="button button-secondary" onClick={() => setView({ type: 'settings' })}>
+              {tCommon('settings')}
+            </button>
+            <button type="button" className="button button-secondary" onClick={() => void logout()}>
+              {tCommon('logout')}
+            </button>
+          </div>
+        </header>
+      )}
 
       <main
         className={
