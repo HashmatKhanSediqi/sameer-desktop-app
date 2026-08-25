@@ -2,6 +2,7 @@
   --color-primary: #1f7a4d;
   --color-primary-hover: #258a58;
   --color-primary-pressed: #17653f;
+  --color-on-primary: #ffffff;
   --color-primary-shadow: rgba(31, 122, 77, 0.28);
   --color-focus-ring: rgba(31, 122, 77, 0.35);
   --color-secondary: #258a58;
@@ -282,8 +283,8 @@ body {
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 18% 12%, rgba(31, 122, 77, 0.08), transparent 42%),
-    radial-gradient(circle at 86% 88%, rgba(31, 122, 77, 0.06), transparent 46%),
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--color-primary) 8%, transparent), transparent 42%),
+    radial-gradient(circle at 86% 88%, color-mix(in srgb, var(--color-primary) 6%, transparent), transparent 46%),
     var(--color-background);
 }
 
@@ -311,7 +312,7 @@ html:has(.login-page-home) #root {
   height: 280px;
   inset-block-start: -90px;
   inset-inline-end: -70px;
-  background: radial-gradient(circle, rgba(31, 122, 77, 0.16), transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 70%);
 }
 
 .login-orb-b {
@@ -319,7 +320,7 @@ html:has(.login-page-home) #root {
   height: 340px;
   inset-block-end: -140px;
   inset-inline-start: -110px;
-  background: radial-gradient(circle, rgba(31, 122, 77, 0.1), transparent 72%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 72%);
 }
 
 .login-orb-c {
@@ -340,7 +341,7 @@ html:has(.login-page-home) #root {
   position: relative;
   z-index: 1;
   background: var(--color-surface);
-  border: 1px solid rgba(220, 230, 224, 0.9);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: clamp(16px, 3.2vh, 32px) clamp(18px, 4vw, 32px) clamp(14px, 2.4vh, 24px);
   box-shadow: var(--shadow-login);
@@ -402,7 +403,8 @@ html:has(.login-page-home) #root {
   width: 22px;
   height: 2px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--color-on-primary);
+  opacity: 0.92;
 }
 
 .login-card h1 {
@@ -452,6 +454,27 @@ html:has(.login-page-home) #root {
   color: var(--color-text);
 }
 
+.form-field input::placeholder,
+.form-field textarea::placeholder,
+.search-input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.9;
+}
+
+.form-field input:disabled,
+.form-field select:disabled,
+.form-field textarea:disabled,
+.search-input:disabled {
+  opacity: 0.65;
+  color: var(--color-text-muted);
+  background: var(--color-hover-fill);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-primary);
+}
+
 .form-field input:focus {
   outline: 2px solid var(--color-focus-ring);
   border-color: var(--color-primary);
@@ -487,7 +510,7 @@ html:has(.login-page-home) #root {
 
 .button-primary {
   background: var(--color-primary);
-  color: #ffffff;
+  color: var(--color-on-primary);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 2px 0 var(--color-primary-pressed);
 }
 
@@ -578,12 +601,12 @@ html:has(.login-page-home) #root {
 }
 
 .login-text-action:hover:not(:disabled) {
-  background: rgba(31, 122, 77, 0.08);
+  background: var(--color-hover-fill);
   color: var(--color-primary-hover);
 }
 
 .login-text-action:active:not(:disabled) {
-  background: rgba(31, 122, 77, 0.14);
+  background: var(--color-hover-fill-strong);
   color: var(--color-primary-pressed);
 }
 
@@ -780,6 +803,7 @@ html:has(.login-page-home) #root {
   border-radius: 8px;
   font: inherit;
   background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .search-input:focus {
@@ -911,7 +935,6 @@ html:has(.login-page-home) #root {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.4);
   background: var(--color-modal-backdrop);
   display: flex;
   align-items: center;
@@ -1372,6 +1395,12 @@ html:has(.login-page-home) #root {
 
 .transaction-table tbody tr:nth-child(even) {
   background: var(--color-table-stripe);
+}
+
+.customer-table tbody tr:hover,
+.transaction-table tbody tr:hover,
+.transaction-table tbody tr:nth-child(even):hover {
+  background: var(--color-hover-fill);
 }
 
 .type-toggle {
@@ -2348,7 +2377,7 @@ html:has(.login-page-home) #root {
   margin-block: auto;
   position: relative;
   background: var(--color-surface);
-  border: 1px solid rgba(220, 230, 224, 0.9);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: clamp(24px, 4vw, 36px);
   box-shadow: var(--shadow-login);
@@ -2626,7 +2655,7 @@ html:has(.login-page-home) #root {
   align-items: center;
   padding: clamp(16px, 4vh, 36px) clamp(16px, 3vw, 32px);
   background:
-    radial-gradient(circle at 16% 12%, rgba(31, 122, 77, 0.07), transparent 40%),
+    radial-gradient(circle at 16% 12%, color-mix(in srgb, var(--color-primary) 7%, transparent), transparent 40%),
     var(--color-background);
 }
 
@@ -2728,7 +2757,7 @@ html:has(.login-page-home) #root {
   border: 1px solid var(--summary-tone-1-border);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 8px 16px rgba(31, 122, 77, 0.08);
+    0 8px 16px var(--color-primary-shadow);
 }
 
 .module-card-glyph {
@@ -2825,7 +2854,7 @@ html:has(.login-page-home) #root {
 
 .module-switcher-btn:hover:not(.is-active) {
   color: var(--color-text);
-  background: rgba(31, 122, 77, 0.08);
+  background: var(--color-hover-fill);
 }
 
 .module-switcher-btn.is-active {
@@ -3889,7 +3918,7 @@ html:has(.login-page-home) #root {
 
 .password-toggle:hover:not(:disabled) {
   color: var(--color-primary);
-  background: rgba(31, 122, 77, 0.08);
+  background: var(--color-hover-fill);
 }
 
 .password-toggle:focus-visible {
@@ -3982,3 +4011,59 @@ html[data-theme='dark'] .login-orb-a,
 html[data-theme='dark'] .login-orb-b {
   opacity: 0.55;
 }
+
+html[data-theme='dark'] option {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+html[data-theme='dark'] .language-selector select,
+html[data-theme='dark'] .teller-nav,
+html[data-theme='dark'] .module-switcher,
+html[data-theme='dark'] .transaction-modal-footer,
+html[data-theme='dark'] .amount-field .amount-input-shell {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .module-card-icon,
+html[data-theme='dark'] .module-card-chevron {
+  color: var(--color-primary);
+  background: var(--summary-tone-1-bg);
+  border-color: var(--summary-tone-1-border);
+  box-shadow: none;
+}
+
+html[data-theme='dark'] .link-button,
+html[data-theme='dark'] .button-link,
+html[data-theme='dark'] .login-text-action,
+html[data-theme='dark'] .module-card-action,
+html[data-theme='dark'] .module-switcher-btn.is-active {
+  color: var(--color-primary);
+}
+
+html[data-theme='dark'] .teller-nav-btn.is-active {
+  background: var(--summary-tone-1-bg);
+  color: var(--summary-tone-1-accent);
+  border-color: var(--summary-tone-1-border);
+}
+
+html[data-theme='dark'] .color-input-row input[type='color'] {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme='dark'] .form-field input:disabled,
+html[data-theme='dark'] .form-field select:disabled,
+html[data-theme='dark'] .form-field textarea:disabled,
+html[data-theme='dark'] .search-input:disabled {
+  background: var(--color-hover-fill);
+  color: var(--color-text-muted);
+}
+
+html[data-theme='dark'] .header-logo,
+html[data-theme='dark'] .login-app-icon {
+  background: var(--color-logo-fill);
+}
+

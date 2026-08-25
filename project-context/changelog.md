@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings uses a left navigation and content panel, with action feedback inside the relevant section or modal.
 
 ### Fixed
+- Settings → About shows the version from `package.json` / Electron `app.getVersion()` instead of a stale hardcoded `1.2.1`.
+- Dark Mode maps theme green chrome (primary buttons, links, nav, icons, borders, and green card accents) to white/light tokens. Semantic success, error, warning, and balance colors stay distinct.
+- Dark Mode icons, inputs, placeholders, tables, and modals stay readable against dark surfaces.
 - Customers with the same name can be deleted independently. Transfer counterparty links no longer block deletion.
 - Restore from Backup and Import Existing System no longer fail with "The request is invalid" after a backup file is selected.
 - Login screen no longer has a page or form scrollbar; the form is sized to fit the viewport.

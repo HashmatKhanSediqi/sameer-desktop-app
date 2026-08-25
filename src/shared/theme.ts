@@ -29,6 +29,18 @@ export const DEFAULT_THEME: ThemeAppearance = {
   },
 };
 
+/** Dark Mode chrome: theme green/primary becomes white/light. Semantic status colors stay separate. */
+export const DARK_MODE_CHROME = {
+  primary: '#f4f7f5',
+  primaryHover: '#ffffff',
+  primaryPressed: '#d7ddd9',
+  onPrimary: '#171c1a',
+  secondary: '#ffffff',
+  border: '#3a4540',
+} as const;
+
+export const LIGHT_MODE_ON_PRIMARY = '#ffffff';
+
 export function isThemeMode(value: unknown): value is ThemeMode {
   return value === 'light' || value === 'dark';
 }
@@ -113,18 +125,28 @@ export type ThemeApplyTarget = ThemeStyleTarget | ThemeDocumentTarget;
 export function applyThemeToDocument(theme: ThemeAppearance, root: ThemeApplyTarget): void {
   const style = resolveStyleTarget(root);
   const dark = theme.mode === 'dark';
-  const primary = theme.primary;
-  const accent = theme.accent;
-  const hoverMix = dark ? 0.18 : 0.12;
-  const pressedMix = dark ? 0.22 : 0.16;
+  const storedPrimary = theme.primary;
+  const storedAccent = theme.accent;
+  const chromePrimary = dark ? DARK_MODE_CHROME.primary : storedPrimary;
+  const chromeAccent = dark ? DARK_MODE_CHROME.secondary : storedAccent;
 
-  style.setProperty('--color-primary', primary);
-  style.setProperty('--color-primary-hover', mixHex(primary, '#ffffff', hoverMix));
-  style.setProperty('--color-primary-pressed', mixHex(primary, '#000000', pressedMix));
-  style.setProperty('--color-primary-shadow', hexToRgba(primary, dark ? 0.4 : 0.28));
-  style.setProperty('--color-focus-ring', hexToRgba(primary, dark ? 0.45 : 0.35));
-  style.setProperty('--color-secondary', accent);
-  style.setProperty('--color-border', dark ? mixHex(primary, '#3f4b45', 0.5) : mixHex(primary, '#dce6e0', 0.72));
+  style.setProperty('--color-primary', chromePrimary);
+  style.setProperty(
+    '--color-primary-hover',
+    dark ? DARK_MODE_CHROME.primaryHover : mixHex(storedPrimary, '#ffffff', 0.12),
+  );
+  style.setProperty(
+    '--color-primary-pressed',
+    dark ? DARK_MODE_CHROME.primaryPressed : mixHex(storedPrimary, '#000000', 0.16),
+  );
+  style.setProperty('--color-on-primary', dark ? DARK_MODE_CHROME.onPrimary : LIGHT_MODE_ON_PRIMARY);
+  style.setProperty('--color-primary-shadow', hexToRgba(chromePrimary, dark ? 0.22 : 0.28));
+  style.setProperty('--color-focus-ring', hexToRgba(chromePrimary, dark ? 0.5 : 0.35));
+  style.setProperty('--color-secondary', chromeAccent);
+  style.setProperty(
+    '--color-border',
+    dark ? DARK_MODE_CHROME.border : mixHex(storedPrimary, '#dce6e0', 0.72),
+  );
   style.setProperty('--color-background', dark ? '#171c1a' : '#ffffff');
   style.setProperty('--color-surface', dark ? '#222926' : '#ffffff');
   style.setProperty('--color-text', dark ? '#e7eee9' : '#0f172a');
@@ -176,6 +198,17 @@ export function applyThemeToDocument(theme: ThemeAppearance, root: ThemeApplyTar
     root.setAttribute('data-theme', theme.mode);
   }
 
+  style.setProperty('--summary-tone-fallback-bg', dark ? '#1c2420' : '#eef2f0');
+  style.setProperty(
+    '--summary-tone-fallback-accent',
+    dark ? DARK_MODE_CHROME.primary : '#4b6356',
+  );
+  style.setProperty('--summary-tone-fallback-border', dark ? '#2a332f' : '#d5ddd8');
+  style.setProperty(
+    '--summary-tone-fallback-shadow',
+    hexToRgba(chromePrimary, dark ? 0.18 : 0.08),
+  );
+
   for (const slot of ['1', '2', '3'] as const) {
     const tone = theme.cards[slot];
     style.setProperty(
@@ -184,13 +217,16 @@ export function applyThemeToDocument(theme: ThemeAppearance, root: ThemeApplyTar
     );
     style.setProperty(
       `--summary-tone-${slot}-accent`,
-      dark ? mixHex(tone.accent, '#d7e8de', 0.32) : tone.accent,
+      dark ? mixHex(tone.accent, DARK_MODE_CHROME.primary, 0.7) : tone.accent,
     );
     style.setProperty(
       `--summary-tone-${slot}-border`,
-      dark ? mixHex(tone.accent, '#2a332f', 0.48) : mixHex(tone.accent, '#ffffff', 0.55),
+      dark ? mixHex(DARK_MODE_CHROME.primary, '#2a332f', 0.42) : mixHex(tone.accent, '#ffffff', 0.55),
     );
-    style.setProperty(`--summary-tone-${slot}-shadow`, hexToRgba(tone.accent, dark ? 0.22 : 0.14));
+    style.setProperty(
+      `--summary-tone-${slot}-shadow`,
+      hexToRgba(dark ? DARK_MODE_CHROME.primary : tone.accent, dark ? 0.16 : 0.14),
+    );
   }
 }
 
