@@ -3031,6 +3031,102 @@ html:has(.login-page-home) #root {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Teller / Cash Management compact layout (does not restyle Accounting)       */
+/* -------------------------------------------------------------------------- */
+
+.app-shell-teller .teller-summary {
+  padding: 10px 12px;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.app-shell-teller .teller-summary-meta,
+.app-shell-teller .teller-summary-footer,
+.app-shell-teller .teller-summary-tools,
+.app-shell-teller .teller-summary-actions {
+  gap: 8px;
+}
+
+.app-shell-teller .teller-summary-title {
+  margin-top: 4px;
+  gap: 6px 10px;
+}
+
+.app-shell-teller .teller-summary-metrics {
+  gap: 8px 10px;
+}
+
+.app-shell-teller .teller-summary-metrics dd {
+  margin-top: 2px;
+  font-size: 1.1rem;
+}
+
+.app-shell-teller .teller-summary-activity {
+  gap: 6px 10px;
+}
+
+.app-shell-teller .teller-nav {
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.app-shell-teller .teller-nav-btn {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.app-shell-teller .teller-summary .button,
+.app-shell-teller .teller-main .button,
+.app-shell-teller .teller-panel .button,
+.app-shell-teller .teller-dashboard .button,
+.app-shell-teller .teller-form .button,
+.app-shell-teller .teller-form-actions .button {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.app-shell-teller .teller-summary .form-field input,
+.app-shell-teller .teller-summary .form-field select,
+.app-shell-teller .teller-currency-select {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.app-shell-teller .teller-panel,
+.app-shell-teller .teller-dashboard,
+.app-shell-teller .teller-form {
+  gap: 12px;
+}
+
+.app-shell-teller .teller-panel-header,
+.app-shell-teller .teller-session-card {
+  gap: 8px;
+}
+
+.app-shell-teller .teller-currency-card,
+.app-shell-teller .teller-session-card {
+  padding: 12px 14px;
+}
+
+.app-shell-teller .teller-form-grid,
+.app-shell-teller .teller-filter-bar {
+  gap: 10px;
+}
+
+.app-shell-teller .teller-qty-input {
+  min-height: 36px;
+}
+
+.app-shell-teller .teller-denom-status,
+.app-shell-teller .teller-denom-total,
+.app-shell-teller .teller-total-line {
+  padding: 8px 12px;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Customer Accounting UI refinement (does not restyle Teller / Cash Mgmt)     */
 /* -------------------------------------------------------------------------- */
 
