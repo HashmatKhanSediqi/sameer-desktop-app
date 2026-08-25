@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.2] — 2026-08-25 (UI layout and scrolling)
+
+### Changed
+- Application background is pure white (`#FFFFFF`); green branding, cards, and accents unchanged.
+- Login page fits the viewport without page scroll; password field includes a show/hide toggle with accessible labels.
+- Customer currency summary cards use a tighter grid with less empty space.
+- Post-login module selection cards are slightly smaller and more compact.
+
+### Fixed
+- Customer list: search/actions bar and currency totals stay fixed; only the customer table scrolls; Actions column stays visible while scrolling.
+- Customer details: transaction action header stays fixed; only the transaction list scrolls; Edit Transaction modal footer stays visible while the form body scrolls.
+
+---
+
 ## [1.2.1] — 2026-08-24 (update install, accounting scroll)
 
 ### Fixed

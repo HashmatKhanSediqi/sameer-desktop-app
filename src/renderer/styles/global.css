@@ -4,7 +4,7 @@
   --color-primary-pressed: #17653f;
   --color-primary-shadow: rgba(31, 122, 77, 0.28);
   --color-focus-ring: rgba(31, 122, 77, 0.35);
-  --color-background: #f4f7f5;
+  --color-background: #ffffff;
   --color-surface: #ffffff;
   --color-text: #0f172a;
   --color-text-muted: #64748b;
@@ -118,6 +118,9 @@ body {
 
 .app-main-detail {
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .app-main-detail > .customer-page-detail {
@@ -127,6 +130,9 @@ body {
 
 .app-main-list {
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .app-main-list > .customer-page {
@@ -234,13 +240,12 @@ body {
 }
 
 .login-page {
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100%;
+  max-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(16px, 4vw, 24px);
-  padding-block-start: 72px;
+  padding: clamp(12px, 3vw, 20px);
   position: relative;
   overflow: hidden;
   background:
@@ -288,8 +293,11 @@ body {
 
 .login-card {
   width: 100%;
-  max-width: 420px;
+  max-width: 400px;
   min-width: 0;
+  max-height: calc(100% - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   position: relative;
   z-index: 1;
   background: var(--color-surface);
@@ -2294,7 +2302,7 @@ body {
   margin: 0;
   justify-content: center;
   align-items: center;
-  padding: clamp(24px, 5vh, 52px) clamp(16px, 3.5vw, 40px);
+  padding: clamp(16px, 4vh, 36px) clamp(16px, 3vw, 32px);
   background:
     radial-gradient(circle at 16% 12%, rgba(31, 122, 77, 0.07), transparent 40%),
     var(--color-background);
@@ -2312,7 +2320,7 @@ body {
 
 .module-select-intro h2 {
   margin: 0 0 8px;
-  font-size: clamp(1.45rem, 2.5vw, 1.9rem);
+  font-size: clamp(1.2rem, 2vw, 1.45rem);
   letter-spacing: -0.03em;
   font-weight: 700;
 }
@@ -2320,14 +2328,14 @@ body {
 .module-select-intro p {
   margin: 0;
   color: var(--color-text-muted);
-  font-size: 0.98rem;
+  font-size: 0.9rem;
 }
 
 .module-select-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: clamp(18px, 2.6vw, 28px);
-  margin-top: clamp(24px, 3.6vh, 36px);
+  gap: clamp(14px, 2vw, 20px);
+  margin-top: clamp(18px, 3vh, 28px);
 }
 
 .module-card {
@@ -2335,13 +2343,13 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
-  min-height: 312px;
-  padding: 30px 28px 22px;
+  gap: 8px;
+  min-height: 0;
+  padding: 20px 20px 16px;
   overflow: hidden;
   isolation: isolate;
   border: 1px solid var(--color-border);
-  border-radius: 18px;
+  border-radius: 14px;
   background: var(--color-surface);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.92) inset,
@@ -2388,11 +2396,11 @@ body {
 .module-card-icon {
   display: grid;
   place-items: center;
-  width: 68px;
-  height: 68px;
+  width: 48px;
+  height: 48px;
   flex: 0 0 auto;
-  margin-bottom: 6px;
-  border-radius: 20px;
+  margin-bottom: 2px;
+  border-radius: 14px;
   background: var(--summary-tone-1-bg);
   color: var(--color-primary);
   border: 1px solid var(--summary-tone-1-border);
@@ -2402,14 +2410,14 @@ body {
 }
 
 .module-card-glyph {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   display: block;
 }
 
 .module-card-title {
   display: block;
-  font-size: clamp(1.32rem, 2vw, 1.55rem);
+  font-size: clamp(1.1rem, 1.8vw, 1.28rem);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.03em;
@@ -2418,20 +2426,20 @@ body {
 .module-card-copy {
   color: var(--color-text-muted);
   flex: 1;
-  line-height: 1.6;
-  font-size: 0.97rem;
+  line-height: 1.5;
+  font-size: 0.88rem;
 }
 
 .module-card-action {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
-  padding-top: 16px;
+  margin-top: 4px;
+  padding-top: 12px;
   border-top: 1px solid var(--color-border);
   width: 100%;
   color: var(--color-primary);
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   transition: gap 0.18s ease;
@@ -3191,7 +3199,7 @@ body {
 
 .app-shell-accounting .summary-card-grid,
 .app-shell-accounting .currency-summary-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 148px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 118px), 1fr));
   gap: 8px;
 }
 
@@ -3254,7 +3262,72 @@ body {
 }
 
 .app-shell-accounting .customer-list-scroll {
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.app-shell-accounting .customer-list-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell-accounting .customer-list-section > .pagination-bar {
+  flex: 0 0 auto;
+}
+
+.app-shell-accounting .customer-list-scroll .customer-table th.col-actions,
+.app-shell-accounting .customer-list-scroll .customer-table td.col-actions {
+  position: sticky;
+  inset-inline-end: 0;
+  z-index: 2;
+  background: var(--color-surface);
+  box-shadow: -4px 0 8px rgba(15, 23, 42, 0.05);
+}
+
+.app-shell-accounting .customer-list-scroll .customer-table thead th.col-actions {
+  z-index: 4;
+}
+
+.app-shell-accounting .customer-page-detail > .page-header {
+  flex: 0 0 auto;
+  z-index: 5;
+  background: var(--color-background);
+}
+
+.app-shell-accounting .customer-page-detail > .banner {
+  flex: 0 0 auto;
+}
+
+.app-shell-accounting .action-bar {
+  flex: 0 0 auto;
+}
+
+.app-shell-accounting .transaction-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: min(90dvh, 100%);
+  overflow: hidden;
+}
+
+.app-shell-accounting .transaction-modal .transaction-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell-accounting .transaction-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.app-shell-accounting .transaction-modal-footer {
+  flex: 0 0 auto;
 }
 
 .app-shell-accounting .customer-list-scroll .customer-table {
@@ -3337,10 +3410,9 @@ body {
 }
 
 .app-shell-accounting .app-main-list .summary-card-grid {
-  max-height: 148px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  flex: 0 0 auto;
+  max-height: none;
+  overflow: visible;
 }
 
 .app-shell-accounting .customer-page-detail .currency-summary-fixed,
@@ -3404,4 +3476,51 @@ body {
   .app-shell-accounting .summary-card:hover {
     transform: none;
   }
+}
+
+.password-input-wrap {
+  position: relative;
+}
+
+.password-input-wrap input {
+  padding-inline-end: 40px;
+}
+
+.password-toggle {
+  position: absolute;
+  inset-inline-end: 6px;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.password-toggle:hover:not(:disabled) {
+  color: var(--color-primary);
+  background: rgba(31, 122, 77, 0.08);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+.password-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.password-toggle-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
