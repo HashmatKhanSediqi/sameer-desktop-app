@@ -82,7 +82,9 @@ export function AppShell({ onSwitchModule }: AppShellProps): JSX.Element {
             ? 'app-main app-main-detail'
             : view.type === 'list'
               ? 'app-main app-main-list'
-              : 'app-main'
+              : view.type === 'settings'
+                ? 'app-main app-main-settings'
+                : 'app-main'
         }
       >
         {view.type === 'list' ? (

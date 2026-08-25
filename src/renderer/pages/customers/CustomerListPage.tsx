@@ -38,6 +38,8 @@ export function CustomerListPage({ onViewCustomer }: CustomerListPageProps): JSX
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [pendingDelete, setPendingDelete] = useState<CustomerListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSucceeded, setDeleteSucceeded] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQuery(query), 300);
@@ -123,25 +125,31 @@ export function CustomerListPage({ onViewCustomer }: CustomerListPageProps): JSX
   }
 
   async function confirmDelete(): Promise<void> {
-    if (!sessionId || !pendingDelete) {
+    if (!sessionId || !pendingDelete || isDeleting || deleteSucceeded) {
       return;
     }
 
     setIsDeleting(true);
+    setDeleteError(null);
     try {
       const result = await window.api.customers.delete({ sessionId, id: pendingDelete.id });
       if (!result.ok) {
-        setError(mapCustomerError((key) => String(t(key as never)), result.errorCode, result.message));
+        setDeleteError(mapCustomerError((key) => String(t(key as never)), result.errorCode, result.message));
         return;
       }
 
       invalidateCustomerPhotoCache(pendingDelete.id);
-      setPendingDelete(null);
-      setSuccess(t('deleted'));
+      setDeleteSucceeded(true);
       await loadCustomers();
     } finally {
       setIsDeleting(false);
     }
+  }
+
+  function closeDeleteDialog(): void {
+    setPendingDelete(null);
+    setDeleteError(null);
+    setDeleteSucceeded(false);
   }
 
   function handleSaved(_customer: Customer): void {
@@ -217,7 +225,11 @@ export function CustomerListPage({ onViewCustomer }: CustomerListPageProps): JSX
               currencyCodes={totals.map((total) => total.currencyCode)}
               onView={onViewCustomer}
               onEdit={(id) => void openEdit(id)}
-              onDelete={setPendingDelete}
+              onDelete={(customer) => {
+                setDeleteError(null);
+                setDeleteSucceeded(false);
+                setPendingDelete(customer);
+              }}
             />
           </div>
           {totalPages > 1 ? (
@@ -277,8 +289,11 @@ export function CustomerListPage({ onViewCustomer }: CustomerListPageProps): JSX
           title={t('deleteTitle')}
           message={t('deleteConfirm', { name: pendingDelete.name?.trim() ? pendingDelete.name : t('noName') })}
           isBusy={isDeleting}
-          onCancel={() => setPendingDelete(null)}
+          error={deleteError}
+          successMessage={deleteSucceeded ? t('deletedSuccess') : null}
+          onCancel={closeDeleteDialog}
           onConfirm={() => void confirmDelete()}
+          onSuccessClose={closeDeleteDialog}
         />
       ) : null}
     </section>
