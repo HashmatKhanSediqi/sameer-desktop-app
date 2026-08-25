@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { applyThemeToDocument, cloneTheme, DEFAULT_THEME, type ThemeAppearance } from '@shared/theme';
+import { applyThemeToDocument, cloneTheme, DEFAULT_THEME, type ThemeAppearance, type ThemeMode } from '@shared/theme';
 import type { AppSettings } from '@shared/types/settings';
 import { CompanyProfileFields } from '../../components/CompanyProfileFields';
 import { useAuth } from '../../context/AuthContext';
@@ -191,9 +191,9 @@ export function SettingsAppearanceSection({
     }
   }, [settings]);
 
-  async function save(next: ThemeAppearance | { resetAppearance: true }): Promise<void> {
+  async function save(next: ThemeAppearance | { resetAppearance: true }): Promise<boolean> {
     if (!sessionId || isSaving) {
-      return;
+      return false;
     }
     setIsSaving(true);
     onError(null);
@@ -203,20 +203,60 @@ export function SettingsAppearanceSection({
       );
       if (!result.ok) {
         onError(tErrors(result.message || result.errorCode));
-        return;
+        return false;
       }
-      applyThemeToDocument(result.data.theme, document.documentElement.style);
+      applyThemeToDocument(result.data.theme, document.documentElement);
       setTheme(cloneTheme(result.data.theme));
       onSaved(result.data);
       onSuccess(t('appearanceSaved'));
+      return true;
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function saveMode(mode: ThemeMode): Promise<void> {
+    if (theme.mode === mode) {
+      return;
+    }
+    const previous = cloneTheme(theme);
+    const next = { ...theme, mode };
+    applyThemeToDocument(next, document.documentElement);
+    const saved = await save(next);
+    if (!saved) {
+      applyThemeToDocument(previous, document.documentElement);
+      setTheme(previous);
     }
   }
 
   return (
     <section className="card">
       <h2>{t('appearance')}</h2>
+      <div className="form-field">
+        <span className="field-label" id="theme-mode-label">
+          {t('colorMode')}
+        </span>
+        <div className="theme-mode-toggle" role="group" aria-labelledby="theme-mode-label">
+          <button
+            type="button"
+            className={theme.mode === 'light' ? 'button button-primary' : 'button button-secondary'}
+            disabled={isSaving}
+            aria-pressed={theme.mode === 'light'}
+            onClick={() => void saveMode('light')}
+          >
+            {t('lightMode')}
+          </button>
+          <button
+            type="button"
+            className={theme.mode === 'dark' ? 'button button-primary' : 'button button-secondary'}
+            disabled={isSaving}
+            aria-pressed={theme.mode === 'dark'}
+            onClick={() => void saveMode('dark')}
+          >
+            {t('darkMode')}
+          </button>
+        </div>
+      </div>
       <div className="color-grid">
         <ColorField
           id="theme-primary"

@@ -23,7 +23,7 @@ export function LocaleBootstrap({ children }: LocaleBootstrapProps): JSX.Element
         }
         if (result.ok) {
           await changeAppLanguage(result.data.language);
-          applyThemeToDocument(result.data.theme ?? DEFAULT_THEME, document.documentElement.style);
+          applyThemeToDocument(result.data.theme ?? DEFAULT_THEME, document.documentElement);
         } else {
           applyDocumentLocale(normalizeLocale(DEFAULT_LOCALE));
         }

@@ -20,6 +20,7 @@ import {
   SETTINGS_PAGINATION_ENABLED_KEY,
   SETTINGS_PAGINATION_PAGE_SIZE_KEY,
   SETTINGS_THEME_ACCENT_KEY,
+  SETTINGS_THEME_MODE_KEY,
   SETTINGS_THEME_PRIMARY_KEY,
   type AppSettings,
   type SettingsUpdateInput,
@@ -105,6 +106,7 @@ export class SettingsService {
 
   private readTheme(): ThemeAppearance {
     return parseThemeAppearance({
+      mode: this.repository.get(SETTINGS_THEME_MODE_KEY) ?? DEFAULT_THEME.mode,
       primary: this.repository.get(SETTINGS_THEME_PRIMARY_KEY) ?? DEFAULT_THEME.primary,
       accent: this.repository.get(SETTINGS_THEME_ACCENT_KEY) ?? DEFAULT_THEME.accent,
       cards: this.parseCardTones(this.repository.get(SETTINGS_CARD_TONES_KEY)),
@@ -127,6 +129,7 @@ export class SettingsService {
   private writeTheme(theme: ThemeAppearance): void {
     this.repository.set(SETTINGS_THEME_PRIMARY_KEY, theme.primary);
     this.repository.set(SETTINGS_THEME_ACCENT_KEY, theme.accent);
+    this.repository.set(SETTINGS_THEME_MODE_KEY, theme.mode);
     this.repository.set(SETTINGS_CARD_TONES_KEY, JSON.stringify(theme.cards));
   }
 

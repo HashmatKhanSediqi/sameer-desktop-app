@@ -9,7 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Light/Dark color mode in Settings → Appearance, persisted with the existing theme settings.
+
 ### Changed
+- Customer Details hides the global application header and uses the recovered vertical space.
+- Customer Accounting list places `Transfer` immediately beside `Add Customer`.
 - Login secondary actions (`Forgot password`, `Import Existing System`) are text actions without underlines, with hover/focus/active states.
 - Global header sizing matches the compact Customer Accounting header on every page.
 - Customer Accounting and Customer Details summary cards expand to fill available row width (`auto-fit`).

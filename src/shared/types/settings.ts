@@ -7,6 +7,7 @@ export const SETTINGS_PAGINATION_PAGE_SIZE_KEY = 'pagination_page_size';
 export const SETTINGS_EXCHANGE_ENABLED_KEY = 'exchange_enabled';
 export const SETTINGS_THEME_PRIMARY_KEY = 'theme_primary';
 export const SETTINGS_THEME_ACCENT_KEY = 'theme_accent';
+export const SETTINGS_THEME_MODE_KEY = 'theme_mode';
 export const SETTINGS_CARD_TONES_KEY = 'card_tones';
 
 export const DEFAULT_PAGINATION_ENABLED = true;

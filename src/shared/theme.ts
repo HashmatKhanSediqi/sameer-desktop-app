@@ -1,11 +1,14 @@
 export const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/;
 
+export type ThemeMode = 'light' | 'dark';
+
 export interface ThemeCardTone {
   background: string;
   accent: string;
 }
 
 export interface ThemeAppearance {
+  mode: ThemeMode;
   primary: string;
   accent: string;
   cards: {
@@ -16,6 +19,7 @@ export interface ThemeAppearance {
 }
 
 export const DEFAULT_THEME: ThemeAppearance = {
+  mode: 'light',
   primary: '#1f7a4d',
   accent: '#258a58',
   cards: {
@@ -24,6 +28,10 @@ export const DEFAULT_THEME: ThemeAppearance = {
     '3': { background: '#f3eee8', accent: '#8a6a4a' },
   },
 };
+
+export function isThemeMode(value: unknown): value is ThemeMode {
+  return value === 'light' || value === 'dark';
+}
 
 export function isHexColor(value: unknown): value is string {
   return typeof value === 'string' && HEX_COLOR_PATTERN.test(value);
@@ -44,6 +52,7 @@ export function parseThemeAppearance(value: unknown): ThemeAppearance {
     : {};
 
   return {
+    mode: isThemeMode(record.mode) ? record.mode : DEFAULT_THEME.mode,
     primary: parseHexColor(record.primary, DEFAULT_THEME.primary),
     accent: parseHexColor(record.accent, DEFAULT_THEME.accent),
     cards: {
@@ -56,6 +65,7 @@ export function parseThemeAppearance(value: unknown): ThemeAppearance {
 
 export function cloneTheme(theme: ThemeAppearance): ThemeAppearance {
   return {
+    mode: theme.mode,
     primary: theme.primary,
     accent: theme.accent,
     cards: {
@@ -93,24 +103,102 @@ export interface ThemeStyleTarget {
   setProperty(name: string, value: string): void;
 }
 
-export function applyThemeToDocument(theme: ThemeAppearance, root: ThemeStyleTarget): void {
+export interface ThemeDocumentTarget {
+  style: ThemeStyleTarget;
+  setAttribute?(name: string, value: string): void;
+}
+
+export type ThemeApplyTarget = ThemeStyleTarget | ThemeDocumentTarget;
+
+export function applyThemeToDocument(theme: ThemeAppearance, root: ThemeApplyTarget): void {
+  const style = resolveStyleTarget(root);
+  const dark = theme.mode === 'dark';
   const primary = theme.primary;
   const accent = theme.accent;
-  root.setProperty('--color-primary', primary);
-  root.setProperty('--color-primary-hover', mixHex(primary, '#ffffff', 0.12));
-  root.setProperty('--color-primary-pressed', mixHex(primary, '#000000', 0.16));
-  root.setProperty('--color-primary-shadow', hexToRgba(primary, 0.28));
-  root.setProperty('--color-focus-ring', hexToRgba(primary, 0.35));
-  root.setProperty('--color-secondary', accent);
-  root.setProperty('--color-border', mixHex(primary, '#dce6e0', 0.72));
+  const hoverMix = dark ? 0.18 : 0.12;
+  const pressedMix = dark ? 0.22 : 0.16;
+
+  style.setProperty('--color-primary', primary);
+  style.setProperty('--color-primary-hover', mixHex(primary, '#ffffff', hoverMix));
+  style.setProperty('--color-primary-pressed', mixHex(primary, '#000000', pressedMix));
+  style.setProperty('--color-primary-shadow', hexToRgba(primary, dark ? 0.4 : 0.28));
+  style.setProperty('--color-focus-ring', hexToRgba(primary, dark ? 0.45 : 0.35));
+  style.setProperty('--color-secondary', accent);
+  style.setProperty('--color-border', dark ? mixHex(primary, '#3f4b45', 0.5) : mixHex(primary, '#dce6e0', 0.72));
+  style.setProperty('--color-background', dark ? '#171c1a' : '#ffffff');
+  style.setProperty('--color-surface', dark ? '#222926' : '#ffffff');
+  style.setProperty('--color-text', dark ? '#e7eee9' : '#0f172a');
+  style.setProperty('--color-text-muted', dark ? '#93a199' : '#64748b');
+  style.setProperty('--color-table-stripe', dark ? '#1c2320' : '#f8fafc');
+  style.setProperty('--color-hover-fill', dark ? '#2b3531' : '#f3f7f4');
+  style.setProperty('--color-hover-fill-strong', dark ? '#323d38' : '#e7efe9');
+  style.setProperty('--color-avatar-fill', dark ? '#3a4540' : '#e2e8f0');
+  style.setProperty('--color-logo-fill', dark ? '#222926' : '#ffffff');
+  style.setProperty('--color-success-bg', dark ? '#163226' : '#f0fdf4');
+  style.setProperty('--color-success-border', dark ? '#275c40' : '#bbf7d0');
+  style.setProperty('--color-danger-bg', dark ? '#3a1d1d' : '#fef2f2');
+  style.setProperty('--color-danger-border', dark ? '#7a3535' : '#fecaca');
+  style.setProperty('--color-warning-bg', dark ? '#3a2e18' : '#fff6e5');
+  style.setProperty('--color-warning-text', dark ? '#f0d19a' : '#7a4a00');
+  style.setProperty('--color-warning-border', dark ? '#7a5a2a' : '#f0d19a');
+  style.setProperty('--color-cash-in-soft', dark ? '#173325' : '#ecfdf3');
+  style.setProperty('--color-cash-out-soft', dark ? '#3a1d1d' : '#fef2f2');
+  style.setProperty('--color-type-cash-in-bg', dark ? '#1c3d2a' : '#dcfce7');
+  style.setProperty('--color-type-cash-out-bg', dark ? '#4a2222' : '#fee2e2');
+  style.setProperty('--color-balance-positive', dark ? '#6ee7a0' : '#15803d');
+  style.setProperty('--color-balance-negative', dark ? '#fca5a5' : '#b91c1c');
+  style.setProperty('--color-balance-positive-bg', dark ? '#163226' : '#ecfdf3');
+  style.setProperty('--color-balance-negative-bg', dark ? '#3a1d1d' : '#fef2f2');
+  style.setProperty('--color-balance-positive-border', dark ? '#275c40' : '#bbf7d0');
+  style.setProperty('--color-balance-negative-border', dark ? '#7a3535' : '#fecaca');
+  style.setProperty('--color-modal-backdrop', dark ? 'rgba(8, 12, 10, 0.72)' : 'rgba(15, 23, 42, 0.4)');
+  style.setProperty(
+    '--shadow-soft',
+    dark
+      ? '0 8px 20px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.22)'
+      : '0 8px 20px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04)',
+  );
+  style.setProperty(
+    '--shadow-raised',
+    dark
+      ? '0 12px 28px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.24)'
+      : '0 12px 28px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.06)',
+  );
+  style.setProperty(
+    '--shadow-login',
+    dark
+      ? '0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 22px 48px rgba(0, 0, 0, 0.42), 0 8px 16px rgba(0, 0, 0, 0.24)'
+      : '0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 22px 48px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(15, 23, 42, 0.06)',
+  );
+  style.setProperty('color-scheme', theme.mode);
+
+  if ('setAttribute' in root && typeof root.setAttribute === 'function') {
+    root.setAttribute('data-theme', theme.mode);
+  }
 
   for (const slot of ['1', '2', '3'] as const) {
     const tone = theme.cards[slot];
-    root.setProperty(`--summary-tone-${slot}-bg`, tone.background);
-    root.setProperty(`--summary-tone-${slot}-accent`, tone.accent);
-    root.setProperty(`--summary-tone-${slot}-border`, mixHex(tone.accent, '#ffffff', 0.55));
-    root.setProperty(`--summary-tone-${slot}-shadow`, hexToRgba(tone.accent, 0.14));
+    style.setProperty(
+      `--summary-tone-${slot}-bg`,
+      dark ? mixHex(tone.background, '#1c2420', 0.68) : tone.background,
+    );
+    style.setProperty(
+      `--summary-tone-${slot}-accent`,
+      dark ? mixHex(tone.accent, '#d7e8de', 0.32) : tone.accent,
+    );
+    style.setProperty(
+      `--summary-tone-${slot}-border`,
+      dark ? mixHex(tone.accent, '#2a332f', 0.48) : mixHex(tone.accent, '#ffffff', 0.55),
+    );
+    style.setProperty(`--summary-tone-${slot}-shadow`, hexToRgba(tone.accent, dark ? 0.22 : 0.14));
   }
+}
+
+function resolveStyleTarget(root: ThemeApplyTarget): ThemeStyleTarget {
+  if ('style' in root) {
+    return root.style;
+  }
+  return root;
 }
 
 function parseCardTone(value: unknown, fallback: ThemeCardTone): ThemeCardTone {
