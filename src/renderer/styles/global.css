@@ -87,15 +87,23 @@ body {
 
 .app-header {
   flex-shrink: 0;
-  padding: clamp(12px, 2vw, 24px);
+  padding: 6px 10px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
 
 .app-header h1 {
-  margin: 0 0 4px;
-  font-size: clamp(18px, 2.4vw, 24px);
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   overflow-wrap: anywhere;
+}
+
+.app-header .subtitle {
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 .subtitle {
@@ -242,16 +250,23 @@ body {
 .login-page {
   height: 100%;
   max-height: 100%;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(12px, 3vw, 20px);
+  padding: clamp(8px, 1.6vh, 20px) clamp(12px, 3vw, 20px);
   position: relative;
   overflow: hidden;
   background:
     radial-gradient(circle at 18% 12%, rgba(31, 122, 77, 0.08), transparent 42%),
     radial-gradient(circle at 86% 88%, rgba(31, 122, 77, 0.06), transparent 46%),
     var(--color-background);
+}
+
+html:has(.login-page-home),
+html:has(.login-page-home) body,
+html:has(.login-page-home) #root {
+  overflow: hidden;
 }
 
 .login-backdrop {
@@ -295,7 +310,7 @@ body {
   width: 100%;
   max-width: 400px;
   min-width: 0;
-  max-height: calc(100% - 48px);
+  max-height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
   position: relative;
@@ -303,8 +318,14 @@ body {
   background: var(--color-surface);
   border: 1px solid rgba(220, 230, 224, 0.9);
   border-radius: var(--radius-lg);
-  padding: clamp(24px, 4vw, 36px) clamp(18px, 4vw, 32px) 28px;
+  padding: clamp(16px, 3.2vh, 32px) clamp(18px, 4vw, 32px) clamp(14px, 2.4vh, 24px);
   box-shadow: var(--shadow-login);
+}
+
+.login-page-home .login-card {
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
 }
 
 .login-card::before {
@@ -320,14 +341,14 @@ body {
 .login-brand {
   display: grid;
   justify-items: center;
-  gap: 8px;
-  margin-bottom: 24px;
+  gap: clamp(4px, 0.8vh, 8px);
+  margin-bottom: clamp(12px, 2.2vh, 20px);
   text-align: center;
 }
 
 .login-app-icon {
-  width: 72px;
-  height: 72px;
+  width: clamp(52px, 8vh, 64px);
+  height: clamp(52px, 8vh, 64px);
   padding: 6px;
   border-radius: 10px;
   object-fit: contain;
@@ -362,7 +383,7 @@ body {
 
 .login-card h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: clamp(20px, 2.8vh, 24px);
   letter-spacing: -0.02em;
 }
 
@@ -374,7 +395,11 @@ body {
 
 .login-form {
   display: grid;
-  gap: 16px;
+  gap: clamp(10px, 1.6vh, 14px);
+}
+
+.login-form .form-field input {
+  min-height: 40px;
 }
 
 .login-card .form-field input {
@@ -479,35 +504,107 @@ body {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px 16px;
+  gap: 8px 12px;
 }
 
 .header-brand {
   min-width: 0;
-  flex: 1 1 16rem;
+  flex: 1 1 11rem;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .header-logo {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 6px;
   background: #fff;
   flex: 0 0 auto;
 }
 
-.login-footer {
-  margin: 20px 0 0;
-  text-align: center;
-  color: var(--color-text-muted);
+.login-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 8px;
+  margin-top: clamp(10px, 1.8vh, 16px);
+}
+
+.login-text-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.login-text-action:hover:not(:disabled) {
+  background: rgba(31, 122, 77, 0.08);
+  color: var(--color-primary-hover);
+}
+
+.login-text-action:active:not(:disabled) {
+  background: rgba(31, 122, 77, 0.14);
+  color: var(--color-primary-pressed);
+}
+
+.login-text-action:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.login-page-home .banner {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+@media (max-height: 700px) {
+  .login-page-home .login-card {
+    padding: 14px 18px 12px;
+  }
+
+  .login-page-home .login-app-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .login-page-home .login-brand {
+    margin-bottom: 10px;
+  }
+
+  .login-page-home .login-card h1 {
+    font-size: 20px;
+  }
+
+  .login-page-home .login-form .form-field input,
+  .login-page-home .login-submit {
+    min-height: 36px;
+  }
+
+  .login-page-home .login-text-action {
+    min-height: 32px;
+    padding: 4px 10px;
+  }
 }
 
 .login-submit {
   width: 100%;
-  min-height: 48px;
+  min-height: 44px;
   border-radius: 10px;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.24) inset,
@@ -729,17 +826,13 @@ body {
 }
 
 .col-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
+  width: 1%;
   text-align: end;
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .col-actions .button + .button {
-  margin-inline-start: 0;
+  margin-inline-start: 8px;
 }
 
 .link-button {
@@ -1111,8 +1204,7 @@ body {
 .history-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: auto;
   overscroll-behavior: contain;
 }
 
@@ -1334,8 +1426,20 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 12px;
+  gap: 6px;
   min-width: 0;
+}
+
+.header-toolbar .button {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.header-toolbar .language-selector select {
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 13px;
 }
 
 .language-selector select {
@@ -1946,6 +2050,11 @@ body {
     width: auto;
     text-align: start;
     justify-content: space-between;
+    white-space: normal;
+  }
+
+  .col-actions .button + .button {
+    margin-inline-start: 0;
   }
 
   .note-cell {
@@ -1954,11 +2063,6 @@ body {
 }
 
 @media (max-width: 1024px) {
-  .app-header h1 {
-    font-size: 20px;
-  }
-
-  .header-toolbar .button,
   .header-actions .button {
     min-height: 40px;
   }
@@ -2271,6 +2375,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .button,
   .login-submit,
+  .login-text-action,
   .summary-card,
   .module-card,
   .module-card-action,
@@ -2481,23 +2586,29 @@ body {
 .module-switcher {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px;
+  gap: 4px;
+  padding: 2px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-background);
 }
 
 .module-switcher-btn {
-  min-height: 36px;
-  padding: 6px 12px;
+  min-height: 26px;
+  padding: 3px 10px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   font: inherit;
   font-weight: 600;
+  font-size: 12px;
   cursor: pointer;
   color: var(--color-text-muted);
+}
+
+.module-switcher-btn:hover:not(.is-active) {
+  color: var(--color-text);
+  background: rgba(31, 122, 77, 0.08);
 }
 
 .module-switcher-btn.is-active {
@@ -2512,8 +2623,10 @@ body {
 }
 
 .module-switcher-all {
-  padding-inline: 8px;
-  font-size: 13px;
+  margin-top: 0;
+  padding: 0 6px;
+  font-size: 12px;
+  text-decoration: none;
 }
 
 .teller-nav {
@@ -3033,10 +3146,7 @@ body {
 
 .app-shell-accounting .app-header {
   margin: 8px 10px 0;
-  padding: 6px 10px;
-  background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
   border-radius: 10px;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.8) inset,
@@ -3044,59 +3154,8 @@ body {
     0 6px 14px rgba(15, 23, 42, 0.05);
 }
 
-.app-shell-accounting .app-header-bar {
-  gap: 8px 12px;
-}
-
-.app-shell-accounting .header-brand {
-  gap: 8px;
-  flex: 1 1 11rem;
-}
-
-.app-shell-accounting .header-logo {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-}
-
-.app-shell-accounting .app-header h1 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.app-shell-accounting .app-header .subtitle {
-  font-size: 11px;
-  line-height: 1.3;
-}
-
-.app-shell-accounting .header-toolbar {
-  gap: 6px;
-}
-
-.app-shell-accounting .module-switcher {
-  padding: 2px;
-  gap: 4px;
-}
-
 .app-shell-accounting .module-switcher-btn {
-  min-height: 26px;
-  padding: 3px 10px;
-  font-size: 12px;
   transition: background-color 0.12s ease, color 0.12s ease;
-}
-
-.app-shell-accounting .module-switcher-btn:hover:not(.is-active) {
-  color: var(--color-text);
-  background: rgba(31, 122, 77, 0.08);
-}
-
-.app-shell-accounting .module-switcher-all {
-  font-size: 12px;
-  margin-top: 0;
-  padding: 0 6px;
 }
 
 .app-shell-accounting .language-selector select {
@@ -3199,7 +3258,8 @@ body {
 
 .app-shell-accounting .summary-card-grid,
 .app-shell-accounting .currency-summary-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 118px), 1fr));
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
   gap: 8px;
 }
 
@@ -3250,7 +3310,11 @@ body {
 }
 
 .app-shell-accounting .col-actions {
-  gap: 6px;
+  white-space: nowrap;
+}
+
+.app-shell-accounting .col-actions .button + .button {
+  margin-inline-start: 6px;
 }
 
 .app-shell-accounting .empty-state {
@@ -3275,19 +3339,6 @@ body {
 
 .app-shell-accounting .customer-list-section > .pagination-bar {
   flex: 0 0 auto;
-}
-
-.app-shell-accounting .customer-list-scroll .customer-table th.col-actions,
-.app-shell-accounting .customer-list-scroll .customer-table td.col-actions {
-  position: sticky;
-  inset-inline-end: 0;
-  z-index: 2;
-  background: var(--color-surface);
-  box-shadow: -4px 0 8px rgba(15, 23, 42, 0.05);
-}
-
-.app-shell-accounting .customer-list-scroll .customer-table thead th.col-actions {
-  z-index: 4;
 }
 
 .app-shell-accounting .customer-page-detail > .page-header {
@@ -3411,6 +3462,7 @@ body {
 
 .app-shell-accounting .app-main-list .summary-card-grid {
   flex: 0 0 auto;
+  width: 100%;
   max-height: none;
   overflow: visible;
 }
@@ -3418,6 +3470,7 @@ body {
 .app-shell-accounting .customer-page-detail .currency-summary-fixed,
 .app-shell-accounting .customer-page-detail .currency-summary-scroll {
   flex: 0 1 auto;
+  width: 100%;
   max-height: min(240px, 36vh);
   min-height: 0;
   overflow-x: hidden;

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Changed
+- Login secondary actions (`Forgot password`, `Import Existing System`) are text actions without underlines, with hover/focus/active states.
+- Global header sizing matches the compact Customer Accounting header on every page.
+- Customer Accounting and Customer Details summary cards expand to fill available row width (`auto-fit`).
+
+### Fixed
+- Login screen no longer has a page or form scrollbar; the form is sized to fit the viewport.
+- Customer list `Action` header and Customer Details `Edit Transaction` header scroll and align with the rest of the table instead of staying independently sticky.
+
+---
+
 ## [1.2.3] — 2026-08-25 (Windows native module packaging fix)
 
 ### Fixed

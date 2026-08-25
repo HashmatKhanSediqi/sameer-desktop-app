@@ -36,7 +36,7 @@ export function LoginPage({ onImportExisting, onForgotPassword, recovered }: Log
   }
 
   return (
-    <div className="login-page">
+    <div className="login-page login-page-home">
       <div className="login-backdrop" aria-hidden="true">
         <span className="login-orb login-orb-a" />
         <span className="login-orb login-orb-b" />
@@ -110,16 +110,16 @@ export function LoginPage({ onImportExisting, onForgotPassword, recovered }: Log
           <button type="submit" className="button button-primary login-submit" disabled={isSubmitting}>
             {t('loginButton')}
           </button>
-          <button type="button" className="button-link" onClick={onForgotPassword}>
-            {t('forgotPassword')}
-          </button>
         </form>
 
-        <p className="login-footer">
-          <button type="button" className="button-link" onClick={onImportExisting}>
+        <div className="login-secondary-actions">
+          <button type="button" className="login-text-action" onClick={onForgotPassword}>
+            {t('forgotPassword')}
+          </button>
+          <button type="button" className="login-text-action" onClick={onImportExisting}>
             {t('importExistingSystem')}
           </button>
-        </p>
+        </div>
       </div>
     </div>
   );
