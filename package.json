@@ -14,7 +14,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "build:win": "node scripts/ensure-win-build.mjs && npm run build && electron-builder --win && node scripts/verify-win-native-modules.mjs",
+    "build:win": "node scripts/ensure-win-build.mjs && npm run build && electron-builder --win --publish never && node scripts/verify-win-native-modules.mjs",
     "postinstall": "node scripts/postinstall.mjs",
     "rebuild:node": "node scripts/rebuild-node.mjs",
     "rebuild:electron": "node scripts/rebuild-electron.mjs",
