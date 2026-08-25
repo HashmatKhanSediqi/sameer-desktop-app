@@ -12,7 +12,7 @@ Documentation must describe the **current implementation**, not historical produ
 | Installer artifact | `FMT-Setup.exe` |
 | Application executable | `FMT.exe` |
 | Desktop / Start Menu shortcut | **FMT** |
-| Application version | `1.2.1` |
+| Application version | `1.2.3` |
 | Backup extension | `.cab` (ZIP-compatible) |
 | Default backup filename | `FMT_Backup_YYYY-MM-DD.cab` |
 | Import template | `FMT_Import_Template.xlsx` |
@@ -149,4 +149,4 @@ requirements.md ──► architecture.md ──► database.md
 
 ## Version
 
-Documentation package version: **1.2.1** (synchronized with FMT v1.2.1).
+Documentation package version: **1.2.3** (synchronized with FMT v1.2.3).
