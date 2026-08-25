@@ -8,16 +8,12 @@ import { useLocaleFormat } from '../../hooks/useLocaleFormat';
 interface CurrencyManagementSectionProps {
   currencies: Currency[];
   onReload: () => Promise<void>;
-  onError: (message: string | null) => void;
-  onSuccess: (message: string | null) => void;
   mapError: (errorCode: string, message?: string) => string;
 }
 
 export function CurrencyManagementSection({
   currencies,
   onReload,
-  onError,
-  onSuccess,
   mapError,
 }: CurrencyManagementSectionProps): JSX.Element {
   const { t } = useTranslation('settings');
@@ -34,6 +30,16 @@ export function CurrencyManagementSection({
   const [pendingDeactivate, setPendingDeactivate] = useState<Currency | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Currency | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!success) {
+      return;
+    }
+    const timer = window.setTimeout(() => setSuccess(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [success]);
 
   useEffect(() => {
     if (!sessionId || !expanded) {
@@ -54,7 +60,7 @@ export function CurrencyManagementSection({
       return;
     }
     setIsAdding(true);
-    onError(null);
+    setError(null);
     try {
       const result = await window.api.currencies.create({
         sessionId,
@@ -63,7 +69,7 @@ export function CurrencyManagementSection({
         symbol: symbol.trim().length > 0 ? symbol : undefined,
       });
       if (!result.ok) {
-        onError(mapError(result.errorCode, result.message));
+        setError(mapError(result.errorCode, result.message));
         return;
       }
       const values = denomDraft
@@ -77,7 +83,7 @@ export function CurrencyManagementSection({
           value,
         });
         if (!denomResult.ok) {
-          onError(mapError(denomResult.errorCode, denomResult.message));
+          setError(mapError(denomResult.errorCode, denomResult.message));
           await onReload();
           return;
         }
@@ -87,7 +93,7 @@ export function CurrencyManagementSection({
       setSymbol('');
       setDenomDraft('');
       setExpanded(result.data.currency.code);
-      onSuccess(t('currencyAdded'));
+      setSuccess(t('currencyAdded'));
       await onReload();
     } finally {
       setIsAdding(false);
@@ -99,7 +105,7 @@ export function CurrencyManagementSection({
       return;
     }
     setIsBusy(true);
-    onError(null);
+    setError(null);
     const result = await window.api.currencies.createDenomination({
       sessionId,
       currencyCode,
@@ -107,10 +113,10 @@ export function CurrencyManagementSection({
     });
     setIsBusy(false);
     if (!result.ok) {
-      onError(mapError(result.errorCode, result.message));
+      setError(mapError(result.errorCode, result.message));
       return;
     }
-    onSuccess(t('denominationAdded'));
+    setSuccess(t('denominationAdded'));
     await onReload();
   }
 
@@ -124,7 +130,7 @@ export function CurrencyManagementSection({
       : await window.api.currencies.reactivateDenomination({ sessionId, id: item.id });
     setIsBusy(false);
     if (!result.ok) {
-      onError(mapError(result.errorCode, result.message));
+      setError(mapError(result.errorCode, result.message));
       return;
     }
     await onReload();
@@ -138,10 +144,10 @@ export function CurrencyManagementSection({
     const result = await window.api.currencies.deleteDenomination({ sessionId, id: item.id });
     setIsBusy(false);
     if (!result.ok) {
-      onError(mapError(result.errorCode, result.message));
+      setError(mapError(result.errorCode, result.message));
       return;
     }
-    onSuccess(t('denominationDeleted'));
+    setSuccess(t('denominationDeleted'));
     await onReload();
   }
 
@@ -153,11 +159,11 @@ export function CurrencyManagementSection({
     const result = await window.api.currencies.deactivate({ sessionId, code: pendingDeactivate.code });
     setIsBusy(false);
     if (!result.ok) {
-      onError(mapError(result.errorCode, result.message));
+      setError(mapError(result.errorCode, result.message));
       return;
     }
     setPendingDeactivate(null);
-    onSuccess(t('currencyDeactivated'));
+    setSuccess(t('currencyDeactivated'));
     await onReload();
   }
 
@@ -169,11 +175,11 @@ export function CurrencyManagementSection({
     const result = await window.api.currencies.delete({ sessionId, code: pendingDelete.code });
     setIsBusy(false);
     if (!result.ok) {
-      onError(mapError(result.errorCode, result.message));
+      setError(mapError(result.errorCode, result.message));
       return;
     }
     setPendingDelete(null);
-    onSuccess(t('currencyDeleted'));
+    setSuccess(t('currencyDeleted'));
     await onReload();
   }
 
@@ -185,17 +191,27 @@ export function CurrencyManagementSection({
     const result = await window.api.currencies.reactivate({ sessionId, code: currency.code });
     setIsBusy(false);
     if (!result.ok) {
-      onError(mapError(result.errorCode, result.message));
+      setError(mapError(result.errorCode, result.message));
       return;
     }
-    onSuccess(t('currencyReactivated'));
+    setSuccess(t('currencyReactivated'));
     await onReload();
   }
 
   return (
-    <section className="card">
+    <section className="card settings-section-card">
       <h2>{t('currencies')}</h2>
       <p className="hint-text">{t('currenciesHint')}</p>
+      {error ? (
+        <div className="banner banner-error" role="alert">
+          {error}
+        </div>
+      ) : null}
+      {success ? (
+        <div className="banner banner-success" role="status">
+          {success}
+        </div>
+      ) : null}
       <div className="table-wrap">
         <table className="customer-table">
           <thead>

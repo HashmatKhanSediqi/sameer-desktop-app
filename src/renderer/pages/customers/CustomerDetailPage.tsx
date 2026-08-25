@@ -39,6 +39,8 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
   const [isEditing, setIsEditing] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSucceeded, setDeleteSucceeded] = useState(false);
   const [transactionForm, setTransactionForm] = useState<'create' | 'edit' | null>(null);
   const [createType, setCreateType] = useState<TransactionType>('CASH_IN');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -107,22 +109,34 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
   }, [load]);
 
   async function confirmDelete(): Promise<void> {
-    if (!sessionId) {
+    if (!sessionId || isDeleting || deleteSucceeded) {
       return;
     }
 
     setIsDeleting(true);
+    setDeleteError(null);
     try {
       const result = await window.api.customers.delete({ sessionId, id: customerId });
       if (!result.ok) {
-        setError(mapCustomerError((key) => String(t(key as never)), result.errorCode, result.message));
+        setDeleteError(
+          mapCustomerError((key) => String(t(key as never)), result.errorCode, result.message),
+        );
         return;
       }
       invalidateCustomerPhotoCache(customerId);
-      onDeleted();
+      setDeleteSucceeded(true);
     } finally {
       setIsDeleting(false);
     }
+  }
+
+  function closeDeleteDialog(): void {
+    if (deleteSucceeded) {
+      onDeleted();
+      return;
+    }
+    setPendingDelete(false);
+    setDeleteError(null);
   }
 
   async function confirmDeleteTransaction(): Promise<void> {
@@ -227,7 +241,15 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
             <button type="button" className="button button-secondary" onClick={() => setIsEditing(true)}>
               {t('edit')}
             </button>
-            <button type="button" className="button button-danger" onClick={() => setPendingDelete(true)}>
+            <button
+              type="button"
+              className="button button-danger"
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteSucceeded(false);
+                setPendingDelete(true);
+              }}
+            >
               {t('delete')}
             </button>
           </div>
@@ -402,8 +424,11 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
           title={t('deleteTitle')}
           message={t('deleteConfirm', { name: customer.name?.trim() ? customer.name : t('noName') })}
           isBusy={isDeleting}
-          onCancel={() => setPendingDelete(false)}
+          error={deleteError}
+          successMessage={deleteSucceeded ? t('deletedSuccess') : null}
+          onCancel={closeDeleteDialog}
           onConfirm={() => void confirmDelete()}
+          onSuccessClose={onDeleted}
         />
       ) : null}
 

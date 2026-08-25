@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Login secondary actions (`Forgot password`, `Import Existing System`) are text actions without underlines, with hover/focus/active states.
 - Global header sizing matches the compact Customer Accounting header on every page.
 - Customer Accounting and Customer Details summary cards expand to fill available row width (`auto-fit`).
+- Customer delete confirmation shows a checkmark and success message in the same dialog, then closes after about one second.
+- Settings uses a left navigation and content panel, with action feedback inside the relevant section or modal.
 
 ### Fixed
 - Customers with the same name can be deleted independently. Transfer counterparty links no longer block deletion.

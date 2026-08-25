@@ -3,22 +3,50 @@ import { useTranslation } from 'react-i18next';
 import { applyThemeToDocument, cloneTheme, DEFAULT_THEME, type ThemeAppearance, type ThemeMode } from '@shared/theme';
 import type { AppSettings } from '@shared/types/settings';
 import { CompanyProfileFields } from '../../components/CompanyProfileFields';
+import { SettingsActionModal } from '../../components/SettingsActionModal';
 import { useAuth } from '../../context/AuthContext';
 
+function SectionNotice({ error, success }: { error: string | null; success: string | null }): JSX.Element | null {
+  if (error) {
+    return (
+      <div className="banner banner-error" role="alert">
+        {error}
+      </div>
+    );
+  }
+  if (success) {
+    return (
+      <div className="banner banner-success" role="status">
+        {success}
+      </div>
+    );
+  }
+  return null;
+}
+
+function useTimedSuccess(): [string | null, (message: string) => void] {
+  const [success, setSuccess] = useState<string | null>(null);
+  useEffect(() => {
+    if (!success) {
+      return;
+    }
+    const timer = window.setTimeout(() => setSuccess(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [success]);
+  return [success, setSuccess];
+}
+
 interface SettingsAccountSectionProps {
-  onError: (message: string | null) => void;
-  onSuccess: (message: string) => void;
   onPasswordChanged: () => void;
 }
 
-export function SettingsAccountSection({
-  onError,
-  onSuccess,
-  onPasswordChanged,
-}: SettingsAccountSectionProps): JSX.Element {
+export function SettingsAccountSection({ onPasswordChanged }: SettingsAccountSectionProps): JSX.Element {
   const { t } = useTranslation('settings');
   const { t: tErrors } = useTranslation('errors');
-  const { sessionId } = useAuth();
+  const { sessionId, username } = useAuth();
+  const { t: tCommon } = useTranslation('common');
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -27,6 +55,10 @@ export function SettingsAccountSection({
   const [recoveryConfigured, setRecoveryConfigured] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [isSavingRecovery, setIsSavingRecovery] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [recoverySuccess, setRecoverySuccess] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionId) {
@@ -40,13 +72,37 @@ export function SettingsAccountSection({
     });
   }, [sessionId]);
 
+  function resetPasswordForm(): void {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError(null);
+    setPasswordSuccess(null);
+  }
+
+  function closePasswordModal(): void {
+    const succeeded = Boolean(passwordSuccess);
+    setPasswordOpen(false);
+    resetPasswordForm();
+    if (succeeded) {
+      onPasswordChanged();
+    }
+  }
+
+  function closeRecoveryModal(): void {
+    setRecoveryOpen(false);
+    setAnswer('');
+    setRecoveryError(null);
+    setRecoverySuccess(null);
+  }
+
   async function handlePassword(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (!sessionId || isSavingPassword) {
+    if (!sessionId || isSavingPassword || passwordSuccess) {
       return;
     }
     setIsSavingPassword(true);
-    onError(null);
+    setPasswordError(null);
     try {
       const result = await window.api.auth.changePassword({
         sessionId,
@@ -54,15 +110,14 @@ export function SettingsAccountSection({
         newPassword,
         confirmPassword,
       });
+      if (!result.ok) {
+        setPasswordError(mapPasswordError(t, tErrors, result.errorCode, result.message));
+        return;
+      }
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      if (!result.ok) {
-        onError(tErrors(result.message || result.errorCode));
-        return;
-      }
-      onSuccess(t('passwordChanged'));
-      onPasswordChanged();
+      setPasswordSuccess(t('passwordChangedSuccess'));
     } finally {
       setIsSavingPassword(false);
     }
@@ -70,98 +125,168 @@ export function SettingsAccountSection({
 
   async function handleRecovery(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (!sessionId || isSavingRecovery) {
+    if (!sessionId || isSavingRecovery || recoverySuccess) {
       return;
     }
     setIsSavingRecovery(true);
-    onError(null);
+    setRecoveryError(null);
     try {
       const result = await window.api.auth.setRecovery({ sessionId, question, answer });
-      setAnswer('');
       if (!result.ok) {
-        onError(tErrors(result.message || result.errorCode));
+        setRecoveryError(tErrors(result.message || result.errorCode));
         return;
       }
+      setAnswer('');
       setRecoveryConfigured(true);
       setQuestion(result.data.question ?? '');
-      onSuccess(t('recoverySaved'));
+      setRecoverySuccess(t('recoverySaved'));
     } finally {
       setIsSavingRecovery(false);
     }
   }
 
   return (
-    <section className="card">
+    <section className="card settings-section-card">
       <h2>{t('accountSecurity')}</h2>
-      <form className="settings-stack" onSubmit={(event) => void handlePassword(event)} autoComplete="off">
-        <h3>{t('changePassword')}</h3>
-        <div className="form-field">
-          <label htmlFor="current-password">{t('currentPassword')}</label>
-          <input
-            id="current-password"
-            type="password"
-            value={currentPassword}
-            onChange={(event) => setCurrentPassword(event.target.value)}
-            autoComplete="current-password"
-            required
-          />
+      <dl className="status-list">
+        <div>
+          <dt>{t('username')}</dt>
+          <dd>{username ?? tCommon('emptyValue')}</dd>
         </div>
-        <div className="form-field">
-          <label htmlFor="new-password">{t('newPassword')}</label>
-          <input
-            id="new-password"
-            type="password"
-            value={newPassword}
-            onChange={(event) => setNewPassword(event.target.value)}
-            autoComplete="new-password"
-            required
-          />
+        <div>
+          <dt>{t('securityHint')}</dt>
+          <dd>{recoveryConfigured ? t('recoveryConfigured') : t('recoveryMissing')}</dd>
         </div>
-        <div className="form-field">
-          <label htmlFor="confirm-password">{t('confirmPassword')}</label>
-          <input
-            id="confirm-password"
-            type="password"
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-            autoComplete="new-password"
-            required
-          />
-        </div>
-        <p className="field-hint">{t('passwordHint')}</p>
-        <button type="submit" className="button button-primary" disabled={isSavingPassword}>
+      </dl>
+      <div className="action-bar">
+        <button
+          type="button"
+          className="button button-primary"
+          onClick={() => {
+            resetPasswordForm();
+            setPasswordOpen(true);
+          }}
+        >
           {t('changePassword')}
         </button>
-      </form>
-
-      <form className="settings-stack" onSubmit={(event) => void handleRecovery(event)} autoComplete="off">
-        <h3>{t('securityHint')}</h3>
-        {!recoveryConfigured ? <p className="banner banner-warning">{t('recoveryMissing')}</p> : null}
-        <div className="form-field">
-          <label htmlFor="recovery-question">{t('recoveryQuestion')}</label>
-          <input
-            id="recovery-question"
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            required
-          />
-        </div>
-        <div className="form-field">
-          <label htmlFor="recovery-answer">{t('recoveryAnswer')}</label>
-          <input
-            id="recovery-answer"
-            type="password"
-            value={answer}
-            onChange={(event) => setAnswer(event.target.value)}
-            autoComplete="new-password"
-            required
-          />
-        </div>
-        <p className="field-hint">{t('recoveryHint')}</p>
-        <button type="submit" className="button button-secondary" disabled={isSavingRecovery}>
-          {t('saveRecovery')}
+        <button
+          type="button"
+          className="button button-secondary"
+          onClick={() => {
+            setRecoveryError(null);
+            setRecoverySuccess(null);
+            setAnswer('');
+            setRecoveryOpen(true);
+          }}
+        >
+          {t('securityHint')}
         </button>
-      </form>
+      </div>
+
+      {passwordOpen ? (
+        <SettingsActionModal
+          title={t('changePassword')}
+          error={passwordError}
+          successMessage={passwordSuccess}
+          isBusy={isSavingPassword}
+          onClose={closePasswordModal}
+          onSuccessClose={closePasswordModal}
+        >
+          <form className="settings-stack" onSubmit={(event) => void handlePassword(event)} autoComplete="off">
+            <div className="form-field">
+              <label htmlFor="current-password">{t('currentPassword')}</label>
+              <input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                autoComplete="current-password"
+                required
+                disabled={isSavingPassword}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="new-password">{t('newPassword')}</label>
+              <input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                autoComplete="new-password"
+                required
+                disabled={isSavingPassword}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="confirm-password">{t('confirmPassword')}</label>
+              <input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                autoComplete="new-password"
+                required
+                disabled={isSavingPassword}
+              />
+            </div>
+            <p className="field-hint">{t('passwordHint')}</p>
+            <div className="modal-actions">
+              <button type="button" className="button button-secondary" onClick={closePasswordModal} disabled={isSavingPassword}>
+                {tCommon('cancel')}
+              </button>
+              <button type="submit" className="button button-primary" disabled={isSavingPassword}>
+                {t('changePassword')}
+              </button>
+            </div>
+          </form>
+        </SettingsActionModal>
+      ) : null}
+
+      {recoveryOpen ? (
+        <SettingsActionModal
+          title={t('securityHint')}
+          error={recoveryError}
+          successMessage={recoverySuccess}
+          isBusy={isSavingRecovery}
+          onClose={closeRecoveryModal}
+          onSuccessClose={closeRecoveryModal}
+        >
+          <form className="settings-stack" onSubmit={(event) => void handleRecovery(event)} autoComplete="off">
+            {!recoveryConfigured ? <p className="banner banner-warning">{t('recoveryMissing')}</p> : null}
+            <div className="form-field">
+              <label htmlFor="recovery-question">{t('recoveryQuestion')}</label>
+              <input
+                id="recovery-question"
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                required
+                disabled={isSavingRecovery}
+              />
+            </div>
+            <div className="form-field">
+              <label htmlFor="recovery-answer">{t('recoveryAnswer')}</label>
+              <input
+                id="recovery-answer"
+                type="password"
+                value={answer}
+                onChange={(event) => setAnswer(event.target.value)}
+                autoComplete="new-password"
+                required
+                disabled={isSavingRecovery}
+              />
+            </div>
+            <p className="field-hint">{t('recoveryHint')}</p>
+            <div className="modal-actions">
+              <button type="button" className="button button-secondary" onClick={closeRecoveryModal} disabled={isSavingRecovery}>
+                {tCommon('cancel')}
+              </button>
+              <button type="submit" className="button button-primary" disabled={isSavingRecovery}>
+                {t('saveRecovery')}
+              </button>
+            </div>
+          </form>
+        </SettingsActionModal>
+      ) : null}
     </section>
   );
 }
@@ -169,21 +294,19 @@ export function SettingsAccountSection({
 interface SettingsAppearanceSectionProps {
   settings: AppSettings | null;
   onSaved: (settings: AppSettings) => void;
-  onError: (message: string | null) => void;
-  onSuccess: (message: string) => void;
 }
 
 export function SettingsAppearanceSection({
   settings,
   onSaved,
-  onError,
-  onSuccess,
 }: SettingsAppearanceSectionProps): JSX.Element {
   const { t } = useTranslation('settings');
   const { t: tErrors } = useTranslation('errors');
   const { sessionId } = useAuth();
   const [theme, setTheme] = useState<ThemeAppearance>(cloneTheme(settings?.theme ?? DEFAULT_THEME));
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useTimedSuccess();
 
   useEffect(() => {
     if (settings?.theme) {
@@ -196,19 +319,19 @@ export function SettingsAppearanceSection({
       return false;
     }
     setIsSaving(true);
-    onError(null);
+    setError(null);
     try {
       const result = await window.api.settings.update(
         'resetAppearance' in next ? { sessionId, resetAppearance: true } : { sessionId, theme: next },
       );
       if (!result.ok) {
-        onError(tErrors(result.message || result.errorCode));
+        setError(tErrors(result.message || result.errorCode));
         return false;
       }
       applyThemeToDocument(result.data.theme, document.documentElement);
       setTheme(cloneTheme(result.data.theme));
       onSaved(result.data);
-      onSuccess(t('appearanceSaved'));
+      setSuccess(t('appearanceSaved'));
       return true;
     } finally {
       setIsSaving(false);
@@ -230,8 +353,9 @@ export function SettingsAppearanceSection({
   }
 
   return (
-    <section className="card">
+    <section className="card settings-section-card">
       <h2>{t('appearance')}</h2>
+      <SectionNotice error={error} success={success} />
       <div className="form-field">
         <span className="field-label" id="theme-mode-label">
           {t('colorMode')}
@@ -318,12 +442,7 @@ export function SettingsAppearanceSection({
   );
 }
 
-interface SettingsCompanySectionProps {
-  onError: (message: string | null) => void;
-  onSuccess: (message: string) => void;
-}
-
-export function SettingsCompanySection({ onError, onSuccess }: SettingsCompanySectionProps): JSX.Element {
+export function SettingsCompanySection(): JSX.Element {
   const { t } = useTranslation('settings');
   const { t: tErrors } = useTranslation('errors');
   const { sessionId } = useAuth();
@@ -337,6 +456,8 @@ export function SettingsCompanySection({ onError, onSuccess }: SettingsCompanySe
   const [removeLogo, setRemoveLogo] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useTimedSuccess();
 
   useEffect(() => {
     if (!sessionId) {
@@ -366,7 +487,7 @@ export function SettingsCompanySection({ onError, onSuccess }: SettingsCompanySe
       return;
     }
     setIsSaving(true);
-    onError(null);
+    setError(null);
     try {
       const result = await window.api.company.update({
         sessionId,
@@ -380,20 +501,21 @@ export function SettingsCompanySection({ onError, onSuccess }: SettingsCompanySe
         removeLogo,
       });
       if (!result.ok) {
-        onError(tErrors(result.message || result.errorCode));
+        setError(tErrors(result.message || result.errorCode));
         return;
       }
       setLogoBase64(null);
       setRemoveLogo(false);
-      onSuccess(t('companySaved'));
+      setSuccess(t('companySaved'));
     } finally {
       setIsSaving(false);
     }
   }
 
   return (
-    <section className="card">
+    <section className="card settings-section-card">
       <h2>{t('companyProfile')}</h2>
+      <SectionNotice error={error} success={success} />
       <form onSubmit={(event) => void handleSubmit(event)} autoComplete="off">
         <CompanyProfileFields
           name={name}
@@ -431,43 +553,42 @@ export function SettingsCompanySection({ onError, onSuccess }: SettingsCompanySe
 interface SettingsExchangeSectionProps {
   settings: AppSettings | null;
   onSaved: (settings: AppSettings) => void;
-  onError: (message: string | null) => void;
-  onSuccess: (message: string) => void;
 }
 
 export function SettingsExchangeSection({
   settings,
   onSaved,
-  onError,
-  onSuccess,
 }: SettingsExchangeSectionProps): JSX.Element {
   const { t } = useTranslation('settings');
   const { t: tErrors } = useTranslation('errors');
   const { sessionId } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useTimedSuccess();
 
   async function toggle(enabled: boolean): Promise<void> {
     if (!sessionId || isSaving) {
       return;
     }
     setIsSaving(true);
-    onError(null);
+    setError(null);
     try {
       const result = await window.api.settings.update({ sessionId, exchangeEnabled: enabled });
       if (!result.ok) {
-        onError(tErrors(result.message || result.errorCode));
+        setError(tErrors(result.message || result.errorCode));
         return;
       }
       onSaved(result.data);
-      onSuccess(t('saved'));
+      setSuccess(t('saved'));
     } finally {
       setIsSaving(false);
     }
   }
 
   return (
-    <section className="card">
+    <section className="card settings-section-card">
       <h2>{t('exchange')}</h2>
+      <SectionNotice error={error} success={success} />
       <label className="settings-toggle">
         <input
           type="checkbox"
@@ -507,4 +628,27 @@ function ColorField({
       </div>
     </div>
   );
+}
+
+function mapPasswordError(
+  translateSettings: (key: string) => string,
+  translateErrors: (key: string) => string,
+  errorCode: string,
+  message?: string,
+): string {
+  if (errorCode === 'INVALID_CREDENTIALS') {
+    return translateSettings('currentPasswordIncorrect');
+  }
+  if (message) {
+    const fromSettings = translateSettings(message);
+    if (fromSettings !== message) {
+      return fromSettings;
+    }
+    const fromErrors = translateErrors(message);
+    if (fromErrors !== message) {
+      return fromErrors;
+    }
+  }
+  const fromCode = translateErrors(errorCode);
+  return fromCode === errorCode ? translateErrors('INTERNAL_ERROR') : fromCode;
 }

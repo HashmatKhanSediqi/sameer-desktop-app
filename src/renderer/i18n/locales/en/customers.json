@@ -35,6 +35,7 @@
   "deleteTitle": "Delete customer?",
   "deleteConfirm": "Delete {{name}}? This will permanently remove the customer and all related transactions.",
   "deleted": "Customer deleted",
+  "deletedSuccess": "Customer deleted successfully.",
   "saved": "Customer saved",
   "created": "Customer created",
   "loadError": "Unable to load customers.",

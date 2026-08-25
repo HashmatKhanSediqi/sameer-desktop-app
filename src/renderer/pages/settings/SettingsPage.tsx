@@ -21,25 +21,53 @@ interface SettingsPageProps {
   onBack: () => void;
 }
 
+type SettingsSectionId =
+  | 'general'
+  | 'appearance'
+  | 'account'
+  | 'company'
+  | 'transactions'
+  | 'currencies'
+  | 'exchange'
+  | 'backup'
+  | 'about';
+
+const SETTINGS_SECTIONS: Array<{ id: SettingsSectionId; labelKey: string; namespace?: 'settings' | 'backup' }> = [
+  { id: 'general', labelKey: 'general' },
+  { id: 'appearance', labelKey: 'appearance' },
+  { id: 'account', labelKey: 'accountSecurity' },
+  { id: 'company', labelKey: 'companyProfile' },
+  { id: 'transactions', labelKey: 'transactions' },
+  { id: 'currencies', labelKey: 'currencies' },
+  { id: 'exchange', labelKey: 'exchange' },
+  { id: 'backup', labelKey: 'title', namespace: 'backup' },
+  { id: 'about', labelKey: 'about' },
+];
+
 export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
   const { t } = useTranslation('settings');
   const { t: tCommon } = useTranslation('common');
   const { t: tErrors } = useTranslation('errors');
   const { t: tBackup } = useTranslation('backup');
-  const { sessionId, username, clearLocalSession } = useAuth();
+  const { sessionId, clearLocalSession } = useAuth();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [paths, setPaths] = useState<AppPaths | null>(null);
   const [status, setStatus] = useState<AppStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingPagination, setIsSavingPagination] = useState(false);
+  const [paginationError, setPaginationError] = useState<string | null>(null);
+  const [paginationSuccess, setPaginationSuccess] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const [showRestore, setShowRestore] = useState(false);
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
   const [backupProgress, setBackupProgress] = useState<BackupProgress | null>(null);
   const [createdBackup, setCreatedBackup] = useState<BackupCreateData | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const [backupSuccess, setBackupSuccess] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>('general');
 
   const load = useCallback(async (): Promise<void> => {
     if (!sessionId) {
@@ -47,7 +75,7 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
     }
 
     setIsLoading(true);
-    setError(null);
+    setLoadError(null);
 
     try {
       const [settingsResult, currencyResult, pathsResult, statusResult] = await Promise.all([
@@ -58,19 +86,19 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
       ]);
 
       if (!settingsResult.ok) {
-        setError(mapSettingsError(tErrors, settingsResult.errorCode, settingsResult.message));
+        setLoadError(mapSettingsError(tErrors, settingsResult.errorCode, settingsResult.message));
         return;
       }
       if (!currencyResult.ok) {
-        setError(mapSettingsError(tErrors, currencyResult.errorCode, currencyResult.message));
+        setLoadError(mapSettingsError(tErrors, currencyResult.errorCode, currencyResult.message));
         return;
       }
       if (!pathsResult.ok) {
-        setError(mapSettingsError(tErrors, pathsResult.errorCode, pathsResult.message));
+        setLoadError(mapSettingsError(tErrors, pathsResult.errorCode, pathsResult.message));
         return;
       }
       if (!statusResult.ok) {
-        setError(mapSettingsError(tErrors, statusResult.errorCode, statusResult.message));
+        setLoadError(mapSettingsError(tErrors, statusResult.errorCode, statusResult.message));
         return;
       }
 
@@ -79,7 +107,7 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
       setPaths(pathsResult.data);
       setStatus(statusResult.data);
     } catch {
-      setError(tErrors('INTERNAL_ERROR'));
+      setLoadError(tErrors('INTERNAL_ERROR'));
     } finally {
       setIsLoading(false);
     }
@@ -101,21 +129,37 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
     return () => window.clearTimeout(timer);
   }, [createdBackup]);
 
+  useEffect(() => {
+    if (!paginationSuccess) {
+      return;
+    }
+    const timer = window.setTimeout(() => setPaginationSuccess(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [paginationSuccess]);
+
+  useEffect(() => {
+    if (!backupSuccess) {
+      return;
+    }
+    const timer = window.setTimeout(() => setBackupSuccess(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [backupSuccess]);
+
   async function savePagination(next: { paginationEnabled?: boolean; paginationPageSize?: number }): Promise<void> {
     if (!sessionId || isSavingPagination) {
       return;
     }
 
     setIsSavingPagination(true);
-    setError(null);
+    setPaginationError(null);
     try {
       const result = await window.api.settings.update({ sessionId, ...next });
       if (!result.ok) {
-        setError(mapSettingsError(tErrors, result.errorCode, result.message));
+        setPaginationError(mapSettingsError(tErrors, result.errorCode, result.message));
         return;
       }
       setSettings(result.data);
-      setSuccess(t('saved'));
+      setPaginationSuccess(t('saved'));
     } finally {
       setIsSavingPagination(false);
     }
@@ -127,21 +171,22 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
     }
 
     setIsCreatingBackup(true);
-    setError(null);
+    setBackupError(null);
+    setBackupSuccess(null);
     setCreatedBackup(null);
     try {
       const result = await window.api.backup.create({ sessionId });
       if (!result.ok) {
-        setError(mapBackupError(tBackup, tErrors, result.errorCode, result.message));
+        setBackupError(mapBackupError(tBackup, tErrors, result.errorCode, result.message));
         return;
       }
       if (result.data.canceled || !result.data.success) {
         return;
       }
       setCreatedBackup(result.data);
-      setSuccess(tBackup('success'));
+      setBackupSuccess(tBackup('success'));
     } catch {
-      setError(tErrors('INTERNAL_ERROR'));
+      setBackupError(tErrors('INTERNAL_ERROR'));
     } finally {
       setIsCreatingBackup(false);
       setBackupProgress(null);
@@ -154,10 +199,11 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
     }
     try {
       await navigator.clipboard.writeText(paths.userData);
+      setCopyError(null);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError(tErrors('INTERNAL_ERROR'));
+      setCopyError(tErrors('INTERNAL_ERROR'));
     }
   }
 
@@ -165,14 +211,16 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
 
   if (showRestore) {
     return (
-      <RestorePage
-        variant="settings"
-        onBack={() => setShowRestore(false)}
-        onRestored={() => {
-          setShowRestore(false);
-          void load();
-        }}
-      />
+      <div className="settings-restore-host">
+        <RestorePage
+          variant="settings"
+          onBack={() => setShowRestore(false)}
+          onRestored={() => {
+            setShowRestore(false);
+            void load();
+          }}
+        />
+      </div>
     );
   }
 
@@ -185,175 +233,211 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
         <h2>{t('title')}</h2>
       </div>
 
-      {error ? (
-        <div className="banner banner-error" role="alert">
-          <span>{error}</span>
-          <button type="button" className="button button-secondary button-compact" onClick={() => void load()}>
-            {tCommon('retry')}
-          </button>
-        </div>
-      ) : null}
-
-      {success ? (
-        <div className="banner banner-success" role="status">
-          {success}
-        </div>
-      ) : null}
-
       {isLoading ? <p>{tCommon('loading')}</p> : null}
 
-      <section className="card">
-        <h2>{t('general')}</h2>
-        <div className="form-field">
-          <span className="field-label">{t('language')}</span>
-          <LanguageSelector />
-        </div>
-      </section>
+      <div className="settings-layout">
+        <nav className="settings-nav" aria-label={t('title')}>
+          {SETTINGS_SECTIONS.map((section) => {
+            const label = section.namespace === 'backup' ? tBackup(section.labelKey) : t(section.labelKey);
+            const isActive = activeSection === section.id;
+            return (
+              <button
+                key={section.id}
+                type="button"
+                className={isActive ? 'settings-nav-item is-active' : 'settings-nav-item'}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => setActiveSection(section.id)}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </nav>
 
-      <section className="card">
-        <h2>{t('transactions')}</h2>
-        <label className="settings-toggle">
-          <input
-            type="checkbox"
-            checked={settings?.paginationEnabled ?? true}
-            disabled={!settings || isSavingPagination}
-            onChange={(event) => void savePagination({ paginationEnabled: event.target.checked })}
-          />
-          {t('paginationEnabled')}
-        </label>
-        <div className="form-field">
-          <label htmlFor="settings-page-size">{t('pageSize')}</label>
-          <select
-            id="settings-page-size"
-            value={settings?.paginationPageSize ?? 10}
-            disabled={!settings || !settings.paginationEnabled || isSavingPagination}
-            onChange={(event) => void savePagination({ paginationPageSize: Number(event.target.value) })}
-          >
-            {pageSizeOptions.map((size) => (
-              <option key={size} value={size}>
-                {size}
-              </option>
-            ))}
-          </select>
-        </div>
-      </section>
+        <div className="settings-content">
+          {loadError ? (
+            <div className="banner banner-error" role="alert">
+              <span>{loadError}</span>
+              <button type="button" className="button button-secondary button-compact" onClick={() => void load()}>
+                {tCommon('retry')}
+              </button>
+            </div>
+          ) : null}
 
-      <CurrencyManagementSection
-        currencies={currencies}
-        onReload={load}
-        onError={setError}
-        onSuccess={setSuccess}
-        mapError={(errorCode, message) => mapSettingsError(tErrors, errorCode, message)}
-      />
+          {activeSection === 'general' ? (
+            <section className="card settings-section-card">
+              <h2>{t('general')}</h2>
+              <div className="form-field">
+                <span className="field-label">{t('language')}</span>
+                <LanguageSelector />
+              </div>
+            </section>
+          ) : null}
 
-      <section className="card">
-        <h2>{t('account')}</h2>
-        <dl className="status-list">
-          <div>
-            <dt>{t('username')}</dt>
-            <dd>{username ?? tCommon('emptyValue')}</dd>
-          </div>
-        </dl>
-      </section>
+          {activeSection === 'appearance' ? (
+            <SettingsAppearanceSection settings={settings} onSaved={setSettings} />
+          ) : null}
 
-      <SettingsAccountSection
-        onError={setError}
-        onSuccess={setSuccess}
-        onPasswordChanged={clearLocalSession}
-      />
+          {activeSection === 'account' ? (
+            <SettingsAccountSection onPasswordChanged={clearLocalSession} />
+          ) : null}
 
-      <SettingsAppearanceSection
-        settings={settings}
-        onSaved={setSettings}
-        onError={setError}
-        onSuccess={setSuccess}
-      />
+          {activeSection === 'company' ? <SettingsCompanySection /> : null}
 
-      <SettingsCompanySection onError={setError} onSuccess={setSuccess} />
+          {activeSection === 'transactions' ? (
+            <section className="card settings-section-card">
+              <h2>{t('transactions')}</h2>
+              {paginationError ? (
+                <div className="banner banner-error" role="alert">
+                  {paginationError}
+                </div>
+              ) : null}
+              {paginationSuccess ? (
+                <div className="banner banner-success" role="status">
+                  {paginationSuccess}
+                </div>
+              ) : null}
+              <label className="settings-toggle">
+                <input
+                  type="checkbox"
+                  checked={settings?.paginationEnabled ?? true}
+                  disabled={!settings || isSavingPagination}
+                  onChange={(event) => void savePagination({ paginationEnabled: event.target.checked })}
+                />
+                {t('paginationEnabled')}
+              </label>
+              <div className="form-field">
+                <label htmlFor="settings-page-size">{t('pageSize')}</label>
+                <select
+                  id="settings-page-size"
+                  value={settings?.paginationPageSize ?? 10}
+                  disabled={!settings || !settings.paginationEnabled || isSavingPagination}
+                  onChange={(event) => void savePagination({ paginationPageSize: Number(event.target.value) })}
+                >
+                  {pageSizeOptions.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </section>
+          ) : null}
 
-      <SettingsExchangeSection
-        settings={settings}
-        onSaved={setSettings}
-        onError={setError}
-        onSuccess={setSuccess}
-      />
-
-      <section className="card">
-        <h2>{tBackup('title')}</h2>
-        <div className="action-bar">
-          <button
-            type="button"
-            className="button button-primary"
-            onClick={() => void createBackup()}
-            disabled={isCreatingBackup}
-          >
-            {isCreatingBackup ? tBackup('creating') : tBackup('create')}
-          </button>
-          <button
-            type="button"
-            className="button button-secondary"
-            onClick={() => setShowRestore(true)}
-            disabled={isCreatingBackup}
-          >
-            {tBackup('restoreFromBackup')}
-          </button>
-        </div>
-        {backupProgress ? (
-          <div className="backup-progress" role="status">
-            <div
-              className="backup-progress-bar"
-              style={{ width: `${Math.max(0, Math.min(backupProgress.percent, 100))}%` }}
+          {activeSection === 'currencies' ? (
+            <CurrencyManagementSection
+              currencies={currencies}
+              onReload={load}
+              mapError={(errorCode, message) => mapSettingsError(tErrors, errorCode, message)}
             />
-            <p>{tBackup(`progress.${backupProgress.stage}`, { defaultValue: tBackup('creating') })}</p>
-          </div>
-        ) : null}
-        {createdBackup ? (
-          <dl className="status-list">
-            <div>
-              <dt>{tBackup('path')}</dt>
-              <dd className="mono">{createdBackup.filePath}</dd>
-            </div>
-            <div>
-              <dt>{tBackup('fileSize')}</dt>
-              <dd>{formatFileSize(createdBackup.fileSizeBytes)}</dd>
-            </div>
-            <div>
-              <dt>{tBackup('customerCount')}</dt>
-              <dd>{createdBackup.manifest.customerCount}</dd>
-            </div>
-            <div>
-              <dt>{tBackup('transactionCount')}</dt>
-              <dd>{createdBackup.manifest.transactionCount}</dd>
-            </div>
-          </dl>
-        ) : null}
-      </section>
+          ) : null}
 
-      <section className="card">
-        <h2>{t('about')}</h2>
-        <dl className="status-list">
-          <div>
-            <dt>{t('application')}</dt>
-            <dd>{tCommon('appName')}</dd>
-          </div>
-          <div>
-            <dt>{t('version')}</dt>
-            <dd>{status?.version ?? tCommon('emptyValue')}</dd>
-          </div>
-          <div>
-            <dt>{t('dataDirectory')}</dt>
-            <dd className="mono">{paths?.userData ?? tCommon('emptyValue')}</dd>
-          </div>
-          <div>
-            <dt>{t('databasePath')}</dt>
-            <dd className="mono">{paths?.database ?? status?.databasePath ?? tCommon('emptyValue')}</dd>
-          </div>
-        </dl>
-        <button type="button" className="button button-secondary" onClick={() => void copyDataDirectory()} disabled={!paths}>
-          {copied ? t('copied') : t('copyPath')}
-        </button>
-        {sessionId ? <SettingsUpdateSection sessionId={sessionId} /> : null}
-      </section>
+          {activeSection === 'exchange' ? (
+            <SettingsExchangeSection settings={settings} onSaved={setSettings} />
+          ) : null}
+
+          {activeSection === 'backup' ? (
+            <section className="card settings-section-card">
+              <h2>{tBackup('title')}</h2>
+              {backupError ? (
+                <div className="banner banner-error" role="alert">
+                  {backupError}
+                </div>
+              ) : null}
+              {backupSuccess ? (
+                <div className="banner banner-success" role="status">
+                  {backupSuccess}
+                </div>
+              ) : null}
+              <div className="action-bar">
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => void createBackup()}
+                  disabled={isCreatingBackup}
+                >
+                  {isCreatingBackup ? tBackup('creating') : tBackup('create')}
+                </button>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => setShowRestore(true)}
+                  disabled={isCreatingBackup}
+                >
+                  {tBackup('restoreFromBackup')}
+                </button>
+              </div>
+              {backupProgress ? (
+                <div className="backup-progress" role="status">
+                  <div
+                    className="backup-progress-bar"
+                    style={{ width: `${Math.max(0, Math.min(backupProgress.percent, 100))}%` }}
+                  />
+                  <p>{tBackup(`progress.${backupProgress.stage}`, { defaultValue: tBackup('creating') })}</p>
+                </div>
+              ) : null}
+              {createdBackup ? (
+                <dl className="status-list">
+                  <div>
+                    <dt>{tBackup('path')}</dt>
+                    <dd className="mono">{createdBackup.filePath}</dd>
+                  </div>
+                  <div>
+                    <dt>{tBackup('fileSize')}</dt>
+                    <dd>{formatFileSize(createdBackup.fileSizeBytes)}</dd>
+                  </div>
+                  <div>
+                    <dt>{tBackup('customerCount')}</dt>
+                    <dd>{createdBackup.manifest.customerCount}</dd>
+                  </div>
+                  <div>
+                    <dt>{tBackup('transactionCount')}</dt>
+                    <dd>{createdBackup.manifest.transactionCount}</dd>
+                  </div>
+                </dl>
+              ) : null}
+            </section>
+          ) : null}
+
+          {activeSection === 'about' ? (
+            <section className="card settings-section-card">
+              <h2>{t('about')}</h2>
+              {copyError ? (
+                <div className="banner banner-error" role="alert">
+                  {copyError}
+                </div>
+              ) : null}
+              <dl className="status-list">
+                <div>
+                  <dt>{t('application')}</dt>
+                  <dd>{tCommon('appName')}</dd>
+                </div>
+                <div>
+                  <dt>{t('version')}</dt>
+                  <dd>{status?.version ?? tCommon('emptyValue')}</dd>
+                </div>
+                <div>
+                  <dt>{t('dataDirectory')}</dt>
+                  <dd className="mono">{paths?.userData ?? tCommon('emptyValue')}</dd>
+                </div>
+                <div>
+                  <dt>{t('databasePath')}</dt>
+                  <dd className="mono">{paths?.database ?? status?.databasePath ?? tCommon('emptyValue')}</dd>
+                </div>
+              </dl>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() => void copyDataDirectory()}
+                disabled={!paths}
+              >
+                {copied ? t('copied') : t('copyPath')}
+              </button>
+              {sessionId ? <SettingsUpdateSection sessionId={sessionId} /> : null}
+            </section>
+          ) : null}
+        </div>
+      </div>
     </section>
   );
 }
