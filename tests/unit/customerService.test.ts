@@ -127,6 +127,86 @@ describe('CustomerService', () => {
     }
   });
 
+  it('deletes one of two customers named Ahmad without affecting the other', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      const first = harness.customerService.create({ name: 'Ahmad', customerNumber: 'A-1' });
+      const second = harness.customerService.create({ name: 'Ahmad', customerNumber: 'A-2' });
+
+      harness.customerService.delete(first.id);
+
+      expect(() => harness.customerService.getById(first.id)).toThrowError(/CUSTOMER_NOT_FOUND/);
+      const remaining = harness.customerService.getById(second.id);
+      expect(remaining.id).toBe(second.id);
+      expect(remaining.name).toBe('Ahmad');
+      expect(remaining.customerNumber).toBe('A-2');
+      expect(harness.customerService.list().map((row) => row.id)).toEqual([second.id]);
+    } finally {
+      harness.cleanup();
+    }
+  });
+
+  it('deletes the second duplicate-name customer after the first is already gone', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      const first = harness.customerService.create({ name: 'Ahmad' });
+      const second = harness.customerService.create({ name: 'Ahmad' });
+      harness.customerService.delete(first.id);
+      harness.customerService.delete(second.id);
+      expect(harness.customerService.list()).toHaveLength(0);
+    } finally {
+      harness.cleanup();
+    }
+  });
+
+  it('deletes one duplicate-name customer without changing the other customer transactions or balance', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      const first = harness.customerService.create({ name: 'Ahmad', customerNumber: 'KEEP-SRC' });
+      const second = harness.customerService.create({ name: 'Ahmad', customerNumber: 'KEEP-DST' });
+
+      harness.transactionService.create({
+        customerId: first.id,
+        type: 'CASH_IN',
+        currencyCode: 'AFN',
+        amount: '100',
+        transactionDate: '2026-04-01',
+      });
+      harness.transactionService.transfer({
+        fromCustomerId: first.id,
+        toCustomerId: second.id,
+        currencyCode: 'AFN',
+        amount: '40',
+        transactionDate: '2026-04-02',
+      });
+      harness.transactionService.create({
+        customerId: second.id,
+        type: 'CASH_IN',
+        currencyCode: 'USD',
+        amount: '12.5',
+        transactionDate: '2026-04-03',
+      });
+
+      harness.customerService.delete(first.id);
+
+      expect(() => harness.customerService.getById(first.id)).toThrowError(/CUSTOMER_NOT_FOUND/);
+      const kept = harness.customerService.getById(second.id);
+      expect(kept.name).toBe('Ahmad');
+
+      const remaining = harness.transactionService.list({ customerId: second.id, page: 1, pageSize: 50 });
+      expect(remaining.totalCount).toBe(2);
+      expect(remaining.transactions.every((row) => row.customerId === second.id)).toBe(true);
+
+      const summary = harness.transactionService.getCustomerSummary(second.id);
+      const afn = summary.currencies.find((row) => row.currencyCode === 'AFN');
+      const usd = summary.currencies.find((row) => row.currencyCode === 'USD');
+      expect(afn?.balance).toBe('40.0000');
+      expect(usd?.balance).toBe('12.5000');
+    } finally {
+      harness.cleanup();
+    }
+  });
+
   it('rejects invalid and oversized photos without creating a customer', async () => {
     const harness = await createCustomerTestHarness();
 

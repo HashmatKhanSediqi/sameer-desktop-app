@@ -51,6 +51,7 @@ import {
 import { AppError } from '../../utils/errors';
 import type { Logger } from '../../utils/logger';
 import { assertAllowedBackupEntry, isBackupFilePath } from './backupPaths';
+import { mergeBackupAccountingData } from './backupMerge';
 import { buildBackupSignature, parseBackupManifest, summarizeManifest } from './backupManifest';
 import { hasSqliteMagic, verifySqliteIntegrity } from './sqliteIntegrity';
 import { createZipBuffer, extractZipRecord, listZipIndex, sha256, type ZipEntry } from './zipArchive';
@@ -229,6 +230,7 @@ export class BackupService {
       return {
         valid: true,
         fileName: basename(filePath),
+        filePath: filePath.trim(),
         manifest: summarizeManifest(extracted.manifest),
         errors: [],
         warnings: extracted.warnings,
@@ -254,15 +256,13 @@ export class BackupService {
       throw new AppError('RESTORE_CONFIRM_REQUIRED', 'confirmRequired');
     }
 
-    const restorePath = filePath.trim();
+    const restorePath = (filePath.trim() || this.lastValidatedPath || '').trim();
     if (!restorePath) {
       throw new AppError('INVALID_REQUEST', 'INVALID_REQUEST');
     }
 
     onProgress?.({ stage: 'validate', percent: 10 });
     const extracted = this.extractAndValidate(restorePath);
-    mkdirSync(this.deps.paths.cache, { recursive: true });
-    const previousDir = mkdtempSync(join(this.deps.paths.cache, 'restore-prev-'));
     let safetyBackupPath: string | undefined;
 
     try {
@@ -271,41 +271,52 @@ export class BackupService {
         safetyBackupPath = await this.createSafetyBackup();
       }
 
-      onProgress?.({ stage: 'replace', percent: 55 });
-      this.deps.closeDatabase();
-      this.preserveCurrentLiveData(previousDir);
-      this.installExtractedBackup(extracted);
-
-      onProgress?.({ stage: 'migrate', percent: 80 });
-      const db = this.deps.reopenDatabase();
-      if (!verifySqliteIntegrity(this.deps.paths.database)) {
-        throw new AppError('BACKUP_CORRUPTED', 'integrityFailed');
-      }
-      runMigrations(db, this.deps.migrationsDir, this.deps.logger);
-      this.deps.invalidateSessions();
-      this.deps.rebindServices();
+      onProgress?.({ stage: 'import', percent: 55 });
+      this.importExtractedBackup(extracted);
       onProgress?.({ stage: 'done', percent: 100 });
-      this.deps.logger.info('Backup restored', {
-        path: filePath,
+      this.deps.logger.info('Backup imported', {
+        path: restorePath,
         safetyBackupPath,
       });
       return {
         success: true,
         safetyBackupPath,
-        sessionInvalidated: true,
+        sessionInvalidated: false,
       };
     } catch (error) {
-      this.deps.logger.error('Restore failed', {
+      this.deps.logger.error('Backup import failed', {
         error: error instanceof Error ? error.message : String(error),
       });
-      this.rollbackLiveData(previousDir);
       if (error instanceof AppError) {
         throw error;
       }
       throw new AppError('RESTORE_FAILED', 'restoreFailed');
     } finally {
       rmSync(extracted.stagingDir, { recursive: true, force: true });
-      rmSync(previousDir, { recursive: true, force: true });
+    }
+  }
+
+  private importExtractedBackup(extracted: ExtractedBackup): void {
+    const backupCopy = join(extracted.stagingDir, 'incoming-migrated.db');
+    copyFileSync(extracted.databasePath, backupCopy);
+
+    const backupDb = new Database(backupCopy);
+    try {
+      backupDb.pragma('journal_mode = DELETE');
+      backupDb.pragma('foreign_keys = ON');
+      if (!verifySqliteIntegrity(backupCopy)) {
+        throw new AppError('BACKUP_CORRUPTED', 'integrityFailed');
+      }
+      runMigrations(backupDb, this.deps.migrationsDir, this.deps.logger);
+      mergeBackupAccountingData({
+        liveDb: this.deps.getDatabase(),
+        backupDb,
+        backupImagesDir: join(extracted.stagingDir, 'images', 'customers'),
+        liveImagesDir: this.deps.paths.images,
+        logger: this.deps.logger,
+      });
+    } finally {
+      backupDb.close();
     }
   }
 
@@ -559,108 +570,15 @@ export class BackupService {
       destination = join(autoDir, fileName);
     }
     await this.create(destination);
+    const previousValidatedPath = this.lastValidatedPath;
     const validated = await this.validate(destination);
+    this.lastValidatedPath = previousValidatedPath;
     if (!validated.valid) {
       unlinkIfExists(destination);
       throw new AppError('BACKUP_WRITE_FAILED', 'writeFailed');
     }
     this.pruneBackupFiles(autoDir, SAFETY_BACKUP_FILE_PREFIX, SAFETY_BACKUP_RETENTION);
     return destination;
-  }
-
-  private preserveCurrentLiveData(previousDir: string): void {
-    mkdirSync(previousDir, { recursive: true });
-    const previousDb = join(previousDir, 'accounting.db');
-    if (existsSync(this.deps.paths.database)) {
-      copyFileSync(this.deps.paths.database, previousDb);
-    }
-    copySidecar(this.deps.paths.database, previousDir);
-    const previousImages = join(previousDir, 'images');
-    if (existsSync(this.deps.paths.images)) {
-      copyDirectory(this.deps.paths.images, previousImages);
-    }
-    const previousCompanyImages = join(previousDir, 'company-images');
-    if (existsSync(this.deps.paths.companyImages)) {
-      copyDirectory(this.deps.paths.companyImages, previousCompanyImages);
-    }
-  }
-
-  private installExtractedBackup(extracted: ExtractedBackup): void {
-    mkdirSync(dirname(this.deps.paths.database), { recursive: true });
-    const incomingDb = `${this.deps.paths.database}.incoming`;
-    copyFileSync(extracted.databasePath, incomingDb);
-    if (!verifySqliteIntegrity(incomingDb)) {
-      unlinkIfExists(incomingDb);
-      throw new AppError('BACKUP_CORRUPTED', 'integrityFailed');
-    }
-
-    unlinkIfExists(this.deps.paths.database);
-    unlinkIfExists(`${this.deps.paths.database}-wal`);
-    unlinkIfExists(`${this.deps.paths.database}-shm`);
-    try {
-      renameSync(incomingDb, this.deps.paths.database);
-    } catch {
-      copyFileSync(incomingDb, this.deps.paths.database);
-      unlinkIfExists(incomingDb);
-    }
-
-    rmSync(this.deps.paths.images, { recursive: true, force: true });
-    mkdirSync(this.deps.paths.images, { recursive: true });
-    const stagedImages = join(extracted.stagingDir, 'images', 'customers');
-    if (existsSync(stagedImages)) {
-      for (const filename of readdirSync(stagedImages)) {
-        const archivePath = `${BACKUP_IMAGES_PREFIX}${filename}`;
-        assertAllowedBackupEntry(archivePath);
-        copyFileSync(join(stagedImages, filename), join(this.deps.paths.images, filename));
-      }
-    }
-
-    rmSync(this.deps.paths.companyImages, { recursive: true, force: true });
-    mkdirSync(this.deps.paths.companyImages, { recursive: true });
-    const stagedCompanyImages = join(extracted.stagingDir, 'images', 'company');
-    if (existsSync(stagedCompanyImages)) {
-      for (const filename of readdirSync(stagedCompanyImages)) {
-        assertAllowedBackupEntry(`${BACKUP_COMPANY_IMAGES_PREFIX}${filename}`);
-        copyFileSync(join(stagedCompanyImages, filename), join(this.deps.paths.companyImages, filename));
-      }
-    }
-  }
-
-  private rollbackLiveData(previousDir: string): void {
-    try {
-      this.deps.closeDatabase();
-    } catch {
-      // Connection may already be closed.
-    }
-
-    try {
-      const previousDb = join(previousDir, 'accounting.db');
-      if (existsSync(previousDb)) {
-        unlinkIfExists(this.deps.paths.database);
-        unlinkIfExists(`${this.deps.paths.database}-wal`);
-        unlinkIfExists(`${this.deps.paths.database}-shm`);
-        copyFileSync(previousDb, this.deps.paths.database);
-        restoreSidecar(previousDir, this.deps.paths.database);
-        rmSync(this.deps.paths.images, { recursive: true, force: true });
-        mkdirSync(this.deps.paths.images, { recursive: true });
-        const previousImages = join(previousDir, 'images');
-        if (existsSync(previousImages)) {
-          copyDirectory(previousImages, this.deps.paths.images);
-        }
-        rmSync(this.deps.paths.companyImages, { recursive: true, force: true });
-        mkdirSync(this.deps.paths.companyImages, { recursive: true });
-        const previousCompanyImages = join(previousDir, 'company-images');
-        if (existsSync(previousCompanyImages)) {
-          copyDirectory(previousCompanyImages, this.deps.paths.companyImages);
-        }
-      }
-      this.deps.reopenDatabase();
-      this.deps.rebindServices();
-    } catch (error) {
-      this.deps.logger.error('Restore rollback failed', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
   }
 
   private normalizeDestination(destinationPath: string): string {
@@ -763,33 +681,5 @@ function errorCodeFromUnknown(error: unknown): string {
 function unlinkIfExists(filePath: string): void {
   if (existsSync(filePath)) {
     unlinkSync(filePath);
-  }
-}
-
-function copySidecar(databasePath: string, targetDir: string): void {
-  for (const suffix of ['-wal', '-shm']) {
-    const source = `${databasePath}${suffix}`;
-    if (existsSync(source)) {
-      copyFileSync(source, join(targetDir, `accounting.db${suffix}`));
-    }
-  }
-}
-
-function restoreSidecar(previousDir: string, databasePath: string): void {
-  for (const suffix of ['-wal', '-shm']) {
-    const source = join(previousDir, `accounting.db${suffix}`);
-    if (existsSync(source)) {
-      copyFileSync(source, `${databasePath}${suffix}`);
-    }
-  }
-}
-
-function copyDirectory(sourceDir: string, targetDir: string): void {
-  mkdirSync(targetDir, { recursive: true });
-  for (const filename of readdirSync(sourceDir)) {
-    const source = join(sourceDir, filename);
-    if (statSync(source).isFile()) {
-      copyFileSync(source, join(targetDir, filename));
-    }
   }
 }
