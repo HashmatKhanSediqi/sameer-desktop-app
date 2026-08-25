@@ -47,6 +47,7 @@
   "passwordHint": "از ۸ تا ۱۲۸ نویسه استفاده کنید. پس از تغییر موفق باید دوباره وارد شوید.",
   "passwordChanged": "رمز عبور تغییر کرد. لطفاً دوباره وارد شوید.",
   "passwordChangedSuccess": "رمز عبور با موفقیت تغییر کرد.",
+  "currentPasswordIncorrect": "رمز عبور فعلی نادرست است.",
   "securityHint": "راهنمای امنیتی",
   "recoveryConfigured": "راهنمای امنیتی تنظیم شده است.",
   "recoveryQuestion": "سؤال امنیتی",

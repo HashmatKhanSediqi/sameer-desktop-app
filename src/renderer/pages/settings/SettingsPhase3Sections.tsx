@@ -111,7 +111,7 @@ export function SettingsAccountSection({ onPasswordChanged }: SettingsAccountSec
         confirmPassword,
       });
       if (!result.ok) {
-        setPasswordError(tErrors(result.message || result.errorCode));
+        setPasswordError(mapPasswordError(t, tErrors, result.errorCode, result.message));
         return;
       }
       setCurrentPassword('');
@@ -628,4 +628,27 @@ function ColorField({
       </div>
     </div>
   );
+}
+
+function mapPasswordError(
+  translateSettings: (key: string) => string,
+  translateErrors: (key: string) => string,
+  errorCode: string,
+  message?: string,
+): string {
+  if (errorCode === 'INVALID_CREDENTIALS') {
+    return translateSettings('currentPasswordIncorrect');
+  }
+  if (message) {
+    const fromSettings = translateSettings(message);
+    if (fromSettings !== message) {
+      return fromSettings;
+    }
+    const fromErrors = translateErrors(message);
+    if (fromErrors !== message) {
+      return fromErrors;
+    }
+  }
+  const fromCode = translateErrors(errorCode);
+  return fromCode === errorCode ? translateErrors('INTERNAL_ERROR') : fromCode;
 }

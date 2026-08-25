@@ -47,6 +47,7 @@
   "passwordHint": "له ۸ تر ۱۲۸ توري وکاروئ. د بریالي بدلون وروسته باید بیا ننوزئ.",
   "passwordChanged": "پټنوم بدل شو. مهرباني وکړئ بیا ننوزئ.",
   "passwordChangedSuccess": "پټنوم په بریالیتوب سره بدل شو.",
+  "currentPasswordIncorrect": "اوسنی پټنوم ناسم دی.",
   "securityHint": "امنیتي نښه",
   "recoveryConfigured": "امنیتي نښه تنظیم شوې ده.",
   "recoveryQuestion": "امنیتي پوښتنه",
