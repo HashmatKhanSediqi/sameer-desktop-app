@@ -72,6 +72,7 @@ export interface BackupValidateData {
   valid: boolean;
   canceled?: boolean;
   fileName?: string;
+  filePath?: string;
   manifest?: BackupManifestSummary;
   errors: string[];
   warnings: string[];
@@ -81,7 +82,7 @@ export interface BackupValidateData {
 export interface RestoreExecuteData {
   success: true;
   safetyBackupPath?: string;
-  sessionInvalidated: true;
+  sessionInvalidated: boolean;
 }
 
 export function isSupportedBackupFormatVersion(version: string): boolean {

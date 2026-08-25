@@ -9,7 +9,6 @@ import {
   DEFAULT_ADMIN_USERNAME,
 } from '../../src/main/services/auth/adminSeedService';
 import { assertAllowedBackupEntry } from '../../src/main/services/backup/backupPaths';
-import { BackupService } from '../../src/main/services/backup/backupService';
 import { buildBackupSignature } from '../../src/main/services/backup/backupManifest';
 import { createZipBuffer } from '../../src/main/services/backup/zipArchive';
 import { AppError } from '../../src/main/utils/errors';
@@ -132,7 +131,7 @@ describe('backup service', () => {
     }
   });
 
-  it('restores customers, transactions, photos, and admin login', async () => {
+  it('merges backup customers, transactions, and photos into existing data', async () => {
     const source = await createCustomerTestHarness();
     const target = await createCustomerTestHarness();
     try {
@@ -152,33 +151,56 @@ describe('backup service', () => {
       const backupPath = join(source.ctx.paths.backups, 'portable.cab');
       await source.backupService.create(backupPath);
 
-      target.customerService.create({ name: 'Will Be Replaced', customerNumber: 'OLD' });
+      const existing = target.customerService.create({ name: 'Will Be Kept', customerNumber: 'OLD' });
       const restored = await target.backupService.restore(backupPath, true);
       expect(restored.success).toBe(true);
       expect(restored.safetyBackupPath).toBeTruthy();
       expect(existsSync(restored.safetyBackupPath ?? '')).toBe(true);
+      expect(restored.sessionInvalidated).toBe(false);
 
       const customers = target.customerService.list();
-      expect(customers).toHaveLength(1);
-      expect(customers[0]?.customerNumber).toBe('R-100');
-      const detail = target.customerService.getById(customers[0]!.id);
+      expect(customers).toHaveLength(2);
+      expect(customers.some((row) => row.id === existing.id && row.customerNumber === 'OLD')).toBe(true);
+      const imported = customers.find((row) => row.customerNumber === 'R-100');
+      expect(imported).toBeTruthy();
+      expect(imported?.id).not.toBe(created.id);
+      const detail = target.customerService.getById(imported!.id);
       expect(detail.hasPhoto).toBe(true);
-      expect(existsSync(join(target.imagesDir, `${customers[0]!.id}.jpg`))).toBe(true);
+      expect(existsSync(join(target.imagesDir, `${imported!.id}.jpg`))).toBe(true);
 
       const login = await target.authService.login(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD);
       expect(login.username).toBe(DEFAULT_ADMIN_USERNAME);
+      expect(target.authService.checkSession(login.sessionId).valid).toBe(true);
     } finally {
       source.cleanup();
       target.cleanup();
     }
   });
 
-  it('requires an explicit backup path for restore', async () => {
+  it('rejects restore when no backup file has been selected', async () => {
     const harness = await createCustomerTestHarness();
     try {
       await expect(harness.backupService.restore('', true)).rejects.toMatchObject({
         code: 'INVALID_REQUEST',
       });
+    } finally {
+      harness.cleanup();
+    }
+  });
+
+  it('uses the last validated backup path when restore is called without a filePath', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      harness.customerService.create({ name: 'Keep Me', customerNumber: 'KEEP' });
+      const backupPath = join(harness.ctx.paths.backups, 'validated.cab');
+      await harness.backupService.create(backupPath);
+      const validated = await harness.backupService.validate(backupPath);
+      expect(validated.valid).toBe(true);
+      expect(validated.filePath).toBe(backupPath);
+
+      const restored = await harness.backupService.restore('', true);
+      expect(restored.success).toBe(true);
+      expect(harness.customerService.list().length).toBeGreaterThanOrEqual(2);
     } finally {
       harness.cleanup();
     }
@@ -320,58 +342,125 @@ describe('backup service', () => {
     }
   });
 
-  it('rolls back live data when reopen fails after swap', async () => {
-    const harness = await createCustomerTestHarness();
+  it('rolls back the import transaction when a later insert fails', async () => {
+    const source = await createCustomerTestHarness();
+    const target = await createCustomerTestHarness();
     try {
-      harness.customerService.create({ name: 'Original', customerNumber: 'ORIG' });
-      const backupPath = join(harness.ctx.paths.backups, 'rollback-source.cab');
-      await harness.backupService.create(backupPath);
+      source.customerService.create({ name: 'BackupOnly', customerNumber: 'B-ONLY' });
+      source.customerService.create({ name: 'BackupTwo', customerNumber: 'B-TWO' });
+      const backupPath = join(source.ctx.paths.backups, 'rollback-source.cab');
+      await source.backupService.create(backupPath);
 
-      harness.customerService.create({ name: 'Second', customerNumber: 'SEC' });
-      let reopenCount = 0;
-      const originalReopen = () => {
-        const Database = require('better-sqlite3') as typeof import('better-sqlite3');
-        const db = new Database(harness.testDb.dbPath);
-        db.pragma('journal_mode = WAL');
-        db.pragma('foreign_keys = ON');
-        harness.testDb.db = db;
-        return db;
-      };
-      const failing = new BackupService({
-        getDatabase: () => harness.testDb.db,
-        checkpoint: () => {
-          harness.testDb.db.pragma('wal_checkpoint(FULL)');
-        },
-        closeDatabase: () => {
-          try {
-            harness.testDb.db.close();
-          } catch {
-            // already closed
-          }
-        },
-        reopenDatabase: () => {
-          reopenCount += 1;
-          if (reopenCount === 1) {
-            throw new Error('simulated reopen failure');
-          }
-          return originalReopen();
-        },
-        rebindServices: () => undefined,
-        invalidateSessions: () => undefined,
-        paths: harness.ctx.paths,
-        appVersion: harness.ctx.config.version,
-        logger: harness.testDb.logger,
-        migrationsDir: join(process.cwd(), 'migrations'),
-      });
+      const original = target.customerService.create({ name: 'Original', customerNumber: 'ORIG' });
+      target.testDb.db.exec(`
+        CREATE TRIGGER fail_import BEFORE INSERT ON customers
+        WHEN new.customer_number = 'B-TWO'
+        BEGIN
+          SELECT RAISE(ABORT, 'forced import failure');
+        END;
+      `);
 
-      await expect(failing.restore(backupPath, true)).rejects.toBeTruthy();
-      const numbers = harness.testDb.db
+      await expect(target.backupService.restore(backupPath, true)).rejects.toBeTruthy();
+      const numbers = target.testDb.db
         .prepare('SELECT customer_number AS customerNumber FROM customers ORDER BY id')
         .all() as Array<{ customerNumber: string | null }>;
-      expect(numbers.map((row) => row.customerNumber)).toContain('ORIG');
-      expect(numbers.map((row) => row.customerNumber)).toContain('SEC');
+      expect(numbers.map((row) => row.customerNumber)).toEqual(['ORIG']);
+      expect(target.customerService.getById(original.id).customerNumber).toBe('ORIG');
     } finally {
-      harness.cleanup();
+      source.cleanup();
+      target.cleanup();
+    }
+  });
+
+  it('imports backup data into an empty database', async () => {
+    const source = await createCustomerTestHarness();
+    const target = await createCustomerTestHarness();
+    try {
+      const first = source.customerService.create({ name: 'Customer A', customerNumber: 'A' });
+      const second = source.customerService.create({ name: 'Customer B', customerNumber: 'B' });
+      source.transactionService.create({
+        customerId: first.id,
+        type: 'CASH_IN',
+        currencyCode: 'AFN',
+        amount: '10',
+        transactionDate: '2026-05-01',
+      });
+      source.transactionService.create({
+        customerId: second.id,
+        type: 'CASH_OUT',
+        currencyCode: 'USD',
+        amount: '3',
+        transactionDate: '2026-05-02',
+      });
+      const backupPath = join(source.ctx.paths.backups, 'empty-target.cab');
+      await source.backupService.create(backupPath);
+
+      await target.backupService.restore(backupPath, true);
+      const imported = target.customerService.list();
+      expect(imported).toHaveLength(2);
+      expect(imported.map((row) => row.customerNumber).sort()).toEqual(['A', 'B']);
+      const importedA = imported.find((row) => row.customerNumber === 'A')!;
+      expect(target.transactionService.list({ customerId: importedA.id, page: 1, pageSize: 10 }).totalCount).toBe(1);
+    } finally {
+      source.cleanup();
+      target.cleanup();
+    }
+  });
+
+  it('keeps existing and backup customers when names and ids collide', async () => {
+    const source = await createCustomerTestHarness();
+    const target = await createCustomerTestHarness();
+    try {
+      const backupAhmad = source.customerService.create({ name: 'Ahmad', customerNumber: 'BACKUP-AHMAD' });
+      source.transactionService.create({
+        customerId: backupAhmad.id,
+        type: 'CASH_IN',
+        currencyCode: 'AFN',
+        amount: '77',
+        transactionDate: '2026-05-10',
+      });
+      source.transactionService.create({
+        customerId: backupAhmad.id,
+        type: 'CASH_OUT',
+        currencyCode: 'AFN',
+        amount: '7',
+        transactionDate: '2026-05-11',
+      });
+      const backupPath = join(source.ctx.paths.backups, 'id-collision.cab');
+      await source.backupService.create(backupPath);
+
+      const liveAhmad = target.customerService.create({ name: 'Ahmad', customerNumber: 'LIVE-AHMAD' });
+      expect(liveAhmad.id).toBe(backupAhmad.id);
+      target.transactionService.create({
+        customerId: liveAhmad.id,
+        type: 'CASH_IN',
+        currencyCode: 'USD',
+        amount: '5',
+        transactionDate: '2026-05-12',
+      });
+      const liveTxBefore = target.transactionService.list({ customerId: liveAhmad.id, page: 1, pageSize: 20 });
+
+      await target.backupService.restore(backupPath, true);
+
+      const liveAfter = target.customerService.getById(liveAhmad.id);
+      expect(liveAfter.customerNumber).toBe('LIVE-AHMAD');
+      const liveTxAfter = target.transactionService.list({ customerId: liveAhmad.id, page: 1, pageSize: 20 });
+      expect(liveTxAfter.totalCount).toBe(liveTxBefore.totalCount);
+      expect(liveTxAfter.transactions.map((row) => row.id)).toEqual(liveTxBefore.transactions.map((row) => row.id));
+
+      const customers = target.customerService.list();
+      expect(customers.filter((row) => row.name === 'Ahmad')).toHaveLength(2);
+      const imported = customers.find((row) => row.customerNumber === 'BACKUP-AHMAD')!;
+      expect(imported.id).not.toBe(liveAhmad.id);
+
+      const importedTx = target.transactionService.list({ customerId: imported.id, page: 1, pageSize: 20 });
+      expect(importedTx.totalCount).toBe(2);
+      expect(importedTx.transactions.every((row) => row.customerId === imported.id)).toBe(true);
+      const summary = target.transactionService.getCustomerSummary(imported.id);
+      expect(summary.currencies.find((row) => row.currencyCode === 'AFN')?.balance).toBe('70.0000');
+    } finally {
+      source.cleanup();
+      target.cleanup();
     }
   });
 });
@@ -430,8 +519,14 @@ describe('backup IPC handlers', () => {
       })) as { ok: true; data: { success: boolean; sessionInvalidated: boolean } };
       expect(restored.ok).toBe(true);
       expect(restored.data.success).toBe(true);
-      expect(restored.data.sessionInvalidated).toBe(true);
-      expect(harness.authService.checkSession(login.sessionId).valid).toBe(false);
+      expect(restored.data.sessionInvalidated).toBe(false);
+      expect(harness.authService.checkSession(login.sessionId).valid).toBe(true);
+
+      const restoredAgain = (await invoke(IPC_CHANNELS.RESTORE_EXECUTE, {
+        confirmed: true,
+      })) as { ok: true; data: { success: boolean } };
+      expect(restoredAgain.ok).toBe(true);
+      expect(restoredAgain.data.success).toBe(true);
     } finally {
       harness.cleanup();
     }

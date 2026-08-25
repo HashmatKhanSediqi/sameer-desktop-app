@@ -121,31 +121,35 @@ Database remains open during backup; shutdown/checkpoint occurs after auto-close
 
 ---
 
-## 7. Restore Flow
+## 7. Restore / Import Flow
+
+Restore From Backup and Import Existing System share the same merge path. They add backup accounting data to the current database. They do not replace the SQLite file, drop tables, overwrite admin/settings/company profile, or invalidate the current session.
 
 ```
-current DB
+current DB (kept open)
    ↓
-create + validate safety backup
+validate incoming .cab and extract to a temp directory
    ↓
-validate incoming backup
+if live data exists: create + validate a safety backup (precaution only)
    ↓
-extract to temporary location
+copy backup DB, run migrations on the copy
    ↓
-validate SQLite database
+merge into the live database in one SQLite transaction:
+  currencies/denominations INSERT OR IGNORE
+  customers inserted with new local IDs (never matched by name)
+  backup customer ID → local ID map
+  transactions inserted with remapped customer_id / counterparty_customer_id
    ↓
-atomically replace database + images
+customer photos copied under the new local IDs
    ↓
-reopen database + run migrations if needed
+on SQL failure: roll back the import transaction; live data unchanged
    ↓
-verify integrity
-   ↓
-invalidate all sessions
-   ↓
-only then report success
+report success only after the merge commits
 ```
 
-Any failure leaves the original database recoverable (rollback / no commit of replace).
+Backup customers always receive new local IDs so colliding backup IDs cannot overwrite live customers. Duplicate names are allowed. Teller cash, admin users, settings, and company profile from the backup are not imported.
+
+The renderer must pass the selected backup `filePath` to `restore:execute`. If `filePath` is omitted, the last successfully validated path may be used so a confirm-only restore after `backup:validate` still works. An empty path with no prior validate is `INVALID_REQUEST`.
 
 ### Pre-login vs post-login
 
@@ -156,8 +160,6 @@ Any failure leaves the original database recoverable (rollback / no commit of re
 | `restore:execute` | **No** | Pre-login disaster recovery; requires `confirmed: true` |
 
 **Known risk:** restore/validate without a normal authenticated session is intentional for locked-out / corrupted-DB recovery. Physical machine access can invoke these IPC channels. UI confirmation remains mandatory for restore.
-
-Restore requires an **explicit file path** (no silent last-validated-path fallback).
 
 ---
 
@@ -202,8 +204,8 @@ At ~100k customers / ~300k transactions, automated tests observed backup create 
 ## 12. Testing Checklist
 
 - [x] Backup creates valid `.cab` with DB + images (automated)
-- [x] Restore restores customers, transactions, photos, admin login (automated)
-- [x] Safety backup before overwrite (automated)
+- [x] Restore/import merges customers, transactions, and photos without replacing live data (automated)
+- [x] Safety backup before import when live data exists (automated)
 - [x] Corrupted / traversal archives rejected (automated)
 - [x] Auto-close backup + retention (automated)
 - [x] Safety retention ≤ 5 (automated)

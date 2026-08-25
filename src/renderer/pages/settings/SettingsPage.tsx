@@ -169,8 +169,8 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
         variant="settings"
         onBack={() => setShowRestore(false)}
         onRestored={() => {
-          clearLocalSession();
-          window.location.reload();
+          setShowRestore(false);
+          void load();
         }}
       />
     );

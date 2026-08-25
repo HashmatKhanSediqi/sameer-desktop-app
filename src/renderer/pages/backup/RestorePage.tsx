@@ -21,7 +21,7 @@ export function RestorePage({ variant, onBack, onRestored }: RestorePageProps): 
   const [warnings, setWarnings] = useState<string[]>([]);
   const [manifest, setManifest] = useState<BackupManifestSummary | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [hasExistingData, setHasExistingData] = useState(false);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [progress, setProgress] = useState<BackupProgress | null>(null);
   const [restored, setRestored] = useState<{ safetyBackupPath?: string } | null>(null);
@@ -36,6 +36,7 @@ export function RestorePage({ variant, onBack, onRestored }: RestorePageProps): 
     setWarnings([]);
     setManifest(null);
     setFileName(null);
+    setSelectedPath(null);
     setConfirmed(false);
     setRestored(null);
 
@@ -48,8 +49,8 @@ export function RestorePage({ variant, onBack, onRestored }: RestorePageProps): 
       if (result.data.canceled) {
         return;
       }
-      setHasExistingData(result.data.hasExistingData);
       setFileName(result.data.fileName ?? null);
+      setSelectedPath(result.data.filePath ?? null);
       if (!result.data.valid || !result.data.manifest) {
         setError(
           result.data.errors.map((code) => t(code, { defaultValue: t('invalidBackup') })).join(' '),
@@ -73,7 +74,10 @@ export function RestorePage({ variant, onBack, onRestored }: RestorePageProps): 
     setIsRestoring(true);
     setError(null);
     try {
-      const result = await window.api.backup.restore({ confirmed: true });
+      const result = await window.api.backup.restore({
+        confirmed: true,
+        filePath: selectedPath ?? undefined,
+      });
       if (!result.ok) {
         setError(mapBackupError(t, tErrors, result.errorCode, result.message));
         return;
@@ -104,7 +108,7 @@ export function RestorePage({ variant, onBack, onRestored }: RestorePageProps): 
           ) : null}
           <div className="modal-actions">
             <button type="button" className="button button-primary" onClick={onRestored}>
-              {t('continueToLogin')}
+              {variant === 'prelogin' ? t('continueToLogin') : tCommon('back')}
             </button>
           </div>
         </div>
@@ -181,8 +185,8 @@ export function RestorePage({ variant, onBack, onRestored }: RestorePageProps): 
           </p>
         ))}
 
-        {hasExistingData && manifest ? (
-          <div className="banner banner-error" role="status">
+        {manifest ? (
+          <div className="banner banner-warning" role="status">
             {t('existingDataWarning')}
           </div>
         ) : null}
@@ -212,7 +216,7 @@ export function RestorePage({ variant, onBack, onRestored }: RestorePageProps): 
           </button>
           <button
             type="button"
-            className="button button-danger"
+            className="button button-primary"
             onClick={() => void restore()}
             disabled={!manifest || !confirmed || isRestoring}
           >

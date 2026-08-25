@@ -23,12 +23,14 @@ import {
 
 export class CustomerService {
   private readonly repository: CustomerRepository;
+  private readonly db: Database.Database;
 
   constructor(
     db: Database.Database,
     private readonly photoService: CustomerPhotoService,
     private readonly logger: Logger,
   ) {
+    this.db = db;
     this.repository = new CustomerRepository(db);
   }
 
@@ -261,14 +263,55 @@ export class CustomerService {
       throw new AppError('CUSTOMER_NOT_FOUND', 'CUSTOMER_NOT_FOUND');
     }
 
-    const deleted = this.repository.deleteCustomer(customerId);
-    if (!deleted) {
-      throw new AppError('CUSTOMER_NOT_FOUND', 'CUSTOMER_NOT_FOUND');
+    try {
+      this.db.transaction(() => {
+        this.detachCustomerReferences(customerId);
+        const deleted = this.repository.deleteCustomer(customerId);
+        if (!deleted) {
+          throw new AppError('CUSTOMER_NOT_FOUND', 'CUSTOMER_NOT_FOUND');
+        }
+      })();
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      this.logger.error('Customer delete failed', {
+        customerId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new AppError('DATABASE_ERROR', 'DATABASE_ERROR');
     }
 
     this.photoService.deleteByFilename(existing.photo_filename);
     this.logger.info('Customer deleted', { customerId });
     return { success: true };
+  }
+
+  private detachCustomerReferences(customerId: number): void {
+    this.db
+      .prepare(
+        `UPDATE transactions
+         SET counterparty_customer_id = NULL
+         WHERE counterparty_customer_id = ?`,
+      )
+      .run(customerId);
+
+    if (this.tableExists('teller_transactions')) {
+      this.db
+        .prepare(
+          `UPDATE teller_transactions
+           SET customer_id = NULL
+           WHERE customer_id = ?`,
+        )
+        .run(customerId);
+    }
+  }
+
+  private tableExists(name: string): boolean {
+    const row = this.db
+      .prepare("SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(name) as { present: number } | undefined;
+    return row !== undefined;
   }
 
   getPhoto(id: unknown): CustomerPhotoData | null {

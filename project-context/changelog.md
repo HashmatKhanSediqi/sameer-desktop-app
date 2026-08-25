@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Light/Dark color mode in Settings → Appearance, persisted with the existing theme settings.
 
 ### Changed
+- Restore from Backup and Import Existing System add backup accounting data to the current system instead of replacing it. Existing customers, transactions, settings, company profile, and the admin account stay in place. Backup customers receive new local IDs when they would collide, and their transactions follow those new IDs.
 - Customer Details hides the global application header and uses the recovered vertical space.
 - Customer Accounting list places `Transfer` immediately beside `Add Customer`.
 - Login secondary actions (`Forgot password`, `Import Existing System`) are text actions without underlines, with hover/focus/active states.
@@ -20,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Customer Accounting and Customer Details summary cards expand to fill available row width (`auto-fit`).
 
 ### Fixed
+- Customers with the same name can be deleted independently. Transfer counterparty links no longer block deletion.
+- Restore from Backup and Import Existing System no longer fail with "The request is invalid" after a backup file is selected.
 - Login screen no longer has a page or form scrollbar; the form is sized to fit the viewport.
 - Customer list `Action` header and Customer Details `Edit Transaction` header scroll and align with the rest of the table instead of staying independently sticky.
 
