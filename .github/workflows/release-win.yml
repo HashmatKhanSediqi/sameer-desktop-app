@@ -44,4 +44,3 @@ jobs:
           files: |
             dist/FMT-Setup.exe
             dist/latest.yml
-            dist/FMT-Setup.exe.blockmap
