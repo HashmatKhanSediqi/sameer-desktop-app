@@ -20,6 +20,7 @@ class MockUpdater extends EventEmitter implements ElectronUpdaterAdapter {
   autoDownload = true;
   allowDowngrade = true;
   autoInstallOnAppQuit = true;
+  disableDifferentialDownload = false;
   logger: unknown = null;
   setFeedURLCalls = 0;
   checkImpl: () => Promise<UpdateCheckResultLike | null> = async () => null;
@@ -95,6 +96,7 @@ describe('UpdateService', () => {
     expect(updater.autoDownload).toBe(false);
     expect(updater.allowDowngrade).toBe(false);
     expect(updater.autoInstallOnAppQuit).toBe(false);
+    expect(updater.disableDifferentialDownload).toBe(true);
   });
 
   it('exposes the public GitHub owner/repo on the status snapshot', () => {
@@ -331,6 +333,32 @@ describe('UpdateService', () => {
     expect(service.getStatus().state).toBe('upToDate');
     updater.emitError(new Error('ENOTFOUND'));
     expect(service.getStatus().state).toBe('upToDate');
+  });
+
+  it('ignores duplicate download requests while a download is in flight', async () => {
+    const updater = new MockUpdater();
+    updater.checkImpl = async () => ({ updateInfo: { version: '1.2.0' } });
+    let downloadCalls = 0;
+    updater.downloadImpl = async () => {
+      downloadCalls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return ['file'];
+    };
+
+    const service = new UpdateService({
+      currentVersion: '1.0.0',
+      packaged: true,
+      logger: createLogger(),
+      backupService: createBackupService({ created: true, filePath: 'x.cab' }),
+      updater,
+    });
+
+    await service.checkForUpdates();
+    const first = service.downloadUpdate();
+    const second = service.downloadUpdate();
+    await Promise.all([first, second]);
+    expect(downloadCalls).toBe(1);
+    expect(service.getStatus().state).toBe('ready');
   });
 
   it('surfaces download failures as error without installing', async () => {

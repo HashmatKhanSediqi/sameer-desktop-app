@@ -11,15 +11,24 @@ const NATIVE_MODULES = ['better-sqlite3', 'bcrypt'];
 const electronVersion = requireFromProject('electron/package.json').version;
 const { rebuild } = requireFromProject('@electron/rebuild');
 
+const platform = process.platform;
+const arch = process.arch;
+
 console.log(
-  `[rebuild:electron] Rebuilding ${NATIVE_MODULES.join(', ')} for Electron ${electronVersion} (${process.arch})`,
+  `[rebuild:electron] Rebuilding ${NATIVE_MODULES.join(', ')} for Electron ${electronVersion} (${platform}/${arch})`,
 );
+
+if (platform !== 'win32') {
+  console.warn(
+    '[rebuild:electron] Dev/test rebuild on non-Windows host; packaged Windows installers must be built on Windows.',
+  );
+}
 
 try {
   const rebuildPromise = rebuild({
     buildPath: projectRoot,
     electronVersion,
-    arch: process.arch,
+    arch,
     onlyModules: NATIVE_MODULES,
     force: true,
   });

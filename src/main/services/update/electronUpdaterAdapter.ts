@@ -22,6 +22,7 @@ export interface ElectronUpdaterAdapter {
   autoDownload: boolean;
   allowDowngrade: boolean;
   autoInstallOnAppQuit: boolean;
+  disableDifferentialDownload?: boolean;
   logger: unknown;
   checkForUpdates(): Promise<UpdateCheckResultLike | null>;
   downloadUpdate(): Promise<string[]>;

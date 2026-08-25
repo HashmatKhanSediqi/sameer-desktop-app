@@ -99,12 +99,18 @@ If the repository is private, GitHub returns **404** to unauthenticated clients 
 
 ### How to publish
 
+**Windows installer builds must run on Windows x64.** Do not build `FMT-Setup.exe` on Linux or macOS — native modules (`bcrypt`, `better-sqlite3`) cannot be cross-compiled reliably and will produce a broken installer.
+
+Recommended:
+
 ```bash
 npm run typecheck
 npm test
-npm run build:win
-# Tag, push, and attach dist/FMT-Setup.exe, dist/latest.yml, dist/FMT-Setup.exe.blockmap
+npm run build:win   # Windows x64 only; verifies PE native modules after build
+# Tag, push — GitHub Actions (windows-latest) attaches dist/FMT-Setup.exe, latest.yml, FMT-Setup.exe.blockmap
 ```
+
+Or push a version tag (`v*`) and let `.github/workflows/release-win.yml` build on `windows-latest`.
 
 Do not hand-edit `latest.yml`. Do not publish an installer from a different version than the tag.
 

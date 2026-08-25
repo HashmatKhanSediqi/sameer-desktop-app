@@ -1,6 +1,6 @@
 {
   "name": "customer-accounting",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "FMT — offline desktop customer accounting application",
   "main": "./out/main/index.js",
   "author": "FMT",
@@ -14,7 +14,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "build:win": "npm run build && electron-builder --win",
+    "build:win": "node scripts/ensure-win-build.mjs && npm run build && electron-builder --win && node scripts/verify-win-native-modules.mjs",
     "postinstall": "node scripts/postinstall.mjs",
     "rebuild:node": "node scripts/rebuild-node.mjs",
     "rebuild:electron": "node scripts/rebuild-electron.mjs",
@@ -106,6 +106,7 @@
       "signAndEditExecutable": false
     },
     "nsis": {
+      "differentialPackage": false,
       "artifactName": "FMT-Setup.${ext}",
       "shortcutName": "FMT",
       "oneClick": false,

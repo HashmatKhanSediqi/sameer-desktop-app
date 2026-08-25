@@ -1,0 +1,45 @@
+name: Release Windows Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-win-release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build Windows installer
+        run: npm run build:win
+
+      - name: Verify packaged native modules
+        run: node scripts/verify-win-native-modules.mjs
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/FMT-Setup.exe
+            dist/latest.yml
+            dist/FMT-Setup.exe.blockmap

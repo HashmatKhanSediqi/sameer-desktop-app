@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.2.2] — 2026-08-25 (UI layout and scrolling)
+## [1.2.3] — 2026-08-25 (Windows native module packaging fix)
+
+### Fixed
+- **Critical:** Windows releases built on Linux contained Linux ELF native modules (`bcrypt_lib.node`, `better_sqlite3.node`), causing `is not a valid Win32 application` after in-app update from v1.2.2. Windows installer builds now require a Windows x64 host and verify packaged `.node` files are PE binaries before release.
+- In-app update download no longer resets progress for a duplicate in-flight request; differential NSIS downloads are disabled to avoid a full re-download fallback after a partial blockmap attempt.
+
+### Changed
+- Added GitHub Actions workflow (`.github/workflows/release-win.yml`) to build and attach `FMT-Setup.exe`, `latest.yml`, and `FMT-Setup.exe.blockmap` on `windows-latest` when a version tag is pushed.
+
+### Known issue
+- **v1.2.2** must not be used. Users who updated to v1.2.2 should reinstall from the v1.2.3 (or later) full installer over the broken installation; user data in `%APPDATA%\CustomerAccounting\` is preserved.
+
+---
+
+## [1.2.2] — 2026-08-25 (UI layout and scrolling — **broken Windows native modules**)
 
 ### Changed
 - Application background is pure white (`#FFFFFF`); green branding, cards, and accents unchanged.
