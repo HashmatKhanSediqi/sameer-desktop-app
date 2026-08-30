@@ -82,6 +82,7 @@
   "TELLER_DENOMINATION_INVALID": "Enter whole, non-negative denomination quantities.",
   "TELLER_OPENING_MISMATCH": "Opening cash must match the current till count.",
   "TELLER_TRANSACTION_NOT_FOUND": "Teller transaction not found.",
+  "TELLER_EXPORT_FAILED": "The Excel file could not be saved. Today's Teller day was not closed. You can retry.",
   "NEGATIVE_QUANTITY": "Denomination quantities cannot be negative.",
   "NON_INTEGER_QUANTITY": "Denomination quantities must be whole numbers."
 }

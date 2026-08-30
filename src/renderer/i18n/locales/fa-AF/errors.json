@@ -82,6 +82,7 @@
   "TELLER_DENOMINATION_INVALID": "تعداد واحدها باید عدد صحیح و غیرمنفی باشد.",
   "TELLER_OPENING_MISMATCH": "موجودی افتتاحیه باید با شمارش فعلی صندوق برابر باشد.",
   "TELLER_TRANSACTION_NOT_FOUND": "معامله صندوق پیدا نشد.",
+  "TELLER_EXPORT_FAILED": "فایل اکسل ذخیره نشد. روز صندوق بسته نشد. دوباره تلاش کنید.",
   "NEGATIVE_QUANTITY": "تعداد واحدها نمی‌تواند منفی باشد.",
   "NON_INTEGER_QUANTITY": "تعداد واحدها باید عدد صحیح باشد."
 }

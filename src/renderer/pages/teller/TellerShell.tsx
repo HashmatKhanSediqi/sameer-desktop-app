@@ -1,19 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { INITIAL_WORKSHEET_ROWS, suggestTellerExportFileName } from '@shared/teller/worksheetRows';
+import { tellerDayAction } from '@shared/teller/sessionState';
 import type { CompanyProfile } from '@shared/types/company';
 import type { Currency } from '@shared/types/currency';
-import type { TellerDashboard } from '@shared/types/teller';
+import type { TellerSheet } from '@shared/types/teller';
 import { LanguageSelector } from '../../components/LanguageSelector';
 import { ModuleSwitcher, type AppModule } from '../../components/ModuleSwitcher';
 import { useAuth } from '../../context/AuthContext';
-import { TellerCashForm } from './components/TellerCashForm';
-import { TellerSummaryBar } from './components/TellerSummaryBar';
-import { OpenSessionForm } from './components/OpenSessionForm';
-import { TellerHistoryPage } from './TellerHistoryPage';
-import { TellerLongBookPage } from './TellerLongBookPage';
-import { TellerTallyPage } from './TellerTallyPage';
-
-type TellerView = 'workspace' | 'tally' | 'longBook' | 'history';
+import { TellerCurrencyForm } from './components/TellerCurrencyForm';
+import { TellerSheetPage } from './TellerSheetPage';
 
 interface TellerShellProps {
   onSwitchModule: (module: AppModule) => void;
@@ -24,16 +20,21 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
   const { t: tCommon } = useTranslation('common');
   const { t: tErrors } = useTranslation('errors');
   const { username, logout, sessionId } = useAuth();
-  const [view, setView] = useState<TellerView>('workspace');
-  const [mode, setMode] = useState<'in' | 'out'>('in');
   const [refreshKey, setRefreshKey] = useState(0);
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [logoSrc, setLogoSrc] = useState<string | null>(null);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [currencyCode, setCurrencyCode] = useState('AFN');
-  const [dashboard, setDashboard] = useState<TellerDashboard | null>(null);
+  const [currencyCode, setCurrencyCode] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<TellerSheet | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [closing, setClosing] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [ending, setEnding] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [pendingRows, setPendingRows] = useState<number | null>(null);
+  const [pendingReset, setPendingReset] = useState(false);
+  const [worksheetRows, setWorksheetRows] = useState(INITIAL_WORKSHEET_ROWS);
+  const [showAddCurrency, setShowAddCurrency] = useState(false);
 
   useEffect(() => {
     if (!sessionId) {
@@ -57,55 +58,102 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
     }
     void window.api.currencies.list({ sessionId }).then((result) => {
       if (result.ok) {
-        setCurrencies(result.data.currencies);
-        setCurrencyCode((current) =>
-          result.data.currencies.some((item) => item.code === current)
-            ? current
-            : result.data.currencies[0]?.code ?? current,
-        );
+        setCurrencies(result.data.currencies.filter((item) => item.isActive));
       }
     });
   }, [sessionId, refreshKey]);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!sessionId || !currencyCode) {
+      setSheet(null);
       return;
     }
-    void window.api.teller.getDashboard({ sessionId }).then((result) => {
+    void window.api.teller.getSheet({ sessionId, currencyCode }).then((result) => {
       if (result.ok) {
-        setDashboard(result.data);
+        setSheet(result.data);
         setError(null);
       } else {
         setError(tErrors(result.errorCode));
       }
     });
-  }, [sessionId, refreshKey, tErrors]);
+  }, [sessionId, currencyCode, refreshKey, tErrors]);
 
   function bump(): void {
     setRefreshKey((value) => value + 1);
   }
 
-  async function closeSession(): Promise<void> {
-    if (!sessionId || !dashboard?.session || closing) {
+  function selectCurrency(code: string): void {
+    setCurrencyCode(code);
+    setSheet(null);
+    setError(null);
+    setExportMessage(null);
+    setShowAddCurrency(false);
+  }
+
+  function handleCurrencyCreated(code: string): void {
+    bump();
+    selectCurrency(code);
+  }
+
+  async function confirmEndDay(): Promise<void> {
+    if (!sessionId || !sheet?.session || pendingRows === null || ending) {
       return;
     }
-    if (!window.confirm(t('session.confirmClose'))) {
-      return;
-    }
-    setClosing(true);
-    const result = await window.api.teller.closeSession({
+    setEnding(true);
+    setError(null);
+    const result = await window.api.teller.endDay({
       sessionId,
-      tellerSessionId: dashboard.session.id,
+      tellerSessionId: sheet.session.id,
+      fileName: suggestTellerExportFileName(sheet.currencyCode, sheet.session.sessionDate),
+      worksheetRows: pendingRows,
     });
-    setClosing(false);
+    setEnding(false);
+    setPendingRows(null);
     if (!result.ok) {
       setError(tErrors(result.errorCode));
       return;
     }
-    bump();
+    if ('canceled' in result.data && result.data.canceled) {
+      return;
+    }
+    if ('filePath' in result.data && result.data.filePath) {
+      setExportMessage(t('session.exportSuccess', { path: result.data.filePath }));
+      bump();
+    }
   }
 
-  const summary = dashboard?.currencies.find((row) => row.currencyCode === currencyCode) ?? dashboard?.currencies[0] ?? null;
+  async function startToday(): Promise<void> {
+    if (!sessionId || !currencyCode || starting) {
+      return;
+    }
+    setStarting(true);
+    setError(null);
+    const result = await window.api.teller.startDay({ sessionId, currencyCode });
+    setStarting(false);
+    if (!result.ok) {
+      setError(tErrors(result.errorCode));
+      return;
+    }
+    setSheet(result.data);
+    setExportMessage(null);
+  }
+
+  async function confirmResetCash(): Promise<void> {
+    if (!sessionId || !currencyCode || resetting) {
+      return;
+    }
+    setResetting(true);
+    setError(null);
+    const result = await window.api.teller.resetCash({ sessionId, currencyCode });
+    setResetting(false);
+    setPendingReset(false);
+    if (!result.ok) {
+      setError(tErrors(result.errorCode));
+      return;
+    }
+    setSheet(result.data);
+    setExportMessage(null);
+  }
 
   return (
     <div className="app-shell app-shell-teller">
@@ -118,6 +166,37 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
           </div>
         </div>
         <div className="header-toolbar">
+          {currencyCode && sheet ? (
+            tellerDayAction(sheet.session?.status) === 'END' ? (
+              <button
+                type="button"
+                className="teller-end-day-btn"
+                disabled={ending}
+                onClick={() => setPendingRows(worksheetRows)}
+              >
+                {t('session.endDay')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="teller-end-day-btn"
+                disabled={starting}
+                onClick={() => void startToday()}
+              >
+                {t('session.startDay')}
+              </button>
+            )
+          ) : null}
+          {currencyCode && sheet ? (
+            <button
+              type="button"
+              className="teller-reset-cash-btn"
+              disabled={resetting}
+              onClick={() => setPendingReset(true)}
+            >
+              {t('session.resetCash')}
+            </button>
+          ) : null}
           <ModuleSwitcher current="teller" onSwitch={onSwitchModule} />
           <LanguageSelector />
           <button type="button" className="button button-secondary" onClick={() => void logout()}>
@@ -126,73 +205,120 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
         </div>
       </header>
 
-      <TellerSummaryBar
-        session={dashboard?.session ?? null}
-        currencies={currencies}
-        currencyCode={currencyCode}
-        summary={summary}
-        onCurrencyChange={setCurrencyCode}
-        onCashIn={() => {
-          setMode('in');
-          setView('workspace');
-        }}
-        onCashOut={() => {
-          setMode('out');
-          setView('workspace');
-        }}
-        onCloseSession={() => void closeSession()}
-        closing={closing}
-      />
-
-      <nav className="teller-nav" aria-label={tCommon('modules.teller')}>
-        {(
-          [
-            ['workspace', t('nav.workspace')],
-            ['tally', t('nav.tally')],
-            ['longBook', t('nav.longBook')],
-            ['history', t('nav.history')],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={view === id ? 'teller-nav-btn is-active' : 'teller-nav-btn'}
-            onClick={() => setView(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-
       <main className="app-main teller-main">
         {error ? <p className="form-error">{error}</p> : null}
-        {view === 'workspace' ? (
-          <section className="teller-panel">
-            {dashboard?.session ? (
-              <>
-                <header className="teller-panel-header">
-                  <h2>{mode === 'in' ? t('nav.cashIn') : t('nav.cashOut')}</h2>
-                </header>
-                <TellerCashForm
-                  mode={mode}
-                  currencies={currencies}
-                  currencyCode={currencyCode}
-                  onCurrencyChange={setCurrencyCode}
-                  onSaved={bump}
-                />
-              </>
-            ) : (
-              <OpenSessionForm currencies={currencies} onOpened={bump} />
-            )}
+        {exportMessage ? <p className="teller-export-success">{exportMessage}</p> : null}
+        {!currencyCode ? (
+          <section className="teller-currency-gate">
+            <p>{t('sheet.chooseCurrency')}</p>
+            <div className="teller-currency-gate-list">
+              {currencies.map((currency) => (
+                <button
+                  key={currency.code}
+                  type="button"
+                  className={`teller-sheet-tab is-${currency.code.toLowerCase()}`}
+                  onClick={() => selectCurrency(currency.code)}
+                >
+                  {currency.code}
+                </button>
+              ))}
+            </div>
+            <TellerCurrencyForm onCreated={handleCurrencyCreated} />
           </section>
-        ) : view === 'tally' ? (
-          <TellerTallyPage refreshKey={refreshKey} currencies={currencies} currencyCode={currencyCode} onCurrencyChange={setCurrencyCode} />
-        ) : view === 'longBook' ? (
-          <TellerLongBookPage refreshKey={refreshKey} currencies={currencies} currencyCode={currencyCode} onCurrencyChange={setCurrencyCode} />
-        ) : (
-          <TellerHistoryPage refreshKey={refreshKey} currencies={currencies} currencyCode={currencyCode} onCurrencyChange={setCurrencyCode} />
-        )}
+        ) : sheet ? (
+          <TellerSheetPage
+            sheet={sheet}
+            onChanged={bump}
+            onWorksheetRowsChange={setWorksheetRows}
+          />
+        ) : null}
       </main>
+
+      {currencyCode ? (
+        <nav className="teller-sheet-tabs" role="tablist" aria-label={t('form.currency')}>
+          {currencies.map((currency) => (
+            <button
+              key={currency.code}
+              type="button"
+              role="tab"
+              aria-selected={currencyCode === currency.code}
+              className={
+                currencyCode === currency.code
+                  ? `teller-sheet-tab is-active is-${currency.code.toLowerCase()}`
+                  : `teller-sheet-tab is-${currency.code.toLowerCase()}`
+              }
+              onClick={() => selectCurrency(currency.code)}
+            >
+              {currency.code}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="teller-sheet-tab"
+            onClick={() => setShowAddCurrency((value) => !value)}
+          >
+            {t('form.addCurrency')}
+          </button>
+        </nav>
+      ) : null}
+      {currencyCode && showAddCurrency ? (
+        <div className="teller-currency-form-inline">
+          <TellerCurrencyForm onCreated={handleCurrencyCreated} />
+        </div>
+      ) : null}
+
+      {pendingRows !== null ? (
+        <div className="teller-end-day-dialog" role="dialog" aria-modal="true">
+          <div className="teller-end-day-dialog-card">
+            <p className="teller-end-day-dialog-title">{t('session.confirmEndTitle')}</p>
+            <ul>
+              <li>{t('session.confirmEndFinalize')}</li>
+              <li>{t('session.confirmEndOp')}</li>
+              <li>{t('session.confirmEndExcel')}</li>
+            </ul>
+            <div className="teller-end-day-dialog-actions">
+              <button type="button" className="button button-secondary" disabled={ending} onClick={() => setPendingRows(null)}>
+                {t('session.cancel')}
+              </button>
+              <button type="button" className="teller-end-day-btn" disabled={ending} onClick={() => void confirmEndDay()}>
+                {t('session.endDay')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {pendingReset ? (
+        <div className="teller-end-day-dialog" role="dialog" aria-modal="true">
+          <div className="teller-end-day-dialog-card">
+            <p className="teller-end-day-dialog-title">{t('session.confirmResetTitle')}</p>
+            <ul>
+              <li>{t('session.confirmResetWarn')}</li>
+              <li>{t('session.confirmResetCounts')}</li>
+              <li>{t('session.confirmResetWorksheet')}</li>
+              <li>{t('session.confirmResetHistory')}</li>
+            </ul>
+            <div className="teller-end-day-dialog-actions">
+              <button
+                type="button"
+                className="button button-secondary"
+                disabled={resetting}
+                onClick={() => setPendingReset(false)}
+              >
+                {t('session.cancel')}
+              </button>
+              <button
+                type="button"
+                className="teller-reset-cash-btn"
+                disabled={resetting}
+                onClick={() => void confirmResetCash()}
+              >
+                {t('session.confirmReset')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

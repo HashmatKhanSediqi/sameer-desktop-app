@@ -2904,7 +2904,428 @@ input[type='radio'] {
 }
 
 .teller-main {
-  max-width: 1440px;
+  max-width: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px 10px 0;
+  gap: 8px;
+}
+
+.teller-currency-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 12rem;
+  gap: 12px;
+  text-align: center;
+  overflow: auto;
+  padding: 8px 0 16px;
+}
+
+.teller-currency-gate p {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.teller-currency-gate-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.teller-workbook {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #fff;
+  border: 1px solid #7f7f7f;
+  overflow: hidden;
+}
+
+.teller-workbook-banner {
+  background: #5b9bd5;
+  color: #1f4e79;
+  padding: 1px 6px;
+  text-align: center;
+}
+
+.teller-workbook-banner h2 {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.teller-workbook-summary {
+  flex: 0 0 auto;
+  background: #5b9bd5;
+  overflow: hidden;
+}
+
+.teller-summary-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 176px;
+  gap: 4px;
+  padding: 1px 6px 3px;
+  align-items: start;
+}
+
+.teller-summary-table,
+.teller-sheet-table,
+.teller-header-counts {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.teller-sheet-table {
+  table-layout: fixed;
+  width: max-content;
+  min-width: 100%;
+}
+
+.teller-summary-table th,
+.teller-summary-table td,
+.teller-sheet-table th,
+.teller-sheet-table td,
+.teller-header-counts th,
+.teller-header-counts td {
+  border: 1px solid #404040;
+  padding: 0 3px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.2;
+  height: 18px;
+}
+
+.teller-summary-table thead th {
+  background: #5b9bd5;
+  color: #c00000;
+  font-weight: 800;
+}
+
+.teller-summary-table tbody th {
+  text-align: start;
+  background: #5b9bd5;
+  color: #1f4e79;
+  width: 10rem;
+  font-weight: 700;
+}
+
+.teller-header-counts th {
+  background: #fff2cc;
+  color: #1f4e79;
+  text-align: start;
+  font-weight: 700;
+}
+
+.teller-header-counts td {
+  background: #fff;
+  font-weight: 800;
+}
+
+.teller-header-counts .teller-result {
+  background: #c6efce;
+  color: #006100;
+  font-size: 0.95rem;
+}
+
+.teller-cell-calc {
+  background: #d6dce4;
+  font-weight: 700;
+}
+
+.teller-cell-calc.is-ok {
+  color: #0b6b2c;
+}
+
+.teller-cell-calc.is-no {
+  background: #ffd6d6;
+  color: #9b1c1c;
+}
+
+.teller-input-amount,
+.teller-input-pieces,
+.teller-input-ref {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  font: inherit;
+  padding: 0;
+}
+
+.teller-sheet-table .teller-input-amount {
+  background: #d5a6e6;
+}
+
+.teller-sheet-table .teller-input-ref {
+  text-align: start;
+  padding-inline: 4px;
+}
+
+.teller-logs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #c6e0b4;
+  border-top: 1px solid #404040;
+}
+
+.teller-log {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.teller-log-head {
+  flex: 0 0 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.teller-log-head::-webkit-scrollbar {
+  height: 0;
+}
+
+.teller-log-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.teller-log-deposit {
+  border-right: 1px solid #404040;
+}
+
+.teller-sheet-table thead th {
+  position: relative;
+  background: #548235;
+  color: #fff;
+  font-weight: 700;
+}
+
+.teller-sheet-table .teller-th-title {
+  background: #548235;
+  color: #fff;
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.teller-sheet-table .teller-th-name,
+.teller-sheet-table .teller-cell-name {
+  min-width: 9.5rem;
+}
+
+.teller-col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.teller-sheet-table tbody td {
+  background: #e2efda;
+  height: 22px;
+}
+
+.teller-sheet-table tr.is-op td,
+.teller-sheet-table tr.is-op .teller-input-amount,
+.teller-sheet-table tr.is-op .teller-input-pieces,
+.teller-sheet-table tr.is-op .teller-input-ref,
+.teller-sheet-table tr.is-op .teller-cell-calc {
+  background: #f8cbad;
+}
+
+.teller-sheet-table .teller-cell-no {
+  background: #fff;
+  min-width: 2rem;
+}
+
+.teller-sheet-table tr.is-op .teller-cell-no {
+  background: #f8cbad;
+}
+
+.teller-sheet-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0;
+  padding: 0 8px 8px;
+  background: #fff;
+  border-top: 1px solid #7f7f7f;
+}
+
+.teller-sheet-tab {
+  min-height: 28px;
+  padding: 4px 16px;
+  border: 1px solid #7f7f7f;
+  border-top: 0;
+  background: #f2f2f2;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.teller-sheet-tab.is-afn {
+  color: #548235;
+}
+
+.teller-sheet-tab.is-usd {
+  color: #c00000;
+}
+
+.teller-sheet-tab.is-active {
+  background: #fff;
+  border-bottom-color: #fff;
+}
+
+@media (max-width: 1100px) {
+  .teller-summary-layout {
+    grid-template-columns: minmax(0, 1fr) 160px;
+  }
+}
+
+.teller-end-day-btn {
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 1px solid #1f4e79;
+  background: #1f4e79;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.teller-end-day-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.teller-reset-cash-btn {
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 1px solid #8b1e1e;
+  background: #fff;
+  color: #8b1e1e;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.teller-reset-cash-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.teller-export-success {
+  margin: 0;
+  flex: 0 0 auto;
+  color: #0b6b2c;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.teller-currency-form {
+  width: min(40rem, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: start;
+  padding: 8px 10px;
+  border: 1px solid #7f7f7f;
+  background: #f7fbff;
+}
+
+.teller-currency-form p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.teller-currency-form-grid {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 6px;
+}
+
+.teller-currency-form-denoms {
+  grid-column: 1 / -1;
+}
+
+.teller-currency-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+}
+
+.teller-currency-form input {
+  min-height: 28px;
+  padding: 2px 6px;
+}
+
+.teller-currency-form-inline {
+  flex: 0 0 auto;
+  padding: 0 10px 8px;
+  background: #fff;
+}
+
+.teller-end-day-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 24, 39, 0.45);
+}
+
+.teller-end-day-dialog-card {
+  width: min(28rem, calc(100vw - 24px));
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #7f7f7f;
+}
+
+.teller-end-day-dialog-title {
+  margin: 0 0 8px;
+  font-weight: 800;
+}
+
+.teller-end-day-dialog-card ul {
+  margin: 0 0 12px;
+  padding-inline-start: 18px;
+}
+
+.teller-end-day-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .teller-panel,

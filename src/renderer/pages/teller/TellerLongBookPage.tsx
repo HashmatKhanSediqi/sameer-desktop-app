@@ -1,24 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Currency } from '@shared/types/currency';
 import type { TellerLongBook } from '@shared/types/teller';
 import { useAuth } from '../../context/AuthContext';
 import { useLocaleFormat } from '../../hooks/useLocaleFormat';
-import { TellerCurrencySelect } from './components/TellerCurrencySelect';
+import { formatTellerMoney } from './tellerDisplay';
 
 interface TellerLongBookPageProps {
   refreshKey: number;
-  currencies: Currency[];
   currencyCode: string;
-  onCurrencyChange: (code: string) => void;
 }
 
-export function TellerLongBookPage({
-  refreshKey,
-  currencies,
-  currencyCode,
-  onCurrencyChange,
-}: TellerLongBookPageProps): JSX.Element {
+export function TellerLongBookPage({ refreshKey, currencyCode }: TellerLongBookPageProps): JSX.Element {
   const { t } = useTranslation('teller');
   const { t: tErrors } = useTranslation('errors');
   const { sessionId } = useAuth();
@@ -50,10 +42,6 @@ export function TellerLongBookPage({
     <section className="teller-panel">
       <header className="teller-panel-header">
         <h2>{t('longBook.title')}</h2>
-        <label className="form-field teller-inline-field">
-          <span>{t('form.currency')}</span>
-          <TellerCurrencySelect currencies={currencies} value={currencyCode} onChange={onCurrencyChange} />
-        </label>
       </header>
       {error ? <p className="form-error">{error}</p> : null}
       {!book && !error ? <p className="empty-state">{t('longBook.empty')}</p> : null}
@@ -62,19 +50,19 @@ export function TellerLongBookPage({
           <div className="teller-metrics teller-metrics-row">
             <div>
               <dt>{t('longBook.opening')}</dt>
-              <dd>{formatMoney(book.openingBalance)}</dd>
+              <dd>{formatTellerMoney(formatMoney, book.openingBalance)}</dd>
             </div>
             <div>
               <dt>{t('longBook.totalReceived')}</dt>
-              <dd className="amount-in">{formatMoney(book.totalReceived)}</dd>
+              <dd className="amount-in">{formatTellerMoney(formatMoney, book.totalReceived)}</dd>
             </div>
             <div>
               <dt>{t('longBook.totalPaid')}</dt>
-              <dd className="amount-out">{formatMoney(book.totalPaid)}</dd>
+              <dd className="amount-out">{formatTellerMoney(formatMoney, book.totalPaid)}</dd>
             </div>
             <div>
               <dt>{t('longBook.closing')}</dt>
-              <dd>{formatMoney(book.closingBalance)}</dd>
+              <dd>{formatTellerMoney(formatMoney, book.closingBalance)}</dd>
             </div>
           </div>
           <div className="table-wrap">
@@ -82,7 +70,7 @@ export function TellerLongBookPage({
               <thead>
                 <tr>
                   <th>{t('history.date')}</th>
-                  <th>{t('history.type')}</th>
+                  <th>{t('longBook.reference')}</th>
                   <th>{t('longBook.received')}</th>
                   <th>{t('longBook.paid')}</th>
                   <th>{t('longBook.running')}</th>
@@ -91,19 +79,22 @@ export function TellerLongBookPage({
               <tbody>
                 {book.rows.map((row, index) => (
                   <tr key={row.id ?? `opening-${index}`}>
-                    <td>{formatDateTime(row.transactionDate)}</td>
+                    <td>{formatDateTime(row.createdAt)}</td>
                     <td>
                       {row.kind === 'OPENING'
                         ? t('longBook.kindOpening')
-                        : row.kind === 'RECEIVED'
+                        : row.kind === 'DEPOSIT'
                           ? t('longBook.kindReceived')
                           : t('longBook.kindPaid')}
-                      {row.transactionNumber ? ` · ${row.transactionNumber}` : ''}
-                      {row.customerName ? ` · ${row.customerName}` : ''}
+                      {row.referenceLabel ? ` · ${row.referenceLabel}` : ''}
                     </td>
-                    <td className="numeric amount-in">{row.kind === 'RECEIVED' ? formatMoney(row.received) : ''}</td>
-                    <td className="numeric amount-out">{row.kind === 'PAID' ? formatMoney(row.paid) : ''}</td>
-                    <td className="numeric">{formatMoney(row.runningBalance)}</td>
+                    <td className="numeric amount-in">
+                      {row.kind === 'DEPOSIT' ? formatTellerMoney(formatMoney, row.received) : ''}
+                    </td>
+                    <td className="numeric amount-out">
+                      {row.kind === 'WITHDRAWAL' ? formatTellerMoney(formatMoney, row.paid) : ''}
+                    </td>
+                    <td className="numeric">{formatTellerMoney(formatMoney, row.runningBalance)}</td>
                   </tr>
                 ))}
               </tbody>

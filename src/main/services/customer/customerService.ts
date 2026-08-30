@@ -295,23 +295,6 @@ export class CustomerService {
          WHERE counterparty_customer_id = ?`,
       )
       .run(customerId);
-
-    if (this.tableExists('teller_transactions')) {
-      this.db
-        .prepare(
-          `UPDATE teller_transactions
-           SET customer_id = NULL
-           WHERE customer_id = ?`,
-        )
-        .run(customerId);
-    }
-  }
-
-  private tableExists(name: string): boolean {
-    const row = this.db
-      .prepare("SELECT 1 AS present FROM sqlite_master WHERE type = 'table' AND name = ?")
-      .get(name) as { present: number } | undefined;
-    return row !== undefined;
   }
 
   getPhoto(id: unknown): CustomerPhotoData | null {

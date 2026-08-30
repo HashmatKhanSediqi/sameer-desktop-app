@@ -103,20 +103,26 @@ import {
   type TellerSessionOpenResult,
   type TellerSessionCloseRequest,
   type TellerSessionCloseResult,
-  type TellerTransactionsCreateRequest,
-  type TellerTransactionsCreateResult,
+  type TellerSessionUpdateRequest,
+  type TellerSessionUpdateResult,
+  type TellerSheetGetRequest,
+  type TellerSheetGetResult,
+  type TellerTransactionsUpsertRequest,
+  type TellerTransactionsUpsertResult,
   type TellerTransactionsListRequest,
   type TellerTransactionsListResultIpc,
   type TellerTransactionsGetRequest,
   type TellerTransactionsGetResult,
-  type TellerDashboardGetRequest,
-  type TellerDashboardGetResult,
-  type TellerTallyGetRequest,
-  type TellerTallyGetResult,
+  type TellerTransactionsDeleteRequest,
+  type TellerTransactionsDeleteResult,
   type TellerLongBookGetRequest,
   type TellerLongBookGetResult,
-  type TellerReconciliationGetRequest,
-  type TellerReconciliationGetResult,
+  type TellerDayEndRequest,
+  type TellerDayEndResult,
+  type TellerDayStartRequest,
+  type TellerDayStartResult,
+  type TellerCashResetRequest,
+  type TellerCashResetResult,
   UPDATE_STATUS_EVENT,
 } from '@shared/types/ipc';
 import type { ReportProgress } from '@shared/types/report';
@@ -296,20 +302,26 @@ const api = {
       invoke(IPC_CHANNELS.TELLER_SESSION_OPEN, request),
     closeSession: (request: TellerSessionCloseRequest): Promise<TellerSessionCloseResult> =>
       invoke(IPC_CHANNELS.TELLER_SESSION_CLOSE, request),
-    createTransaction: (request: TellerTransactionsCreateRequest): Promise<TellerTransactionsCreateResult> =>
-      invoke(IPC_CHANNELS.TELLER_TRANSACTIONS_CREATE, request),
+    updateSession: (request: TellerSessionUpdateRequest): Promise<TellerSessionUpdateResult> =>
+      invoke(IPC_CHANNELS.TELLER_SESSION_UPDATE, request),
+    getSheet: (request: TellerSheetGetRequest): Promise<TellerSheetGetResult> =>
+      invoke(IPC_CHANNELS.TELLER_SHEET_GET, request),
+    upsertTransaction: (request: TellerTransactionsUpsertRequest): Promise<TellerTransactionsUpsertResult> =>
+      invoke(IPC_CHANNELS.TELLER_TRANSACTIONS_UPSERT, request),
     listTransactions: (request: TellerTransactionsListRequest): Promise<TellerTransactionsListResultIpc> =>
       invoke(IPC_CHANNELS.TELLER_TRANSACTIONS_LIST, request),
     getTransaction: (request: TellerTransactionsGetRequest): Promise<TellerTransactionsGetResult> =>
       invoke(IPC_CHANNELS.TELLER_TRANSACTIONS_GET, request),
-    getDashboard: (request: TellerDashboardGetRequest): Promise<TellerDashboardGetResult> =>
-      invoke(IPC_CHANNELS.TELLER_DASHBOARD_GET, request),
-    getTally: (request: TellerTallyGetRequest): Promise<TellerTallyGetResult> =>
-      invoke(IPC_CHANNELS.TELLER_TALLY_GET, request),
+    deleteTransaction: (request: TellerTransactionsDeleteRequest): Promise<TellerTransactionsDeleteResult> =>
+      invoke(IPC_CHANNELS.TELLER_TRANSACTIONS_DELETE, request),
     getLongBook: (request: TellerLongBookGetRequest): Promise<TellerLongBookGetResult> =>
       invoke(IPC_CHANNELS.TELLER_LONG_BOOK_GET, request),
-    getReconciliation: (request: TellerReconciliationGetRequest): Promise<TellerReconciliationGetResult> =>
-      invoke(IPC_CHANNELS.TELLER_RECONCILIATION_GET, request),
+    endDay: (request: TellerDayEndRequest): Promise<TellerDayEndResult> =>
+      invoke(IPC_CHANNELS.TELLER_DAY_END, request),
+    startDay: (request: TellerDayStartRequest): Promise<TellerDayStartResult> =>
+      invoke(IPC_CHANNELS.TELLER_DAY_START, request),
+    resetCash: (request: TellerCashResetRequest): Promise<TellerCashResetResult> =>
+      invoke(IPC_CHANNELS.TELLER_CASH_RESET, request),
   },
 };
 

@@ -1,35 +1,22 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Currency } from '@shared/types/currency';
-import type { TellerTransactionListItem, TellerTransactionTypeCode } from '@shared/types/teller';
+import type { TellerDirection, TellerTransactionListItem } from '@shared/types/teller';
 import { useAuth } from '../../context/AuthContext';
 import { useLocaleFormat } from '../../hooks/useLocaleFormat';
 import { TellerCurrencySelect } from './components/TellerCurrencySelect';
-
-const TYPE_KEYS: Record<TellerTransactionTypeCode, string> = {
-  CUSTOMER_CASH_IN: 'type.customerCashIn',
-  CUSTOMER_CASH_OUT: 'type.customerCashOut',
-  HEAD_TELLER_IN: 'type.headTellerIn',
-  HEAD_TELLER_OUT: 'type.headTellerOut',
-  INTERNAL_TRANSFER_IN: 'type.internalTransferIn',
-  INTERNAL_TRANSFER_OUT: 'type.internalTransferOut',
-  OPENING_BALANCE: 'type.openingBalance',
-  ADJUSTMENT_IN: 'type.adjustmentIn',
-  ADJUSTMENT_OUT: 'type.adjustmentOut',
-};
+import { formatTellerMoney } from './tellerDisplay';
 
 interface TellerHistoryPageProps {
   refreshKey: number;
   currencies: Currency[];
   currencyCode: string;
-  onCurrencyChange: (code: string) => void;
 }
 
 export function TellerHistoryPage({
   refreshKey,
   currencies,
   currencyCode,
-  onCurrencyChange,
 }: TellerHistoryPageProps): JSX.Element {
   const { t } = useTranslation('teller');
   const { t: tErrors } = useTranslation('errors');
@@ -38,12 +25,17 @@ export function TellerHistoryPage({
   const [rows, setRows] = useState<TellerTransactionListItem[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [transactionNumber, setTransactionNumber] = useState('');
+  const [referenceLabel, setReferenceLabel] = useState('');
   const [filterAllCurrencies, setFilterAllCurrencies] = useState(false);
-  const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>('');
+  const [direction, setDirection] = useState<'' | TellerDirection>('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [activeCurrency, setActiveCurrency] = useState(currencyCode);
+
+  useEffect(() => {
+    setActiveCurrency(currencyCode);
+  }, [currencyCode]);
 
   function load(nextPage = page): void {
     if (!sessionId) {
@@ -54,8 +46,8 @@ export function TellerHistoryPage({
         sessionId,
         page: nextPage,
         pageSize: 50,
-        transactionNumber: transactionNumber.trim() || undefined,
-        currencyCode: filterAllCurrencies ? undefined : currencyCode || undefined,
+        referenceLabel: referenceLabel.trim() || undefined,
+        currencyCode: filterAllCurrencies ? undefined : activeCurrency || undefined,
         direction: direction || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
@@ -75,7 +67,7 @@ export function TellerHistoryPage({
   useEffect(() => {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, refreshKey, currencyCode, filterAllCurrencies]);
+  }, [sessionId, refreshKey, activeCurrency, filterAllCurrencies]);
 
   function handleSearch(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -89,18 +81,18 @@ export function TellerHistoryPage({
       </header>
       <form className="teller-filter-bar" onSubmit={handleSearch}>
         <label className="form-field">
-          <span>{t('history.searchNumber')}</span>
-          <input value={transactionNumber} onChange={(event) => setTransactionNumber(event.target.value)} />
+          <span>{t('history.searchReference')}</span>
+          <input value={referenceLabel} onChange={(event) => setReferenceLabel(event.target.value)} />
         </label>
         <label className="form-field">
           <span>{t('form.currency')}</span>
           <div className="teller-history-currency">
             <TellerCurrencySelect
               currencies={currencies}
-              value={currencyCode}
+              value={activeCurrency}
               onChange={(code) => {
                 setFilterAllCurrencies(false);
-                onCurrencyChange(code);
+                setActiveCurrency(code);
               }}
               disabled={filterAllCurrencies}
             />
@@ -116,10 +108,10 @@ export function TellerHistoryPage({
         </label>
         <label className="form-field">
           <span>{t('history.direction')}</span>
-          <select value={direction} onChange={(event) => setDirection(event.target.value as '' | 'IN' | 'OUT')}>
+          <select value={direction} onChange={(event) => setDirection(event.target.value as '' | TellerDirection)}>
             <option value="">{t('history.all')}</option>
-            <option value="IN">{t('nav.cashIn')}</option>
-            <option value="OUT">{t('nav.cashOut')}</option>
+            <option value="DEPOSIT">{t('history.deposit')}</option>
+            <option value="WITHDRAWAL">{t('history.withdrawal')}</option>
           </select>
         </label>
         <label className="form-field">
@@ -138,39 +130,34 @@ export function TellerHistoryPage({
       {rows.length === 0 && !error ? <p className="empty-state">{t('history.empty')}</p> : null}
       {rows.length > 0 ? (
         <div className="table-wrap">
-        <table className="customer-table">
-          <thead>
-            <tr>
-              <th>{t('history.number')}</th>
-              <th>{t('history.date')}</th>
-              <th>{t('history.type')}</th>
-              <th>{t('form.currency')}</th>
-              <th>{t('history.customer')}</th>
-              <th>{t('history.amount')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.transactionNumber}</td>
-                <td>{formatDateTime(row.transactionDate)}</td>
-                <td>{t(TYPE_KEYS[row.typeCode])}</td>
-                <td>{row.currencyCode}</td>
-                <td>
-                  {row.customerName ??
-                    (row.partyKind === 'HEAD_TELLER'
-                      ? t('form.partyHeadTeller')
-                      : row.partyKind === 'INTERNAL'
-                        ? t('form.partyInternal')
-                        : '—')}
-                </td>
-                <td className={row.direction === 'IN' ? 'numeric amount-in' : row.direction === 'OUT' ? 'numeric amount-out' : 'numeric'}>
-                  {formatMoney(row.amount)}
-                </td>
+          <table className="customer-table">
+            <thead>
+              <tr>
+                <th>{t('history.number')}</th>
+                <th>{t('history.date')}</th>
+                <th>{t('history.direction')}</th>
+                <th>{t('form.currency')}</th>
+                <th>{t('history.reference')}</th>
+                <th>{t('history.amount')}</th>
+                <th>{t('sheet.check')}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.sequenceNo || row.id}</td>
+                  <td>{formatDateTime(row.createdAt)}</td>
+                  <td>{row.direction === 'DEPOSIT' ? t('history.deposit') : t('history.withdrawal')}</td>
+                  <td>{row.currencyCode}</td>
+                  <td>{row.referenceLabel}</td>
+                  <td className={row.direction === 'DEPOSIT' ? 'numeric amount-in' : 'numeric amount-out'}>
+                    {formatTellerMoney(formatMoney, row.declaredAmount ?? row.countedTotal)}
+                  </td>
+                  <td className={row.check === 'NO' ? 'amount-out' : 'amount-in'}>{row.check}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : null}
       <div className="pagination-bar">

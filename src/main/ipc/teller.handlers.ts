@@ -1,8 +1,9 @@
-import type { IpcMain } from 'electron';
+import type { IpcMain, IpcMainInvokeEvent } from 'electron';
+import { suggestTellerExportFileName } from '@shared/teller/worksheetRows';
 import type { ApplicationContext } from '../services/applicationContext';
 import { AppError, wrapIpcHandler } from '../utils/errors';
 import { IPC_CHANNELS } from '@shared/types/ipc';
-import type { CreateTellerTransactionInput, TellerTransactionTypeCode } from '@shared/types/teller';
+import type { TellerDirection } from '@shared/types/teller';
 import { parsePositiveIntegerId } from '../services/transaction/transactionValidation';
 
 function parseSessionRequest(input: unknown): { sessionId: string; record: Record<string, unknown> } {
@@ -28,19 +29,14 @@ function parseOptionalString(value: unknown): string | undefined {
   return value;
 }
 
-function parseCreateInput(record: Record<string, unknown>): CreateTellerTransactionInput {
-  return {
-    typeCode: record.typeCode as TellerTransactionTypeCode,
-    currencyCode: typeof record.currencyCode === 'string' ? record.currencyCode : '',
-    customerId:
-      record.customerId === undefined || record.customerId === null
-        ? null
-        : parsePositiveIntegerId(record.customerId, 'INVALID_CUSTOMER_ID'),
-    amount: parseOptionalString(record.amount),
-    quantities: Array.isArray(record.quantities) ? record.quantities : [],
-    note: record.note === null ? null : parseOptionalString(record.note),
-    transactionDate: parseOptionalString(record.transactionDate),
-  };
+function parseCounts(value: unknown): Record<string, number> | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new AppError('TELLER_DENOMINATION_INVALID', 'TELLER_DENOMINATION_INVALID');
+  }
+  return value as Record<string, number>;
 }
 
 export function registerTellerHandlers(ipcMain: IpcMain, ctx: ApplicationContext): void {
@@ -55,9 +51,14 @@ export function registerTellerHandlers(ipcMain: IpcMain, ctx: ApplicationContext
 
   ipcMain.handle(IPC_CHANNELS.TELLER_SESSION_CURRENT, (_event, input: unknown) =>
     wrapIpcHandler(() => {
-      const { sessionId } = parseSessionRequest(input);
+      const { sessionId, record } = parseSessionRequest(input);
       ctx.authService.requireSession(sessionId);
-      return { session: ctx.tellerService.getCurrentSession() };
+      const currencyCode = parseOptionalString(record.currencyCode);
+      const sessions = ctx.tellerService.listOpenSessions();
+      const session = currencyCode
+        ? ctx.tellerService.getCurrentSession(currencyCode)
+        : (sessions[0] ?? null);
+      return { session, sessions };
     }),
   );
 
@@ -66,10 +67,16 @@ export function registerTellerHandlers(ipcMain: IpcMain, ctx: ApplicationContext
       const { sessionId, record } = parseSessionRequest(input);
       const session = ctx.authService.requireSession(sessionId);
       const opened = ctx.tellerService.openSession(session.userId, {
+        currencyCode: typeof record.currencyCode === 'string' ? record.currencyCode : '',
+        sessionDate: parseOptionalString(record.sessionDate),
+        branchName: record.branchName === null ? null : parseOptionalString(record.branchName),
+        branchCode: record.branchCode === null ? null : parseOptionalString(record.branchCode),
+        openingCounts: parseCounts(record.openingCounts),
+        openingAmount: parseOptionalString(record.openingAmount),
+        oppAmount: parseOptionalString(record.oppAmount),
+        cashInICBA: parseOptionalString(record.cashInICBA),
+        cashOutICBA: parseOptionalString(record.cashOutICBA),
         note: record.note === null ? null : parseOptionalString(record.note),
-        openingQuantities: Array.isArray(record.openingQuantities)
-          ? (record.openingQuantities as CreateTellerTransactionInput['quantities'])
-          : [],
       });
       return { session: opened };
     }),
@@ -87,11 +94,97 @@ export function registerTellerHandlers(ipcMain: IpcMain, ctx: ApplicationContext
     }),
   );
 
-  ipcMain.handle(IPC_CHANNELS.TELLER_TRANSACTIONS_CREATE, (_event, input: unknown) =>
+  ipcMain.handle(IPC_CHANNELS.TELLER_DAY_END, (event: IpcMainInvokeEvent, input: unknown) =>
+    wrapIpcHandler(async () => {
+      const { sessionId, record } = parseSessionRequest(input);
+      const session = ctx.authService.requireSession(sessionId);
+      const tellerSessionId = parsePositiveIntegerId(record.tellerSessionId, 'TELLER_SESSION_NOT_FOUND');
+      const worksheetRows = typeof record.worksheetRows === 'number' ? record.worksheetRows : undefined;
+      let filePath = parseOptionalString(record.filePath);
+      if (!filePath) {
+        const chosen = await chooseExportPath(
+          event,
+          parseOptionalString(record.fileName) ?? suggestTellerExportFileName('CUR', ''),
+        );
+        if (!chosen) {
+          return { canceled: true as const };
+        }
+        filePath = chosen;
+      }
+      return ctx.tellerService.endDay(session.userId, tellerSessionId, filePath, worksheetRows);
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_DAY_START, (_event, input: unknown) =>
     wrapIpcHandler(() => {
       const { sessionId, record } = parseSessionRequest(input);
       const session = ctx.authService.requireSession(sessionId);
-      const transaction = ctx.tellerService.createTransaction(session.userId, parseCreateInput(record));
+      const currencyCode = parseOptionalString(record.currencyCode);
+      if (!currencyCode) {
+        throw new AppError('INVALID_CURRENCY', 'CURRENCY_REQUIRED');
+      }
+      return ctx.tellerService.startDay(session.userId, currencyCode);
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_CASH_RESET, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      const session = ctx.authService.requireSession(sessionId);
+      const currencyCode = parseOptionalString(record.currencyCode);
+      if (!currencyCode) {
+        throw new AppError('INVALID_CURRENCY', 'CURRENCY_REQUIRED');
+      }
+      return ctx.tellerService.resetCash(session.userId, currencyCode);
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_SESSION_UPDATE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      const session = ctx.authService.requireSession(sessionId);
+      const updated = ctx.tellerService.updateSession(session.userId, {
+        sessionId: parsePositiveIntegerId(record.tellerSessionId, 'TELLER_SESSION_NOT_FOUND'),
+        branchName: record.branchName === undefined ? undefined : record.branchName === null ? null : parseOptionalString(record.branchName),
+        branchCode: record.branchCode === undefined ? undefined : record.branchCode === null ? null : parseOptionalString(record.branchCode),
+        openingCounts: parseCounts(record.openingCounts),
+        openingAmount: parseOptionalString(record.openingAmount),
+        oppAmount: parseOptionalString(record.oppAmount),
+        cashInICBA: parseOptionalString(record.cashInICBA),
+        cashOutICBA: parseOptionalString(record.cashOutICBA),
+        note: record.note === undefined ? undefined : record.note === null ? null : parseOptionalString(record.note),
+      });
+      return { session: updated };
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_SHEET_GET, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      const session = ctx.authService.requireSession(sessionId);
+      const currencyCode = parseOptionalString(record.currencyCode);
+      if (!currencyCode) {
+        throw new AppError('INVALID_CURRENCY', 'CURRENCY_REQUIRED');
+      }
+      return ctx.tellerService.getSheet(currencyCode, {
+        userId: session.userId,
+        sessionDate: parseOptionalString(record.sessionDate),
+      });
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_TRANSACTIONS_UPSERT, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      const session = ctx.authService.requireSession(sessionId);
+      const transaction = ctx.tellerService.upsertTransaction(session.userId, {
+        id: typeof record.id === 'number' ? record.id : undefined,
+        sessionId: parsePositiveIntegerId(record.tellerSessionId, 'TELLER_SESSION_NOT_FOUND'),
+        direction: record.direction as TellerDirection,
+        referenceLabel: parseOptionalString(record.referenceLabel) ?? '',
+        declaredAmount: record.declaredAmount === null ? null : parseOptionalString(record.declaredAmount),
+        denominationCounts: parseCounts(record.denominationCounts) ?? {},
+      });
       return { transaction };
     }),
   );
@@ -105,13 +198,10 @@ export function registerTellerHandlers(ipcMain: IpcMain, ctx: ApplicationContext
         pageSize: typeof record.pageSize === 'number' ? record.pageSize : undefined,
         sessionId: typeof record.tellerSessionId === 'number' ? record.tellerSessionId : undefined,
         currencyCode: parseOptionalString(record.currencyCode),
-        typeCode: parseOptionalString(record.typeCode) as TellerTransactionTypeCode | undefined,
-        direction: record.direction === 'IN' || record.direction === 'OUT' ? record.direction : undefined,
-        customerId: typeof record.customerId === 'number' ? record.customerId : undefined,
-        transactionNumber: parseOptionalString(record.transactionNumber),
+        direction: record.direction === 'DEPOSIT' || record.direction === 'WITHDRAWAL' ? record.direction : undefined,
+        referenceLabel: parseOptionalString(record.referenceLabel),
         dateFrom: parseOptionalString(record.dateFrom),
         dateTo: parseOptionalString(record.dateTo),
-        tellerUserId: typeof record.tellerUserId === 'number' ? record.tellerUserId : undefined,
       });
     }),
   );
@@ -128,25 +218,12 @@ export function registerTellerHandlers(ipcMain: IpcMain, ctx: ApplicationContext
     }),
   );
 
-  ipcMain.handle(IPC_CHANNELS.TELLER_DASHBOARD_GET, (_event, input: unknown) =>
-    wrapIpcHandler(() => {
-      const { sessionId } = parseSessionRequest(input);
-      ctx.authService.requireSession(sessionId);
-      return ctx.tellerService.getDashboard();
-    }),
-  );
-
-  ipcMain.handle(IPC_CHANNELS.TELLER_TALLY_GET, (_event, input: unknown) =>
+  ipcMain.handle(IPC_CHANNELS.TELLER_TRANSACTIONS_DELETE, (_event, input: unknown) =>
     wrapIpcHandler(() => {
       const { sessionId, record } = parseSessionRequest(input);
       ctx.authService.requireSession(sessionId);
-      const currencyCode = parseOptionalString(record.currencyCode);
-      if (!currencyCode) {
-        throw new AppError('INVALID_CURRENCY', 'CURRENCY_REQUIRED');
-      }
-      return ctx.tellerService.getTally(
-        typeof record.tellerSessionId === 'number' ? record.tellerSessionId : undefined,
-        currencyCode,
+      return ctx.tellerService.deleteTransaction(
+        parsePositiveIntegerId(record.transactionId, 'TELLER_TRANSACTION_NOT_FOUND'),
       );
     }),
   );
@@ -167,14 +244,20 @@ export function registerTellerHandlers(ipcMain: IpcMain, ctx: ApplicationContext
       );
     }),
   );
+}
 
-  ipcMain.handle(IPC_CHANNELS.TELLER_RECONCILIATION_GET, (_event, input: unknown) =>
-    wrapIpcHandler(() => {
-      const { sessionId, record } = parseSessionRequest(input);
-      ctx.authService.requireSession(sessionId);
-      return ctx.tellerService.getReconciliation(
-        typeof record.tellerSessionId === 'number' ? record.tellerSessionId : undefined,
-      );
-    }),
-  );
+async function chooseExportPath(event: IpcMainInvokeEvent, fileName: string): Promise<string | null> {
+  const electron = await import('electron');
+  const window = electron.BrowserWindow.fromWebContents(event.sender);
+  if (!window) {
+    return null;
+  }
+  const result = await electron.dialog.showSaveDialog(window, {
+    defaultPath: fileName,
+    filters: [{ name: 'Excel', extensions: ['xlsx'] }],
+  });
+  if (result.canceled || !result.filePath) {
+    return null;
+  }
+  return result.filePath;
 }

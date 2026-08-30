@@ -101,20 +101,26 @@ import type {
   TellerSessionOpenResult,
   TellerSessionCloseRequest,
   TellerSessionCloseResult,
-  TellerTransactionsCreateRequest,
-  TellerTransactionsCreateResult,
+  TellerSessionUpdateRequest,
+  TellerSessionUpdateResult,
+  TellerSheetGetRequest,
+  TellerSheetGetResult,
+  TellerTransactionsUpsertRequest,
+  TellerTransactionsUpsertResult,
   TellerTransactionsListRequest,
   TellerTransactionsListResultIpc,
   TellerTransactionsGetRequest,
   TellerTransactionsGetResult,
-  TellerDashboardGetRequest,
-  TellerDashboardGetResult,
-  TellerTallyGetRequest,
-  TellerTallyGetResult,
+  TellerTransactionsDeleteRequest,
+  TellerTransactionsDeleteResult,
   TellerLongBookGetRequest,
   TellerLongBookGetResult,
-  TellerReconciliationGetRequest,
-  TellerReconciliationGetResult,
+  TellerDayEndRequest,
+  TellerDayEndResult,
+  TellerDayStartRequest,
+  TellerDayStartResult,
+  TellerCashResetRequest,
+  TellerCashResetResult,
 } from '@shared/types/ipc';
 import type { ReportProgress } from '@shared/types/report';
 import type { BackupProgress } from '@shared/types/backup';
@@ -206,13 +212,16 @@ export interface PreloadApi {
     currentSession: (request: TellerSessionCurrentRequest) => Promise<TellerSessionCurrentResult>;
     openSession: (request: TellerSessionOpenRequest) => Promise<TellerSessionOpenResult>;
     closeSession: (request: TellerSessionCloseRequest) => Promise<TellerSessionCloseResult>;
-    createTransaction: (request: TellerTransactionsCreateRequest) => Promise<TellerTransactionsCreateResult>;
+    updateSession: (request: TellerSessionUpdateRequest) => Promise<TellerSessionUpdateResult>;
+    getSheet: (request: TellerSheetGetRequest) => Promise<TellerSheetGetResult>;
+    upsertTransaction: (request: TellerTransactionsUpsertRequest) => Promise<TellerTransactionsUpsertResult>;
     listTransactions: (request: TellerTransactionsListRequest) => Promise<TellerTransactionsListResultIpc>;
     getTransaction: (request: TellerTransactionsGetRequest) => Promise<TellerTransactionsGetResult>;
-    getDashboard: (request: TellerDashboardGetRequest) => Promise<TellerDashboardGetResult>;
-    getTally: (request: TellerTallyGetRequest) => Promise<TellerTallyGetResult>;
+    deleteTransaction: (request: TellerTransactionsDeleteRequest) => Promise<TellerTransactionsDeleteResult>;
     getLongBook: (request: TellerLongBookGetRequest) => Promise<TellerLongBookGetResult>;
-    getReconciliation: (request: TellerReconciliationGetRequest) => Promise<TellerReconciliationGetResult>;
+    endDay: (request: TellerDayEndRequest) => Promise<TellerDayEndResult>;
+    startDay: (request: TellerDayStartRequest) => Promise<TellerDayStartResult>;
+    resetCash: (request: TellerCashResetRequest) => Promise<TellerCashResetResult>;
   };
 }
 

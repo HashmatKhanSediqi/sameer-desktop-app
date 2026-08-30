@@ -1,40 +1,27 @@
-import { AppError } from '../../utils/errors';
-import type { TellerDenominationQuantityInput, TellerTransactionTypeCode } from '@shared/types/teller';
-import {
-  parseOptionalNote,
-  parsePositiveIntegerId,
-  parseTransactionDate,
-} from '../transaction/transactionValidation';
+import { formatTellerAmount } from '@shared/teller/denominationMath';
+import type { TellerDirection } from '@shared/types/teller';
 import Decimal from 'decimal.js';
+import { AppError } from '../../utils/errors';
+import { parseOptionalNote, parsePositiveIntegerId } from '../transaction/transactionValidation';
 
 const AMOUNT_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
-const TYPE_CODES: readonly TellerTransactionTypeCode[] = [
-  'CUSTOMER_CASH_IN',
-  'CUSTOMER_CASH_OUT',
-  'HEAD_TELLER_IN',
-  'HEAD_TELLER_OUT',
-  'INTERNAL_TRANSFER_IN',
-  'INTERNAL_TRANSFER_OUT',
-  'OPENING_BALANCE',
-  'ADJUSTMENT_IN',
-  'ADJUSTMENT_OUT',
-];
+const DIRECTIONS: readonly TellerDirection[] = ['DEPOSIT', 'WITHDRAWAL'];
 
-export function parseTellerTypeCode(value: unknown): TellerTransactionTypeCode {
-  if (typeof value !== 'string' || !TYPE_CODES.includes(value as TellerTransactionTypeCode)) {
-    throw new AppError('INVALID_TRANSACTION_TYPE', 'INVALID_TRANSACTION_TYPE');
+export function parseTellerDirection(value: unknown): TellerDirection {
+  if (typeof value !== 'string' || !DIRECTIONS.includes(value as TellerDirection)) {
+    throw new AppError('INVALID_REQUEST', 'INVALID_REQUEST');
   }
-  return value as TellerTransactionTypeCode;
+  return value as TellerDirection;
 }
 
-export function parseOptionalTellerAmount(value: unknown): string | undefined {
+export function parseOptionalTellerAmount(value: unknown): string | null {
   if (value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0)) {
-    return undefined;
+    return null;
   }
-  if (typeof value !== 'string') {
+  if (typeof value !== 'string' && typeof value !== 'number') {
     throw new AppError('VALIDATION_ERROR', 'AMOUNT_INVALID');
   }
-  const trimmed = value.trim();
+  const trimmed = String(value).trim();
   if (!AMOUNT_PATTERN.test(trimmed)) {
     throw new AppError('VALIDATION_ERROR', 'AMOUNT_INVALID');
   }
@@ -45,34 +32,56 @@ export function parseOptionalTellerAmount(value: unknown): string | undefined {
   return trimmed;
 }
 
-export function parseQuantityList(value: unknown): TellerDenominationQuantityInput[] {
-  if (!Array.isArray(value)) {
+export function parseRequiredTellerAmount(value: unknown, fallback = '0'): string {
+  const parsed = parseOptionalTellerAmount(value);
+  return parsed ?? fallback;
+}
+
+/** System-generated amounts (previous closing → OP). Never treated as user transaction input. */
+export function parseTrustedTellerAmount(value: unknown, fallback = '0'): string {
+  if (value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0)) {
+    return formatTellerAmount(new Decimal(fallback));
+  }
+  try {
+    const amount = new Decimal(String(value).trim());
+    if (!amount.isFinite()) {
+      return formatTellerAmount(new Decimal(fallback));
+    }
+    return formatTellerAmount(amount);
+  } catch {
+    return formatTellerAmount(new Decimal(fallback));
+  }
+}
+
+export function parsePieceCounts(value: unknown): Record<string, number> {
+  if (value === undefined || value === null) {
+    return {};
+  }
+  if (typeof value !== 'object' || Array.isArray(value)) {
     throw new AppError('TELLER_DENOMINATION_INVALID', 'TELLER_DENOMINATION_INVALID');
   }
 
-  const seen = new Set<number>();
-  const quantities: TellerDenominationQuantityInput[] = [];
-
-  for (const item of value) {
-    if (!item || typeof item !== 'object') {
+  const counts: Record<string, number> = {};
+  for (const [rawKey, rawQuantity] of Object.entries(value as Record<string, unknown>)) {
+    const key = rawKey.trim();
+    if (key.length === 0) {
       throw new AppError('TELLER_DENOMINATION_INVALID', 'TELLER_DENOMINATION_INVALID');
     }
-    const record = item as Record<string, unknown>;
-    const denominationId = parsePositiveIntegerId(record.denominationId, 'TELLER_DENOMINATION_INVALID');
-    if (typeof record.quantity !== 'number' || !Number.isInteger(record.quantity)) {
+    if (rawQuantity === '' || rawQuantity === null || rawQuantity === undefined) {
+      counts[key] = 0;
+      continue;
+    }
+    const quantity =
+      typeof rawQuantity === 'number' ? rawQuantity : Number.parseInt(String(rawQuantity).trim(), 10);
+    if (!Number.isInteger(quantity)) {
       throw new AppError('TELLER_DENOMINATION_INVALID', 'NON_INTEGER_QUANTITY');
     }
-    if (record.quantity < 0) {
+    if (quantity < 0) {
       throw new AppError('TELLER_DENOMINATION_INVALID', 'NEGATIVE_QUANTITY');
     }
-    if (seen.has(denominationId)) {
-      throw new AppError('TELLER_DENOMINATION_INVALID', 'TELLER_DENOMINATION_INVALID');
-    }
-    seen.add(denominationId);
-    quantities.push({ denominationId, quantity: record.quantity });
+    counts[key] = quantity;
   }
-
-  return quantities;
+  return counts;
 }
 
 export function parseOptionalSessionId(value: unknown): number | undefined {
@@ -82,4 +91,41 @@ export function parseOptionalSessionId(value: unknown): number | undefined {
   return parsePositiveIntegerId(value, 'TELLER_SESSION_NOT_FOUND');
 }
 
-export { parseOptionalNote, parsePositiveIntegerId, parseTransactionDate };
+export function parseCurrencyCode(value: unknown): string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new AppError('INVALID_CURRENCY', 'CURRENCY_REQUIRED');
+  }
+  return value.trim().toUpperCase();
+}
+
+export function parseOptionalText(value: unknown, maxLength = 200): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    throw new AppError('VALIDATION_ERROR', 'INVALID_REQUEST');
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  if (trimmed.length > maxLength) {
+    throw new AppError('VALIDATION_ERROR', 'INVALID_REQUEST');
+  }
+  return trimmed;
+}
+
+export function parseSessionDate(value: unknown): string {
+  if (value === undefined || value === null || (typeof value === 'string' && value.trim().length === 0)) {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${now.getFullYear()}-${month}-${day}`;
+  }
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    throw new AppError('VALIDATION_ERROR', 'INVALID_REQUEST');
+  }
+  return value.trim();
+}
+
+export { parseOptionalNote, parsePositiveIntegerId };

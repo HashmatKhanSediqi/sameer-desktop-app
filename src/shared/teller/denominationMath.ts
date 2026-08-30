@@ -43,6 +43,26 @@ export function formatTellerAmount(value: Decimal): string {
   return value.toFixed(TELLER_AMOUNT_SCALE);
 }
 
+export function formatTellerPlainAmount(value: string | null | undefined): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return '';
+  }
+  try {
+    const parsed = new Decimal(trimmed);
+    if (!parsed.isFinite()) {
+      return trimmed;
+    }
+    const places = parsed.decimalPlaces();
+    return places === 0 ? parsed.toFixed(0) : parsed.toFixed(places);
+  } catch {
+    return trimmed;
+  }
+}
+
 export function parseTellerDecimal(value: string): Decimal {
   return new Decimal(value);
 }

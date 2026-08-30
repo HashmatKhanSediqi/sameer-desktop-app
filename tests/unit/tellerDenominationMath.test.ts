@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   amountsEqual,
   calculateDenominationTotal,
+  formatTellerPlainAmount,
   remainingAmount,
   remainingPieces,
 } from '../../src/shared/teller/denominationMath';
@@ -85,5 +86,13 @@ describe('teller denomination math', () => {
     if (yen.ok) {
       expect(yen.total).toBe('11000.0000');
     }
+  });
+
+  it('displays whole teller amounts without trailing zeros and keeps meaningful decimals', () => {
+    expect(formatTellerPlainAmount('3000.0000')).toBe('3000');
+    expect(formatTellerPlainAmount('150')).toBe('150');
+    expect(formatTellerPlainAmount('3000.5')).toBe('3000.5');
+    expect(formatTellerPlainAmount('3000.2500')).toBe('3000.25');
+    expect(formatTellerPlainAmount('')).toBe('');
   });
 });

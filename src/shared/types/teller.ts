@@ -1,25 +1,6 @@
-export type TellerDirection = 'IN' | 'OUT' | 'OPENING';
-export type TellerPartyKind = 'CUSTOMER' | 'HEAD_TELLER' | 'INTERNAL' | 'OPENING' | 'ADJUSTMENT';
+export type TellerDirection = 'DEPOSIT' | 'WITHDRAWAL';
 export type TellerSessionStatus = 'OPEN' | 'CLOSED';
-
-export type TellerTransactionTypeCode =
-  | 'CUSTOMER_CASH_IN'
-  | 'CUSTOMER_CASH_OUT'
-  | 'HEAD_TELLER_IN'
-  | 'HEAD_TELLER_OUT'
-  | 'INTERNAL_TRANSFER_IN'
-  | 'INTERNAL_TRANSFER_OUT'
-  | 'OPENING_BALANCE'
-  | 'ADJUSTMENT_IN'
-  | 'ADJUSTMENT_OUT';
-
-export interface TellerTransactionType {
-  code: TellerTransactionTypeCode;
-  nameKey: string;
-  direction: TellerDirection;
-  partyKind: TellerPartyKind;
-  sortOrder: number;
-}
+export type TellerCheckFlag = 'OK' | 'NO';
 
 export interface TellerDenomination {
   id: number;
@@ -29,30 +10,24 @@ export interface TellerDenomination {
   isActive: boolean;
 }
 
-export interface TellerDenominationQuantityInput {
-  denominationId: number;
-  quantity: number;
-}
-
-export interface TellerTransactionDenomination {
-  denominationId: number;
-  currencyCode: string;
-  value: string;
-  quantity: number;
-  unitValue: string;
-  lineTotal: string;
-}
-
 export interface TellerSession {
   id: number;
   companyId: number;
   tellerUserId: number;
   tellerUsername: string | null;
-  openedAt: string;
-  closedAt: string | null;
+  currencyCode: string;
+  sessionDate: string;
+  branchName: string | null;
+  branchCode: string | null;
+  openingAmount: string;
+  openingCounts: Record<string, number>;
+  oppAmount: string;
+  cashInICBA: string;
+  cashOutICBA: string;
   status: TellerSessionStatus;
   note: string | null;
   createdAt: string;
+  closedAt: string | null;
   createdBy: number;
   updatedAt: string;
   updatedBy: number | null;
@@ -60,111 +35,86 @@ export interface TellerSession {
 
 export interface TellerTransaction {
   id: number;
-  companyId: number;
   sessionId: number;
-  tellerUserId: number;
-  transactionNumber: string;
-  typeCode: TellerTransactionTypeCode;
+  sequenceNo: number;
   direction: TellerDirection;
-  partyKind: TellerPartyKind;
-  currencyCode: string;
-  customerId: number | null;
-  customerName: string | null;
-  customerNumber: string | null;
-  amount: string;
-  denominationTotal: string;
-  runningBalance: string;
-  validationStatus: 'OK';
-  note: string | null;
-  transactionDate: string;
+  referenceLabel: string;
+  declaredAmount: string | null;
+  denominationCounts: Record<string, number>;
+  countedTotal: string;
+  isReconciled: boolean;
+  check: TellerCheckFlag;
+  variance: string;
   createdAt: string;
   createdBy: number;
   updatedAt: string;
   updatedBy: number | null;
-  denominations: TellerTransactionDenomination[];
 }
 
 export interface TellerTransactionListItem {
   id: number;
-  transactionNumber: string;
-  typeCode: TellerTransactionTypeCode;
-  direction: TellerDirection;
-  partyKind: TellerPartyKind;
-  currencyCode: string;
-  customerId: number | null;
-  customerName: string | null;
-  amount: string;
-  runningBalance: string;
-  note: string | null;
-  transactionDate: string;
-  tellerUserId: number;
-}
-
-export interface OpenTellerSessionInput {
-  note?: string | null;
-  openingQuantities?: TellerDenominationQuantityInput[];
-}
-
-export interface CreateTellerTransactionInput {
-  typeCode: TellerTransactionTypeCode;
-  currencyCode: string;
-  customerId?: number | null;
-  amount?: string;
-  quantities: TellerDenominationQuantityInput[];
-  note?: string | null;
-  transactionDate?: string;
-}
-
-export interface TellerTransactionListQuery {
-  page?: number;
-  pageSize?: number;
-  sessionId?: number;
-  currencyCode?: string;
-  typeCode?: TellerTransactionTypeCode;
-  direction?: 'IN' | 'OUT';
-  customerId?: number;
-  transactionNumber?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  tellerUserId?: number;
-}
-
-export interface TellerTransactionListResult {
-  transactions: TellerTransactionListItem[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface TellerTallyRow {
-  denominationId: number;
-  currencyCode: string;
-  value: string;
-  receivedPieces: number;
-  paidPieces: number;
-  remainingPieces: number;
-  remainingAmount: string;
-}
-
-export interface TellerTally {
   sessionId: number;
+  sequenceNo: number;
+  direction: TellerDirection;
   currencyCode: string;
-  rows: TellerTallyRow[];
-  totalCash: string;
+  referenceLabel: string;
+  declaredAmount: string | null;
+  countedTotal: string;
+  check: TellerCheckFlag;
+  variance: string;
+  createdAt: string;
+}
+
+export interface TellerSessionSummary {
+  denominations: string[];
+  totalReceivedByDenomination: Record<string, number>;
+  totalPaidByDenomination: Record<string, number>;
+  netPiecesByDenomination: Record<string, number>;
+  totalAmountByDenomination: Record<string, string>;
+  grandTotalReceivedAmount: string;
+  grandTotalPaidAmount: string;
+  grandTotalAmount: string;
+  depositTransactionCount: number;
+  withdrawalTransactionCount: number;
+  totalTransactionCount: number;
+  openingAmount: string;
+  currentCash: string;
+  currentCounts: Record<string, number>;
+  oppAmount: string;
+  headerTotal: string;
+  cashInICBA: string;
+  cashOutICBA: string;
+  result: string;
+}
+
+export interface TellerOpeningRow {
+  referenceLabel: 'OP';
+  declaredAmount: string;
+  denominationCounts: Record<string, number>;
+  countedTotal: string;
+  check: TellerCheckFlag;
+  variance: string;
+}
+
+export interface TellerSheet {
+  session: TellerSession | null;
+  currencyCode: string;
+  denominations: TellerDenomination[];
+  opening: TellerOpeningRow | null;
+  deposits: TellerTransaction[];
+  withdrawals: TellerTransaction[];
+  summary: TellerSessionSummary;
 }
 
 export interface TellerLongBookRow {
   id: number | null;
-  kind: 'OPENING' | 'RECEIVED' | 'PAID';
-  transactionNumber: string | null;
-  typeCode: TellerTransactionTypeCode | null;
-  transactionDate: string;
-  customerName: string | null;
+  kind: 'OPENING' | 'DEPOSIT' | 'WITHDRAWAL';
+  sequenceNo: number | null;
+  referenceLabel: string | null;
+  createdAt: string;
   received: string;
   paid: string;
   runningBalance: string;
-  note: string | null;
 }
 
 export interface TellerLongBook {
@@ -181,46 +131,60 @@ export interface TellerLongBook {
   totalPages: number;
 }
 
-export interface TellerLastTransaction {
-  transactionNumber: string;
-  typeCode: TellerTransactionTypeCode;
+export interface OpenTellerSessionInput {
+  currencyCode: string;
+  sessionDate?: string;
+  branchName?: string | null;
+  branchCode?: string | null;
+  openingCounts?: Record<string, number>;
+  openingAmount?: string;
+  oppAmount?: string;
+  cashInICBA?: string;
+  cashOutICBA?: string;
+  note?: string | null;
+}
+
+export interface StartTellerDayOpening {
+  openingAmount?: string;
+  openingCounts?: Record<string, number>;
+}
+
+export interface UpdateTellerSessionInput {
+  sessionId: number;
+  branchName?: string | null;
+  branchCode?: string | null;
+  openingCounts?: Record<string, number>;
+  openingAmount?: string;
+  oppAmount?: string;
+  cashInICBA?: string;
+  cashOutICBA?: string;
+  note?: string | null;
+}
+
+export interface UpsertTellerTransactionInput {
+  id?: number;
+  sessionId: number;
   direction: TellerDirection;
-  amount: string;
-  transactionDate: string;
+  referenceLabel?: string;
+  declaredAmount?: string | null;
+  denominationCounts: Record<string, number>;
 }
 
-export interface TellerCurrencyDashboard {
-  currencyCode: string;
-  displayName: string;
-  symbol: string;
-  openingBalance: string;
-  cashIn: string;
-  cashOut: string;
-  currentBalance: string;
-  cashInCount: number;
-  cashOutCount: number;
-  headTellerInCount: number;
-  headTellerOutCount: number;
-  transactionCount: number;
-  physicalTally: string;
-  expectedCash: string;
-  difference: string;
-  lastTransaction: TellerLastTransaction | null;
+export interface TellerTransactionListQuery {
+  page?: number;
+  pageSize?: number;
+  sessionId?: number;
+  currencyCode?: string;
+  direction?: TellerDirection;
+  referenceLabel?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
-export interface TellerDashboard {
-  session: TellerSession | null;
-  currencies: TellerCurrencyDashboard[];
-}
-
-export interface TellerReconciliationRow {
-  currencyCode: string;
-  expectedCash: string;
-  physicalTally: string;
-  difference: string;
-}
-
-export interface TellerReconciliation {
-  sessionId: number | null;
-  rows: TellerReconciliationRow[];
+export interface TellerTransactionListResult {
+  transactions: TellerTransactionListItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }

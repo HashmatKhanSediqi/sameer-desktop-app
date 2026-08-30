@@ -111,11 +111,17 @@ describe('IPC channel registry', () => {
   it('registers teller cash-management channels', () => {
     expect(ALLOWED_IPC_CHANNELS).toContain('teller:denominations.list');
     expect(ALLOWED_IPC_CHANNELS).toContain('teller:sessions.open');
-    expect(ALLOWED_IPC_CHANNELS).toContain('teller:transactions.create');
-    expect(ALLOWED_IPC_CHANNELS).toContain('teller:dashboard.get');
-    expect(ALLOWED_IPC_CHANNELS).toContain('teller:tally.get');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:sessions.update');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:sheet.get');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:transactions.upsert');
     expect(ALLOWED_IPC_CHANNELS).toContain('teller:longBook.get');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:day.end');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:day.start');
+    expect(ALLOWED_IPC_CHANNELS).toContain('teller:cash.reset');
+    expect(IPC_CHANNELS.TELLER_DAY_START).toBe('teller:day.start');
+    expect(IPC_CHANNELS.TELLER_CASH_RESET).toBe('teller:cash.reset');
     expect(IPC_CHANNELS.TELLER_TRANSACTIONS_LIST).toBe('teller:transactions.list');
+    expect(IPC_CHANNELS.TELLER_DAY_END).toBe('teller:day.end');
   });
 
   it('has unique channel names', () => {

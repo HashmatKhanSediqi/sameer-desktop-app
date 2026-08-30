@@ -82,6 +82,7 @@
   "TELLER_DENOMINATION_INVALID": "د نوټونو شمېر باید بشپړ او غیرمنفي عدد وي.",
   "TELLER_OPENING_MISMATCH": "پرانېستونکی موجود باید له اوسني صندوق سره سمون ولري.",
   "TELLER_TRANSACTION_NOT_FOUND": "د صندوق معامله ونه موندل شوه.",
+  "TELLER_EXPORT_FAILED": "اکسل فایل ونه ساتل شو. د نن صندوق ورځ وتړل نشوه. بیا هڅه وکړئ.",
   "NEGATIVE_QUANTITY": "د نوټونو شمېر منفي کېدای نه شي.",
   "NON_INTEGER_QUANTITY": "د نوټونو شمېر باید بشپړ عدد وي."
 }

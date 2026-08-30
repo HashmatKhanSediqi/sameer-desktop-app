@@ -74,7 +74,7 @@ export class CurrencyRepository {
       return true;
     }
     const tellerRow = this.db
-      .prepare('SELECT 1 AS present FROM teller_transactions WHERE currency_code = ? LIMIT 1')
+      .prepare('SELECT 1 AS present FROM teller_sessions WHERE currency_code = ? LIMIT 1')
       .get(code) as { present: number } | undefined;
     return tellerRow !== undefined;
   }
@@ -126,18 +126,9 @@ export class CurrencyRepository {
   deleteByCode(code: string): boolean {
     this.db
       .prepare(
-        `DELETE FROM teller_cash_positions
+        `DELETE FROM teller_session_ht_denominations
          WHERE denomination_id IN (SELECT id FROM denominations WHERE currency_code = ?)`,
       )
-      .run(code);
-    this.db
-      .prepare(
-        `DELETE FROM teller_session_opening_denominations
-         WHERE denomination_id IN (SELECT id FROM denominations WHERE currency_code = ?)`,
-      )
-      .run(code);
-    this.db
-      .prepare('DELETE FROM teller_session_currency_totals WHERE currency_code = ?')
       .run(code);
     this.db.prepare('DELETE FROM denominations WHERE currency_code = ?').run(code);
     const result = this.db.prepare('DELETE FROM currencies WHERE code = ?').run(code);
@@ -197,10 +188,7 @@ export class CurrencyRepository {
   }
 
   deleteDenomination(id: number): boolean {
-    this.db.prepare('DELETE FROM teller_cash_positions WHERE denomination_id = ?').run(id);
-    this.db
-      .prepare('DELETE FROM teller_session_opening_denominations WHERE denomination_id = ? AND quantity = 0')
-      .run(id);
+    this.db.prepare('DELETE FROM teller_session_ht_denominations WHERE denomination_id = ? AND quantity = 0').run(id);
     this.db
       .prepare('DELETE FROM teller_transaction_denominations WHERE denomination_id = ? AND quantity = 0')
       .run(id);
@@ -222,12 +210,12 @@ export class CurrencyRepository {
 
 function usageExistsSql(): string {
   return `EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code)
-          OR EXISTS(SELECT 1 FROM teller_transactions tt WHERE tt.currency_code = currencies.code)`;
+          OR EXISTS(SELECT 1 FROM teller_sessions ts WHERE ts.currency_code = currencies.code)`;
 }
 
 function denominationInUseSql(): string {
   return `EXISTS(SELECT 1 FROM teller_transaction_denominations td WHERE td.denomination_id = d.id AND td.quantity > 0)
-          OR EXISTS(SELECT 1 FROM teller_session_opening_denominations o WHERE o.denomination_id = d.id AND o.quantity > 0)`;
+          OR EXISTS(SELECT 1 FROM teller_session_ht_denominations h WHERE h.denomination_id = d.id AND h.quantity > 0)`;
 }
 
 function toCurrency(row: CurrencyRecord): Currency {

@@ -1,65 +1,38 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Currency } from '@shared/types/currency';
 import type { TellerDenomination } from '@shared/types/teller';
 import { useAuth } from '../../../context/AuthContext';
-import { DenominationGrid } from './DenominationGrid';
-import { currencyLabel } from './TellerCurrencySelect';
+import { parsePieceInput } from '../tellerDisplay';
 
 interface OpenSessionFormProps {
-  currencies?: Currency[];
+  currencyCode: string;
   onOpened: () => void;
 }
 
-export function OpenSessionForm({ currencies = [], onOpened }: OpenSessionFormProps): JSX.Element {
+export function OpenSessionForm({ currencyCode, onOpened }: OpenSessionFormProps): JSX.Element {
   const { t } = useTranslation('teller');
-  const { t: tCommon } = useTranslation('common');
   const { t: tErrors } = useTranslation('errors');
   const { sessionId } = useAuth();
   const [denoms, setDenoms] = useState<TellerDenomination[]>([]);
-  const [quantities, setQuantities] = useState<Record<number, string>>({});
+  const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [branchName, setBranchName] = useState('');
+  const [branchCode, setBranchCode] = useState('');
+  const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!sessionId || !currencyCode) {
       return;
     }
-    void window.api.teller.listDenominations({ sessionId }).then((result) => {
+    void window.api.teller.listDenominations({ sessionId, currencyCode }).then((result) => {
       if (result.ok) {
         setDenoms(result.data.denominations);
+        setQuantities({});
       }
     });
-  }, [sessionId]);
-
-  const groups = useMemo(() => {
-    const byCode = new Map<string, TellerDenomination[]>();
-    for (const denom of denoms) {
-      const current = byCode.get(denom.currencyCode) ?? [];
-      current.push(denom);
-      byCode.set(denom.currencyCode, current);
-    }
-    const ordered = currencies.length > 0 ? currencies.map((item) => item.code) : [...byCode.keys()];
-    return ordered
-      .filter((code) => (byCode.get(code) ?? []).length > 0)
-      .map((code) => ({
-        code,
-        label: currencyLabel(
-          currencies.find((item) => item.code === code) ?? {
-            code,
-            nameKey: `currency.${code.toLowerCase()}`,
-            displayName: code,
-            symbol: '',
-            isActive: true,
-            sortOrder: 0,
-            hasTransactions: false,
-          },
-          tCommon,
-        ),
-        denoms: byCode.get(code) ?? [],
-      }));
-  }, [currencies, denoms, tCommon]);
+  }, [sessionId, currencyCode]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -67,15 +40,20 @@ export function OpenSessionForm({ currencies = [], onOpened }: OpenSessionFormPr
       return;
     }
     setError(null);
-    const openingQuantities = Object.entries(quantities)
-      .map(([id, value]) => ({ denominationId: Number(id), quantity: value.trim() === '' ? 0 : Number.parseInt(value, 10) }))
-      .filter((line) => Number.isInteger(line.quantity) && line.quantity >= 0);
+    const openingCounts: Record<string, number> = {};
+    for (const denom of denoms) {
+      openingCounts[denom.value] = parsePieceInput(quantities[denom.value] ?? '');
+    }
 
     setIsSubmitting(true);
     const result = await window.api.teller.openSession({
       sessionId,
+      currencyCode,
+      sessionDate,
+      branchName: branchName.trim() || null,
+      branchCode: branchCode.trim() || null,
+      openingCounts,
       note,
-      openingQuantities,
     });
     setIsSubmitting(false);
     if (!result.ok) {
@@ -87,21 +65,44 @@ export function OpenSessionForm({ currencies = [], onOpened }: OpenSessionFormPr
 
   return (
     <form className="teller-form" onSubmit={(event) => void handleSubmit(event)}>
-      <p className="hint-text">{t('session.openingHint')}</p>
+      <p className="hint-text">{t('session.noneHint')}</p>
       {error ? <p className="form-error">{error}</p> : null}
-      {groups.map((group) => (
-        <section key={group.code}>
-          <h3>
-            {t('session.openingCash')} · {group.label}
-          </h3>
-          <DenominationGrid
-            denominations={group.denoms}
-            quantities={quantities}
-            onChange={(id, value) => setQuantities((current) => ({ ...current, [id]: value }))}
-            disabled={isSubmitting}
-          />
-        </section>
-      ))}
+      <div className="teller-form-grid">
+        <label className="form-field">
+          <span>{t('session.sessionDate')}</span>
+          <input type="date" value={sessionDate} onChange={(event) => setSessionDate(event.target.value)} />
+        </label>
+        <label className="form-field">
+          <span>{t('session.branchName')}</span>
+          <input value={branchName} onChange={(event) => setBranchName(event.target.value)} />
+        </label>
+        <label className="form-field">
+          <span>{t('session.branchCode')}</span>
+          <input value={branchCode} onChange={(event) => setBranchCode(event.target.value)} />
+        </label>
+      </div>
+      <fieldset className="teller-ht-fieldset">
+        <legend>{t('session.headTeller')}</legend>
+        {denoms.length === 0 ? (
+          <p className="empty-state">{t('form.noDenoms')}</p>
+        ) : (
+          <div className="teller-ht-grid">
+            {denoms.map((denom) => (
+              <label key={denom.id} className="form-field">
+                <span>{denom.value}</span>
+                <input
+                  className="teller-input-pieces"
+                  inputMode="numeric"
+                  value={quantities[denom.value] ?? ''}
+                  onChange={(event) =>
+                    setQuantities((current) => ({ ...current, [denom.value]: event.target.value }))
+                  }
+                />
+              </label>
+            ))}
+          </div>
+        )}
+      </fieldset>
       <label className="form-field">
         <span>{t('session.note')}</span>
         <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={2} />
