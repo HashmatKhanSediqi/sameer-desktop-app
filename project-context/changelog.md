@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.0] — 2026-09-01 (Teller per-currency sessions)
+
+### Added
+- Each Teller currency has its own START/END day. Ending AFN does not close USD, and idle currencies stay closed until started.
+- Starting a currency day copies the previous closing cash into OP. OP is not treated as a customer transaction.
+- Confirmed **RESET CASH TO ZERO** zeros only the selected currency’s till and worksheet counts. Historical Teller transactions are kept.
+- Closing a Teller day writes an Excel workbook for that currency.
+
+### Changed
+- Teller uses the workbook data model (migrations `009`–`010`): one session per currency per business date, with opening cash (OP) distinct from Opp-Amount.
+- Teller is no longer coupled to Customer Accounting customer IDs. Customer delete no longer rewrites Teller rows. Customer Accounting tables are unchanged.
+
+### Fixed
+- Previous closing cash is carried into the next day’s OP instead of starting from zero.
+- A unique date key prevents yesterday’s Teller session from being overwritten.
+
+---
+
 ## [1.2.4] — 2026-08-25 (version display and dark mode)
 
 ### Added

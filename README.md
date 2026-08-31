@@ -7,7 +7,7 @@ Offline desktop customer accounting for Windows.
 | | |
 |-|-|
 | Product name | **FMT** |
-| Version | 1.2.4 |
+| Version | 1.3.0 |
 | Platform | Windows 10/11 x64 |
 | Installer | `dist/FMT-Setup.exe` (after `npm run build:win`) |
 | Database | Local SQLite (WAL) |
