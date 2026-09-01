@@ -73,7 +73,9 @@ Same compatibility path — do not rename without a migration plan for existing 
 }
 ```
 
-`installerIcon` / `uninstallerIcon` / `installerHeaderIcon` / Windows `icon` all use `assets/icons/icon.ico`. Authenticode signing is not configured. `signAndEditExecutable` stays `false` so electron-builder does not require the `winCodeSign` toolchain (its extract fails on Windows without symlink privilege). `afterPack` (`scripts/after-pack-icon.cjs`) embeds the official ICO onto `FMT.exe` with the `rcedit` binary so desktop and Start Menu shortcuts do not fall back to the default Electron icon.
+`installerIcon` / `uninstallerIcon` / `installerHeaderIcon` / Windows `icon` all use `assets/icons/icon.ico`. Authenticode signing is not configured. `signAndEditExecutable` stays `false` so electron-builder does not require the `winCodeSign` toolchain (its extract fails on Windows without symlink privilege). `afterPack` (`scripts/after-pack-icon.cjs`) embeds the official ICO and FMT version strings onto `FMT.exe` with the `rcedit` binary so desktop/Start Menu shortcuts and Windows Security do not treat the binary as a generic Electron executable.
+
+Unsigned NSIS installers can be quarantined by Microsoft Defender machine-learning detections (v1.4.0 GitHub `FMT-Setup.exe` was flagged as `Trojan:Win32/Wacatac.B!ml` despite being a valid FMT installer). Releases include `SHA256SUMS.txt`. If a downloaded installer has no FMT icon or will not launch, check Windows Security → Protection history before assuming the packaging is broken.
 
 `appId`: `com.customeraccounting.app` (compatibility)  
 `productName`: `FMT`

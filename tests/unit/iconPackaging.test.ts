@@ -24,5 +24,9 @@ describe('Windows icon packaging', () => {
     expect(packageJson.build.nsis.createDesktopShortcut).toBe(true);
     expect(packageJson.build.win.signAndEditExecutable).toBe(false);
     expect(packageJson.build.afterPack).toBe('scripts/after-pack-icon.cjs');
+    const afterPack = readFileSync(join(process.cwd(), 'scripts', 'after-pack-icon.cjs'), 'utf8');
+    expect(afterPack).toMatch(/--set-icon/);
+    expect(afterPack).toMatch(/ProductName/);
+    expect(afterPack).toMatch(/OriginalFilename/);
   });
 });

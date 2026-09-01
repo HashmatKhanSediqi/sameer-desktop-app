@@ -76,7 +76,7 @@ SQL-side pagination, aggregation, and indexes (`005_query_indexes.sql`, `006_cus
 | 36 | TypeScript | VERIFIED | `npm run typecheck` |
 | 37 | Automated tests | VERIFIED | **235 passed / 1 skipped** (v1.0.2; `test:extreme` skipped) |
 | 38 | Production Windows build | VERIFIED | `npm run build:win` succeeds |
-| 39 | Code signing | KNOWN LIMITATION | Authenticode not configured; installer remains unsigned. Icon embedding uses `afterPack` rcedit (`signAndEditExecutable: false`) |
+| 39 | Code signing | KNOWN LIMITATION | Authenticode not configured; installer remains unsigned. `afterPack` rcedit embeds the FMT icon and version strings (`signAndEditExecutable: false`). Defender may still heuristic-flag new unsigned hashes. |
 | 40 | Clean Windows installation testing | KNOWN LIMITATION | Full clean Windows VM manual validation has **not** been performed in this audit |
 | 41 | In-app updater (electron-updater + GitHub Releases) | VERIFIED (live 1.0.1→1.0.2) | Public GitHub feed; packaged 1.0.1 detected 1.0.2, downloaded, pre-update backup validated, app started as 1.0.2 with user data intact. NSIS wizard still appears because `oneClick` is false / `isSilent` is false. |
 

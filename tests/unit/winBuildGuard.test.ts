@@ -5,6 +5,7 @@ describe('Windows release build guard', () => {
   it('requires a Windows host before building the NSIS installer', () => {
     expect(packageJson.scripts['build:win']).toContain('scripts/ensure-win-build.mjs');
     expect(packageJson.scripts['build:win']).toContain('scripts/verify-win-native-modules.mjs');
+    expect(packageJson.scripts['build:win']).toContain('scripts/verify-win-installer.mjs');
   });
 
   it('disables NSIS differential packages to avoid double-download fallback', () => {

@@ -38,9 +38,23 @@ jobs:
       - name: Verify packaged native modules
         run: node scripts/verify-win-native-modules.mjs
 
+      - name: Verify Windows installer
+        run: node scripts/verify-win-installer.mjs
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
+          name: FMT ${{ github.ref_name }}
+          body: |
+            Download **FMT-Setup.exe** (not Source code).
+
+            This installer is unsigned. Windows SmartScreen or Microsoft Defender may warn on a newly published hash. v1.4.0 was quarantined on some PCs as `Trojan:Win32/Wacatac.B!ml` even though it was a valid FMT NSIS installer. If the downloaded file has no FMT icon or will not launch, restore it from Windows Security → Protection history and check SHA-256 against `SHA256SUMS.txt`.
+
+            Artifacts:
+            - `FMT-Setup.exe`
+            - `latest.yml`
+            - `SHA256SUMS.txt`
           files: |
             dist/FMT-Setup.exe
             dist/latest.yml
+            dist/SHA256SUMS.txt

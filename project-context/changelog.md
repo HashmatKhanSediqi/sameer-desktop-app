@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.1] — 2026-09-01 (Windows installer Defender false-positive)
+
+### Fixed
+- v1.4.0 `FMT-Setup.exe` from GitHub Releases was a valid PE/NSIS installer with the FMT icon, but Microsoft Defender quarantined that specific hash as `Trojan:Win32/Wacatac.B!ml`. After quarantine the file disappears or no longer looks/launches like an FMT installer.
+- `afterPack` now writes FMT ProductName / FileDescription / version onto `FMT.exe` (not the stock Electron strings) so Windows and antivirus see the real product identity.
+- Release workflow publishes `SHA256SUMS.txt`, verifies the NSIS installer, and documents that users should download `FMT-Setup.exe` (not Source code) and restore it from Protection history if Defender removes it.
+
+---
+
 ## [1.4.0] — 2026-09-01 (automatic backup location)
 
 ### Added

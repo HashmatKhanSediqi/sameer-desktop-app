@@ -186,7 +186,7 @@ Update failures must **never** prevent FMT from starting or using the existing d
 - Uses electron-updater’s normal GitHub Releases + `latest.yml` checksum verification
 - No custom download-and-run of arbitrary URLs
 - Downgrades disabled (`allowDowngrade = false`)
-- **Code signing:** Authenticode is **not** configured. `signAndEditExecutable` is `false`. Unsigned installers are **not** fully trusted by Windows SmartScreen.
+- **Code signing:** Authenticode is **not** configured. `signAndEditExecutable` is `false`. Unsigned installers are **not** fully trusted by Windows SmartScreen. Microsoft Defender may quarantine a new unsigned `FMT-Setup.exe` hash (v1.4.0 was flagged as `Trojan:Win32/Wacatac.B!ml`). Releases include `SHA256SUMS.txt` so a restored file can be checked.
 
 ---
 
