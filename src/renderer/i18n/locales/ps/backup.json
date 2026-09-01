@@ -52,5 +52,15 @@
     "import": "د بیکاپ معلومات زیاتېږي…",
     "migrate": "ډیټابېس تازه کېږي…",
     "done": "بشپړ شو"
+  },
+  "automatic": {
+    "title": "اتومات بیکاپ",
+    "location": "ځای",
+    "notConfigured": "اتومات بیکاپ نه دی تنظیم شوی. یوه پوشه وټاکئ ترڅو FMT د برنامه له بندېدو سره یو بیکاپ ذخیره کړي.",
+    "notConfiguredPath": "نه دی تنظیم شوی",
+    "chooseLocation": "ځای وټاکئ",
+    "changeLocation": "ځای بدل کړئ",
+    "choosingLocation": "پوشه ټاکل کېږي…",
+    "locationSaved": "د اتومات بیکاپ ځای خوندي شو"
   }
 }

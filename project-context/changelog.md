@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] — 2026-09-01 (automatic backup location)
+
+### Added
+- Automatic backups now go to a user-selected folder instead of a hidden AppData path.
+- On first launch after this feature is installed, FMT asks where automatic backups should be saved using the native folder dialog.
+- Settings → Backup shows the Automatic Backup location and a Change Location button.
+- Close-time backups use `FMT-AutoBackup-YYYY-MM-DD-HH-mm-ss.cab` and never overwrite an existing file.
+
+### Changed
+- Automatic close backup still uses the same `.cab` mechanism as Manual Backup and remains restorable with Restore from Backup / Import Existing System.
+- User-chosen automatic backup folders are not pruned. Every successful close keeps a new timestamped file.
+
+### Notes
+- If the first-launch folder dialog is cancelled, FMT does not invent a path. Automatic Backup can be configured later in Settings.
+- A normal-close backup cannot protect against a hard power loss, forced process termination, or OS crash.
+
+---
+
 ## [1.3.0] — 2026-09-01 (Teller per-currency sessions)
 
 ### Added

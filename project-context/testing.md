@@ -202,7 +202,7 @@ Comprehensive test plan for **FMT**.
 | BAK-T08 | Invalid archive rejected | Error message |
 | BAK-T09 | Path traversal in archive | Rejected |
 | BAK-T10 | Admin login works after restore | Credentials from backup |
-| BAK-T12 | Auto-close backup + retention 10 | Latest kept; prefix-only prune |
+| BAK-T12 | Auto-close backup to configured folder | Unique `FMT-AutoBackup-*.cab`; no overwrite; not pruned |
 | BAK-T13 | Safety backup retention 5 | Prefix-only prune |
 | BAK-T14 | Scale backup 100k/300k | Creates and validates |
 | BAK-T15 | Corrupt DB on connect | `DATABASE_CORRUPTED` |

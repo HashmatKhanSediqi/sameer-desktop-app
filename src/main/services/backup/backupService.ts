@@ -26,13 +26,10 @@ import {
   MAX_BACKUP_ARCHIVE_BYTES,
   MAX_BACKUP_ENTRIES,
   MAX_BACKUP_UNCOMPRESSED_BYTES,
-  AUTO_CLOSE_BACKUP_FILE_PREFIX,
-  AUTO_CLOSE_BACKUP_RETENTION,
   SAFETY_BACKUP_FILE_PREFIX,
   SAFETY_BACKUP_RETENTION,
   PRE_UPDATE_BACKUP_FILE_PREFIX,
   PRE_UPDATE_BACKUP_RETENTION,
-  defaultAutoCloseBackupFileName,
   defaultSafetyBackupFileName,
   defaultPreUpdateBackupFileName,
   type BackupCreateData,
@@ -43,6 +40,7 @@ import {
   type RestoreExecuteData,
 } from '@shared/types/backup';
 import { APP_VERSION } from '@shared/constants/version';
+import { SETTINGS_AUTOMATIC_BACKUP_PATH_KEY } from '@shared/types/settings';
 import {
   getAppliedSchemaVersion,
   getAvailableSchemaVersion,
@@ -51,6 +49,7 @@ import {
 import { AppError } from '../../utils/errors';
 import type { Logger } from '../../utils/logger';
 import { assertAllowedBackupEntry, isBackupFilePath } from './backupPaths';
+import { resolveUniqueAutoBackupPath } from './uniqueBackupPath';
 import { mergeBackupAccountingData } from './backupMerge';
 import { buildBackupSignature, parseBackupManifest, summarizeManifest } from './backupManifest';
 import { hasSqliteMagic, verifySqliteIntegrity } from './sqliteIntegrity';
@@ -85,22 +84,40 @@ export class BackupService {
     return hasExistingAccountingData(this.deps.getDatabase());
   }
 
-  async createAutoCloseBackup(): Promise<{ created: boolean; filePath?: string }> {
+  async createAutoCloseBackup(): Promise<{
+    created: boolean;
+    filePath?: string;
+    skippedReason?: 'not_configured' | 'no_data';
+  }> {
+    const configuredDirectory = readSetting(this.deps.getDatabase(), SETTINGS_AUTOMATIC_BACKUP_PATH_KEY)?.trim();
+    if (!configuredDirectory) {
+      this.deps.logger.debug('Skipping auto-close backup: location not configured');
+      return { created: false, skippedReason: 'not_configured' };
+    }
+
     if (!this.hasExistingData()) {
       this.deps.logger.debug('Skipping auto-close backup: no accounting data');
+      return { created: false, skippedReason: 'no_data' };
+    }
+
+    if (existsSync(configuredDirectory) && !statSync(configuredDirectory).isDirectory()) {
+      this.deps.logger.error('Auto-close backup failed: configured path is not a directory', {
+        path: configuredDirectory,
+      });
       return { created: false };
     }
 
-    const scheduledDir = join(this.deps.paths.backups, 'scheduled');
-    mkdirSync(scheduledDir, { recursive: true });
+    mkdirSync(configuredDirectory, { recursive: true });
 
-    let fileName = defaultAutoCloseBackupFileName();
-    let destination = join(scheduledDir, fileName);
-    let attempt = 0;
-    while (existsSync(destination)) {
-      attempt += 1;
-      fileName = defaultAutoCloseBackupFileName(new Date(Date.now() + attempt * 1000));
-      destination = join(scheduledDir, fileName);
+    let destination: string;
+    try {
+      destination = resolveUniqueAutoBackupPath(configuredDirectory);
+    } catch (error) {
+      this.deps.logger.error('Auto-close backup failed: could not allocate a unique filename', {
+        path: configuredDirectory,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return { created: false };
     }
 
     try {
@@ -110,7 +127,6 @@ export class BackupService {
         unlinkIfExists(destination);
         throw new Error('Auto-close backup failed validation');
       }
-      this.pruneBackupFiles(scheduledDir, AUTO_CLOSE_BACKUP_FILE_PREFIX, AUTO_CLOSE_BACKUP_RETENTION);
       this.deps.logger.info('Auto-close backup created', { path: destination });
       return { created: true, filePath: destination };
     } catch (error) {

@@ -85,6 +85,8 @@ import {
   type BackupValidateResult,
   type RestoreExecuteRequest,
   type RestoreExecuteResult,
+  type AutomaticBackupConfigResult,
+  type AutomaticBackupChooseResult,
   type TransfersCreateRequest,
   type TransfersCreateResult,
   type UpdateCheckRequest,
@@ -264,6 +266,10 @@ const api = {
       invoke(IPC_CHANNELS.BACKUP_VALIDATE, request ?? {}),
     restore: (request: RestoreExecuteRequest): Promise<RestoreExecuteResult> =>
       invoke(IPC_CHANNELS.RESTORE_EXECUTE, request),
+    getAutomaticConfig: (): Promise<AutomaticBackupConfigResult> =>
+      invoke(IPC_CHANNELS.BACKUP_GET_AUTOMATIC_CONFIG),
+    chooseAutomaticLocation: (): Promise<AutomaticBackupChooseResult> =>
+      invoke(IPC_CHANNELS.BACKUP_CHOOSE_AUTOMATIC_LOCATION),
     onProgress: (callback: (progress: BackupProgress) => void): (() => void) => {
       const listener = (_event: unknown, payload: BackupProgress): void => {
         callback(payload);

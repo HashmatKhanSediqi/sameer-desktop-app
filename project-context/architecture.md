@@ -205,6 +205,8 @@ All IPC channels must be typed in `src/shared/types/ipc.ts`.
 | `import:parse` | invoke | Parse Excel, return preview + errors |
 | `import:commit` | invoke | Atomic import commit |
 | `backup:create` | invoke | Create backup file |
+| `backup:getAutomaticConfig` | invoke | Read automatic backup folder configuration |
+| `backup:chooseAutomaticLocation` | invoke | Native folder dialog; persist automatic backup path |
 | `backup:validate` | invoke | Validate backup without restoring |
 | `restore:execute` | invoke | Restore from backup (with safety backup) |
 | `settings:get` | invoke | Read settings |
@@ -220,7 +222,7 @@ All IPC channels must be typed in `src/shared/types/ipc.ts`.
 1. **Startup** — Main process initializes paths, opens SQLite, runs migrations, seeds default admin if missing, creates window.
 2. **Pre-login** — Show login OR "Import Existing System" (restore) screen.
 3. **Post-login** — If company profile is not configured, show company setup. Then load settings (language, pagination, theme, exchange) and show customer list.
-4. **Shutdown** — Auto-close backup (if data exists) → close SQLite (WAL checkpoint) → clear crash sentinel.
+4. **Shutdown** — Automatic backup to the configured folder (if configured and data exists) → close SQLite (WAL checkpoint) → clear crash sentinel.
 5. **Crash recovery** — Crash sentinel warning + integrity_check on open; WAL replay; never auto-destroy DB.
 
 ---

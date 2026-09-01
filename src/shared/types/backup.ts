@@ -97,8 +97,9 @@ export function defaultSafetyBackupFileName(date = new Date()): string {
   return `FMT_SafetyBackup_${formatLocalDate(date)}_${formatLocalTime(date)}.cab`;
 }
 
-/** Close-time backups stored under backups/scheduled/ */
-export const AUTO_CLOSE_BACKUP_FILE_PREFIX = 'FMT_AutoClose_';
+/** Close-time backups stored in the user-configured automatic backup folder. */
+export const AUTO_CLOSE_BACKUP_FILE_PREFIX = 'FMT-AutoBackup-';
+/** Legacy AppData scheduled copies used this prefix; user-chosen folders are never pruned. */
 export const AUTO_CLOSE_BACKUP_RETENTION = 10;
 
 /** Safety backups before restore under backups/auto/ */
@@ -110,8 +111,18 @@ export const PRE_UPDATE_BACKUP_FILE_PREFIX = 'FMT_PreUpdate_';
 export const PRE_UPDATE_BACKUP_RETENTION = 5;
 
 export function defaultAutoCloseBackupFileName(date = new Date()): string {
-  return `${AUTO_CLOSE_BACKUP_FILE_PREFIX}${formatLocalDate(date)}_${formatLocalTime(date)}.cab`;
+  return `${AUTO_CLOSE_BACKUP_FILE_PREFIX}${formatLocalDate(date)}-${formatLocalTime(date)}.cab`;
 }
+
+export interface AutomaticBackupConfig {
+  path: string | null;
+  configured: boolean;
+  prompted: boolean;
+}
+
+export type AutomaticBackupChooseData =
+  | { canceled: true; config: AutomaticBackupConfig }
+  | { canceled: false; config: AutomaticBackupConfig };
 
 export function defaultPreUpdateBackupFileName(date = new Date()): string {
   return `${PRE_UPDATE_BACKUP_FILE_PREFIX}${formatLocalDate(date)}_${formatLocalTime(date)}.cab`;

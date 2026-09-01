@@ -8,6 +8,7 @@ import { CustomerService } from '../../src/main/services/customer/customerServic
 import { TransactionService } from '../../src/main/services/transaction/transactionService';
 import { ReportsService } from '../../src/main/services/report/reportsService';
 import { BackupService } from '../../src/main/services/backup/backupService';
+import { SettingsService } from '../../src/main/services/settings/settingsService';
 import { loadAppConfig } from '../../src/main/config/appConfig';
 import type { CustomerIdentity, CustomerListItem } from '../../src/shared/types/customer';
 import type { AppPaths } from '../../src/shared/types/ipc';
@@ -277,6 +278,7 @@ describe.skipIf(!RUN_EXTREME)('extreme scale validation (1M customers / 5M trans
           logger: testDb.logger,
           migrationsDir: join(process.cwd(), 'migrations'),
         });
+        new SettingsService(testDb.db).setAutomaticBackupPath(join(backupsDir, 'auto-close'));
 
         const autoCloseStarted = performance.now();
         const autoClose = await backupService.createAutoCloseBackup();

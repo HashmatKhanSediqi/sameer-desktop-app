@@ -9,6 +9,8 @@ export const SETTINGS_THEME_PRIMARY_KEY = 'theme_primary';
 export const SETTINGS_THEME_ACCENT_KEY = 'theme_accent';
 export const SETTINGS_THEME_MODE_KEY = 'theme_mode';
 export const SETTINGS_CARD_TONES_KEY = 'card_tones';
+export const SETTINGS_AUTOMATIC_BACKUP_PATH_KEY = 'automatic_backup_path';
+export const SETTINGS_AUTOMATIC_BACKUP_PROMPTED_KEY = 'automatic_backup_prompted';
 
 export const DEFAULT_PAGINATION_ENABLED = true;
 export const DEFAULT_PAGINATION_PAGE_SIZE = 10;

@@ -29,7 +29,7 @@ App Start
   → Seed default admin if empty
   → Create window (login / Import Existing System)
   → Running (IPC)
-  → before-quit: auto-close backup (timeout 120s) then close DB, clear sentinel, quit
+  → before-quit: automatic backup to the user-configured folder (timeout 120s) then close DB, clear sentinel, quit
 ```
 
 ### Single Instance
@@ -38,9 +38,10 @@ App Start
 
 ### Quit Behavior
 
-- `isQuitting` guard prevents conflicting shutdown operations
-- Auto-close backup runs **before** database shutdown while DB is still open
+- `QuitBackupCoordinator` single-flight guard prevents conflicting shutdown operations
+- Automatic backup runs **before** database shutdown while DB is still open, into the user-configured folder
 - Backup failure / timeout does **not** block quit and does **not** corrupt the database
+- Later quit events while a backup is running are blocked until the attempt finishes (no duplicate backups, no early exit)
 
 ---
 
@@ -73,7 +74,7 @@ Folder name `CustomerAccounting` is an intentional compatibility identifier.
 │       └── company\
 ├── backups\
 │   ├── auto\          # FMT_SafetyBackup_* (retention 5)
-│   ├── scheduled\     # FMT_AutoClose_* (retention 10)
+│   ├── scheduled\     # legacy FMT_AutoClose_* copies (no longer written)
 │   └── pre-update\    # validated .cab before in-app update install (retention 5)
 ├── logs\
 ├── cache\

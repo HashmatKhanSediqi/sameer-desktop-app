@@ -22,9 +22,12 @@ import {
   SETTINGS_THEME_ACCENT_KEY,
   SETTINGS_THEME_MODE_KEY,
   SETTINGS_THEME_PRIMARY_KEY,
+  SETTINGS_AUTOMATIC_BACKUP_PATH_KEY,
+  SETTINGS_AUTOMATIC_BACKUP_PROMPTED_KEY,
   type AppSettings,
   type SettingsUpdateInput,
 } from '@shared/types/settings';
+import type { AutomaticBackupConfig } from '@shared/types/backup';
 
 export class SettingsService {
   private readonly repository: SettingsRepository;
@@ -94,6 +97,49 @@ export class SettingsService {
     }
 
     return this.get();
+  }
+
+  getAutomaticBackupConfig(): AutomaticBackupConfig {
+    const path = this.getAutomaticBackupPath();
+    return {
+      path,
+      configured: path !== null,
+      prompted: this.hasPromptedAutomaticBackup(),
+    };
+  }
+
+  getAutomaticBackupPath(): string | null {
+    const raw = this.repository.get(SETTINGS_AUTOMATIC_BACKUP_PATH_KEY)?.trim();
+    if (!raw) {
+      return null;
+    }
+    return raw;
+  }
+
+  hasPromptedAutomaticBackup(): boolean {
+    if (this.getAutomaticBackupPath()) {
+      return true;
+    }
+    return this.repository.get(SETTINGS_AUTOMATIC_BACKUP_PROMPTED_KEY) === 'true';
+  }
+
+  setAutomaticBackupPath(path: string): AutomaticBackupConfig {
+    const trimmed = path.trim();
+    if (trimmed.length === 0 || trimmed.includes('\u0000')) {
+      throw new AppError('INVALID_REQUEST', 'INVALID_REQUEST');
+    }
+    this.repository.set(SETTINGS_AUTOMATIC_BACKUP_PATH_KEY, trimmed);
+    this.repository.set(SETTINGS_AUTOMATIC_BACKUP_PROMPTED_KEY, 'true');
+    return this.getAutomaticBackupConfig();
+  }
+
+  markAutomaticBackupPrompted(): AutomaticBackupConfig {
+    this.repository.set(SETTINGS_AUTOMATIC_BACKUP_PROMPTED_KEY, 'true');
+    return this.getAutomaticBackupConfig();
+  }
+
+  shouldPromptAutomaticBackupLocation(): boolean {
+    return !this.getAutomaticBackupPath() && !this.hasPromptedAutomaticBackup();
   }
 
   private readExchangeEnabled(): boolean {

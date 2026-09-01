@@ -145,4 +145,59 @@ describe('SettingsService language persistence', () => {
       testDb.cleanup();
     }
   });
+
+  it('persists automatic backup location across reads and updates the path', () => {
+    const testDb = createTestDatabase();
+    try {
+      applyProjectMigrations(testDb.db, testDb.logger);
+      const service = new SettingsService(testDb.db);
+
+      expect(service.getAutomaticBackupConfig()).toEqual({
+        path: null,
+        configured: false,
+        prompted: false,
+      });
+      expect(service.shouldPromptAutomaticBackupLocation()).toBe(true);
+
+      service.markAutomaticBackupPrompted();
+      expect(service.shouldPromptAutomaticBackupLocation()).toBe(false);
+      expect(service.getAutomaticBackupConfig()).toEqual({
+        path: null,
+        configured: false,
+        prompted: true,
+      });
+
+      const first = service.setAutomaticBackupPath('D:\\FMT Backups');
+      expect(first).toEqual({
+        path: 'D:\\FMT Backups',
+        configured: true,
+        prompted: true,
+      });
+      expect(service.getAutomaticBackupPath()).toBe('D:\\FMT Backups');
+      expect(service.shouldPromptAutomaticBackupLocation()).toBe(false);
+
+      const second = new SettingsService(testDb.db);
+      expect(second.getAutomaticBackupPath()).toBe('D:\\FMT Backups');
+      expect(second.getAutomaticBackupConfig().configured).toBe(true);
+
+      second.setAutomaticBackupPath('E:\\New FMT Backups');
+      expect(service.getAutomaticBackupPath()).toBe('E:\\New FMT Backups');
+    } finally {
+      testDb.cleanup();
+    }
+  });
+
+  it('does not invent a path when the automatic backup prompt is canceled', () => {
+    const testDb = createTestDatabase();
+    try {
+      applyProjectMigrations(testDb.db, testDb.logger);
+      const service = new SettingsService(testDb.db);
+      service.markAutomaticBackupPrompted();
+      expect(service.getAutomaticBackupPath()).toBeNull();
+      expect(service.getAutomaticBackupConfig().configured).toBe(false);
+      expect(service.shouldPromptAutomaticBackupLocation()).toBe(false);
+    } finally {
+      testDb.cleanup();
+    }
+  });
 });

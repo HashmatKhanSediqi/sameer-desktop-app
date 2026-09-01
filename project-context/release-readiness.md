@@ -56,9 +56,9 @@ SQL-side pagination, aggregation, and indexes (`005_query_indexes.sql`, `006_cus
 | 16 | 100k+ customer scalability | VERIFIED | Automated stress test |
 | 17 | 300k+ transaction scalability | VERIFIED | Automated stress test |
 | 18 | Backup creation | VERIFIED | Manual + validated create |
-| 19 | Automatic close backup | VERIFIED | Automated unit tests; Electron quit path implemented |
+| 19 | Automatic close backup | VERIFIED | Automated tests; user-selected folder; Electron quit path implemented |
 | 20 | Backup validation | VERIFIED | Manifest, signature, integrity, zip limits |
-| 21 | Backup retention | VERIFIED | Auto-close 10; safety 5; manual never auto-deleted |
+| 21 | Backup retention | VERIFIED | User-folder auto backups unlimited; safety 5; manual never auto-deleted |
 | 22 | Restore | VERIFIED | Automated tests |
 | 23 | Restore rollback / safety backup | VERIFIED | Safety backup validated before replace |
 | 24 | Crash recovery | VERIFIED (automated) | WAL + crash sentinel + integrity on open; no dedicated corruption UI |

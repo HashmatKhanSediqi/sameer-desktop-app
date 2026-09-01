@@ -64,18 +64,36 @@ describe('backup service', () => {
     }
   });
 
-  it('skips auto-close backup when database has no accounting data', async () => {
+  it('skips auto-close backup when no location is configured', async () => {
     const harness = await createCustomerTestHarness();
     try {
+      harness.customerService.create({
+        name: 'Close Backup User',
+        customerNumber: 'CB-0',
+      });
       const result = await harness.backupService.createAutoCloseBackup();
       expect(result.created).toBe(false);
+      expect(result.skippedReason).toBe('not_configured');
       expect(result.filePath).toBeUndefined();
     } finally {
       harness.cleanup();
     }
   });
 
-  it('creates validated auto-close backups under scheduled with retention', async () => {
+  it('skips auto-close backup when database has no accounting data', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      harness.ctx.settingsService.setAutomaticBackupPath(join(harness.ctx.paths.backups, 'auto-close'));
+      const result = await harness.backupService.createAutoCloseBackup();
+      expect(result.created).toBe(false);
+      expect(result.skippedReason).toBe('no_data');
+      expect(result.filePath).toBeUndefined();
+    } finally {
+      harness.cleanup();
+    }
+  });
+
+  it('creates validated auto-close backups in the configured directory without overwriting or pruning', async () => {
     const harness = await createCustomerTestHarness();
     try {
       const created = harness.customerService.create({
@@ -90,19 +108,81 @@ describe('backup service', () => {
         transactionDate: '2026-03-01',
       });
 
-      const scheduledDir = join(harness.ctx.paths.backups, 'scheduled');
-      for (let index = 0; index < 12; index += 1) {
+      const autoDir = join(harness.ctx.paths.backups, 'user-auto');
+      harness.ctx.settingsService.setAutomaticBackupPath(autoDir);
+
+      const createdPaths = new Set<string>();
+      for (let index = 0; index < 3; index += 1) {
         const result = await harness.backupService.createAutoCloseBackup();
         expect(result.created).toBe(true);
-        expect(result.filePath?.startsWith(scheduledDir)).toBe(true);
+        expect(result.filePath?.startsWith(autoDir)).toBe(true);
+        expect(result.filePath?.includes('FMT-AutoBackup-')).toBe(true);
         expect(existsSync(result.filePath ?? '')).toBe(true);
+        createdPaths.add(result.filePath ?? '');
       }
 
+      expect(createdPaths.size).toBe(3);
+
       const { readdirSync } = await import('node:fs');
-      const autoCloseFiles = readdirSync(scheduledDir).filter((name) => name.startsWith('FMT_AutoClose_'));
-      expect(autoCloseFiles.length).toBeLessThanOrEqual(10);
+      const autoFiles = readdirSync(autoDir).filter((name) => name.startsWith('FMT-AutoBackup-'));
+      expect(autoFiles).toHaveLength(3);
+
+      const firstPath = [...createdPaths][0];
+      const validated = await harness.backupService.validate(firstPath ?? '');
+      expect(validated.valid).toBe(true);
     } finally {
       harness.cleanup();
+    }
+  });
+
+  it('does not overwrite an existing automatic backup file', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      harness.customerService.create({
+        name: 'Close Backup User',
+        customerNumber: 'CB-2',
+      });
+      const autoDir = join(harness.ctx.paths.backups, 'user-auto-unique');
+      harness.ctx.settingsService.setAutomaticBackupPath(autoDir);
+
+      const { mkdirSync, writeFileSync, readFileSync } = await import('node:fs');
+      mkdirSync(autoDir, { recursive: true });
+      const { defaultAutoCloseBackupFileName } = await import('../../src/shared/types/backup');
+      const occupyingName = defaultAutoCloseBackupFileName();
+      const occupyingPath = join(autoDir, occupyingName);
+      writeFileSync(occupyingPath, 'keep-me');
+
+      const result = await harness.backupService.createAutoCloseBackup();
+      expect(result.created).toBe(true);
+      expect(result.filePath).not.toBe(occupyingPath);
+      expect(readFileSync(occupyingPath, 'utf8')).toBe('keep-me');
+      expect(existsSync(result.filePath ?? '')).toBe(true);
+    } finally {
+      harness.cleanup();
+    }
+  });
+
+  it('restores an automatic .cab using the existing restore mechanism', async () => {
+    const source = await createCustomerTestHarness();
+    const target = await createCustomerTestHarness();
+    try {
+      source.customerService.create({
+        name: 'Auto Backup User',
+        customerNumber: 'AUTO-1',
+      });
+      const autoDir = join(source.ctx.paths.backups, 'user-auto-restore');
+      source.ctx.settingsService.setAutomaticBackupPath(autoDir);
+      const created = await source.backupService.createAutoCloseBackup();
+      expect(created.created).toBe(true);
+      expect(created.filePath).toBeTruthy();
+
+      const restored = await target.backupService.restore(created.filePath ?? '', true);
+      expect(restored.success).toBe(true);
+      const imported = target.customerService.list().find((row) => row.customerNumber === 'AUTO-1');
+      expect(imported).toBeTruthy();
+    } finally {
+      source.cleanup();
+      target.cleanup();
     }
   });
 
@@ -527,6 +607,22 @@ describe('backup IPC handlers', () => {
       })) as { ok: true; data: { success: boolean } };
       expect(restoredAgain.ok).toBe(true);
       expect(restoredAgain.data.success).toBe(true);
+
+      const automaticConfig = (await invoke(IPC_CHANNELS.BACKUP_GET_AUTOMATIC_CONFIG, {})) as {
+        ok: true;
+        data: { configured: boolean; path: string | null; prompted: boolean };
+      };
+      expect(automaticConfig.ok).toBe(true);
+      expect(automaticConfig.data.configured).toBe(false);
+      expect(automaticConfig.data.path).toBeNull();
+
+      harness.ctx.settingsService.setAutomaticBackupPath(join(harness.ctx.paths.backups, 'from-settings'));
+      const updatedConfig = (await invoke(IPC_CHANNELS.BACKUP_GET_AUTOMATIC_CONFIG, {})) as {
+        ok: true;
+        data: { configured: boolean; path: string | null };
+      };
+      expect(updatedConfig.data.configured).toBe(true);
+      expect(updatedConfig.data.path).toBe(join(harness.ctx.paths.backups, 'from-settings'));
     } finally {
       harness.cleanup();
     }

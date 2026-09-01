@@ -125,6 +125,8 @@ Protected IPC handlers **must** validate session before mutating accounting data
 | `backup:validate` | **No** (intentional pre-login recovery) |
 | `restore:execute` | **No** (intentional; requires `confirmed: true`) |
 | `backup:create` | Yes |
+| `backup:getAutomaticConfig` | **No** (first-launch folder prompt may run before login) |
+| `backup:chooseAutomaticLocation` | **No** (native folder dialog only; path is not taken from the renderer) |
 | Accounting / settings / import / reports mutations | Yes |
 
 This is a **known accepted risk** for local disaster recovery when the database prevents login.

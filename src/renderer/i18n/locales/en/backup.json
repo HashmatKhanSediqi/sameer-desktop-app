@@ -52,5 +52,15 @@
     "import": "Adding backup data…",
     "migrate": "Updating database…",
     "done": "Done"
+  },
+  "automatic": {
+    "title": "Automatic Backup",
+    "location": "Location",
+    "notConfigured": "Automatic Backup has not been configured. Choose a folder so FMT can save a backup when the application closes.",
+    "notConfiguredPath": "Not configured",
+    "chooseLocation": "Choose Location",
+    "changeLocation": "Change Location",
+    "choosingLocation": "Choosing folder…",
+    "locationSaved": "Automatic backup location saved"
   }
 }

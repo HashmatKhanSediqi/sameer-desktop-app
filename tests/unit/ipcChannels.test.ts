@@ -78,12 +78,16 @@ describe('IPC channel registry', () => {
     expect(IPC_CHANNELS.IMPORT_COMMIT).toBe('import:commit');
   });
 
-  it('registers backup create, validate, and restore channels', () => {
+  it('registers backup create, validate, restore, and automatic location channels', () => {
     expect(ALLOWED_IPC_CHANNELS).toContain('backup:create');
     expect(ALLOWED_IPC_CHANNELS).toContain('backup:validate');
+    expect(ALLOWED_IPC_CHANNELS).toContain('backup:getAutomaticConfig');
+    expect(ALLOWED_IPC_CHANNELS).toContain('backup:chooseAutomaticLocation');
     expect(ALLOWED_IPC_CHANNELS).toContain('restore:execute');
     expect(IPC_CHANNELS.BACKUP_CREATE).toBe('backup:create');
     expect(IPC_CHANNELS.BACKUP_VALIDATE).toBe('backup:validate');
+    expect(IPC_CHANNELS.BACKUP_GET_AUTOMATIC_CONFIG).toBe('backup:getAutomaticConfig');
+    expect(IPC_CHANNELS.BACKUP_CHOOSE_AUTOMATIC_LOCATION).toBe('backup:chooseAutomaticLocation');
     expect(IPC_CHANNELS.RESTORE_EXECUTE).toBe('restore:execute');
   });
 

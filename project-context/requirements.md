@@ -71,8 +71,8 @@ Notable clarifications:
 | Topic | Requirement clarification |
 |-------|---------------------------|
 | BAK-02 | Filename pattern is `FMT_Backup_YYYY-MM-DD.cab` |
-| BAK-09 | Automatic backup on application close | Implemented |
-| BAK-10 | Safety backup retention (5) and auto-close retention (10) | Implemented |
+| BAK-09 | Automatic backup on application close | Implemented — user-selected folder (v1.4.0) |
+| BAK-10 | Safety backup retention (5); automatic close backups in the user folder are not pruned | Implemented |
 | UPD-* | In-app updates | **Shipped in v1.0** (GitHub Releases; see `update-system.md`) |
 | TXN balance gate | Transfers enforce insufficient balance; cash-out/edit may go negative | Documented limitation |
 

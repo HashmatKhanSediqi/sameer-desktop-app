@@ -3,6 +3,7 @@ import type { ApplicationContext } from '../services/applicationContext';
 import { AppError, wrapIpcHandler } from '../utils/errors';
 import { IPC_CHANNELS } from '@shared/types/ipc';
 import { defaultBackupFileName, type BackupProgress } from '@shared/types/backup';
+import { showAutomaticBackupFolderDialog } from '../services/backup/showAutomaticBackupFolderDialog';
 
 function parseSessionRequest(input: unknown): { sessionId: string; record: Record<string, unknown> } {
   if (!input || typeof input !== 'object') {
@@ -52,6 +53,18 @@ export function registerBackupHandlers(ipcMain: IpcMain, ctx: ApplicationContext
       return ctx.backupService.restore(request.filePath, request.confirmed, (progress) =>
         sendProgress(event, progress),
       );
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.BACKUP_GET_AUTOMATIC_CONFIG, () =>
+    wrapIpcHandler(() => ctx.settingsService.getAutomaticBackupConfig()),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.BACKUP_CHOOSE_AUTOMATIC_LOCATION, (event: IpcMainInvokeEvent) =>
+    wrapIpcHandler(async () => {
+      const electron = await import('electron');
+      const window = electron.BrowserWindow.fromWebContents(event.sender);
+      return showAutomaticBackupFolderDialog(ctx.settingsService, window);
     }),
   );
 }

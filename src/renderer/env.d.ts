@@ -81,6 +81,8 @@ import type {
   BackupValidateResult,
   RestoreExecuteRequest,
   RestoreExecuteResult,
+  AutomaticBackupConfigResult,
+  AutomaticBackupChooseResult,
   TransactionsUpdateRequest,
   TransactionsUpdateResult,
   TransfersCreateRequest,
@@ -198,6 +200,8 @@ export interface PreloadApi {
     create: (request: BackupCreateRequest) => Promise<BackupCreateResult>;
     validate: (request?: BackupValidateRequest) => Promise<BackupValidateResult>;
     restore: (request: RestoreExecuteRequest) => Promise<RestoreExecuteResult>;
+    getAutomaticConfig: () => Promise<AutomaticBackupConfigResult>;
+    chooseAutomaticLocation: () => Promise<AutomaticBackupChooseResult>;
     onProgress: (callback: (progress: BackupProgress) => void) => () => void;
   };
   update: {

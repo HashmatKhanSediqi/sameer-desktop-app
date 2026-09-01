@@ -7,7 +7,7 @@ import { PAGINATION_PAGE_SIZE_OPTIONS } from '@shared/types/settings';
 import { LanguageSelector } from '../../components/LanguageSelector';
 import { useAuth } from '../../context/AuthContext';
 import { RestorePage } from '../backup/RestorePage';
-import type { BackupCreateData, BackupProgress } from '@shared/types/backup';
+import type { BackupCreateData, BackupProgress, AutomaticBackupConfig } from '@shared/types/backup';
 import {
   SettingsAccountSection,
   SettingsAppearanceSection,
@@ -67,6 +67,10 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
   const [createdBackup, setCreatedBackup] = useState<BackupCreateData | null>(null);
   const [backupError, setBackupError] = useState<string | null>(null);
   const [backupSuccess, setBackupSuccess] = useState<string | null>(null);
+  const [automaticBackup, setAutomaticBackup] = useState<AutomaticBackupConfig | null>(null);
+  const [automaticBackupError, setAutomaticBackupError] = useState<string | null>(null);
+  const [automaticBackupSuccess, setAutomaticBackupSuccess] = useState<string | null>(null);
+  const [isChoosingAutomaticLocation, setIsChoosingAutomaticLocation] = useState(false);
   const [activeSection, setActiveSection] = useState<SettingsSectionId>('general');
 
   const load = useCallback(async (): Promise<void> => {
@@ -78,12 +82,14 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
     setLoadError(null);
 
     try {
-      const [settingsResult, currencyResult, pathsResult, statusResult] = await Promise.all([
-        window.api.settings.get(),
-        window.api.currencies.list({ sessionId, includeInactive: true }),
-        window.api.app.getPaths(sessionId),
-        window.api.app.getStatus(sessionId),
-      ]);
+      const [settingsResult, currencyResult, pathsResult, statusResult, automaticBackupResult] =
+        await Promise.all([
+          window.api.settings.get(),
+          window.api.currencies.list({ sessionId, includeInactive: true }),
+          window.api.app.getPaths(sessionId),
+          window.api.app.getStatus(sessionId),
+          window.api.backup.getAutomaticConfig(),
+        ]);
 
       if (!settingsResult.ok) {
         setLoadError(mapSettingsError(tErrors, settingsResult.errorCode, settingsResult.message));
@@ -101,11 +107,16 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
         setLoadError(mapSettingsError(tErrors, statusResult.errorCode, statusResult.message));
         return;
       }
+      if (!automaticBackupResult.ok) {
+        setLoadError(mapSettingsError(tErrors, automaticBackupResult.errorCode, automaticBackupResult.message));
+        return;
+      }
 
       setSettings(settingsResult.data);
       setCurrencies(currencyResult.data.currencies);
       setPaths(pathsResult.data);
       setStatus(statusResult.data);
+      setAutomaticBackup(automaticBackupResult.data);
     } catch {
       setLoadError(tErrors('INTERNAL_ERROR'));
     } finally {
@@ -144,6 +155,14 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
     const timer = window.setTimeout(() => setBackupSuccess(null), 2500);
     return () => window.clearTimeout(timer);
   }, [backupSuccess]);
+
+  useEffect(() => {
+    if (!automaticBackupSuccess) {
+      return;
+    }
+    const timer = window.setTimeout(() => setAutomaticBackupSuccess(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [automaticBackupSuccess]);
 
   async function savePagination(next: { paginationEnabled?: boolean; paginationPageSize?: number }): Promise<void> {
     if (!sessionId || isSavingPagination) {
@@ -190,6 +209,31 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
     } finally {
       setIsCreatingBackup(false);
       setBackupProgress(null);
+    }
+  }
+
+  async function chooseAutomaticBackupLocation(): Promise<void> {
+    if (isChoosingAutomaticLocation || isCreatingBackup) {
+      return;
+    }
+
+    setIsChoosingAutomaticLocation(true);
+    setAutomaticBackupError(null);
+    try {
+      const result = await window.api.backup.chooseAutomaticLocation();
+      if (!result.ok) {
+        setAutomaticBackupError(mapBackupError(tBackup, tErrors, result.errorCode, result.message));
+        return;
+      }
+      setAutomaticBackup(result.data.config);
+      if (result.data.canceled) {
+        return;
+      }
+      setAutomaticBackupSuccess(tBackup('automatic.locationSaved'));
+    } catch {
+      setAutomaticBackupError(tErrors('INTERNAL_ERROR'));
+    } finally {
+      setIsChoosingAutomaticLocation(false);
     }
   }
 
@@ -339,6 +383,46 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
           {activeSection === 'backup' ? (
             <section className="card settings-section-card">
               <h2>{tBackup('title')}</h2>
+              <section className="settings-subsection">
+                <h3>{tBackup('automatic.title')}</h3>
+                {automaticBackupError ? (
+                  <div className="banner banner-error" role="alert">
+                    {automaticBackupError}
+                  </div>
+                ) : null}
+                {automaticBackupSuccess ? (
+                  <div className="banner banner-success" role="status">
+                    {automaticBackupSuccess}
+                  </div>
+                ) : null}
+                {automaticBackup && !automaticBackup.configured ? (
+                  <div className="banner banner-warning" role="status">
+                    {tBackup('automatic.notConfigured')}
+                  </div>
+                ) : null}
+                <dl className="status-list">
+                  <div>
+                    <dt>{tBackup('automatic.location')}</dt>
+                    <dd className="mono">
+                      {automaticBackup?.path ?? tBackup('automatic.notConfiguredPath')}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="action-bar">
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={() => void chooseAutomaticBackupLocation()}
+                    disabled={isChoosingAutomaticLocation || isCreatingBackup}
+                  >
+                    {isChoosingAutomaticLocation
+                      ? tBackup('automatic.choosingLocation')
+                      : automaticBackup?.configured
+                        ? tBackup('automatic.changeLocation')
+                        : tBackup('automatic.chooseLocation')}
+                  </button>
+                </div>
+              </section>
               {backupError ? (
                 <div className="banner banner-error" role="alert">
                   {backupError}
@@ -354,7 +438,7 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
                   type="button"
                   className="button button-primary"
                   onClick={() => void createBackup()}
-                  disabled={isCreatingBackup}
+                  disabled={isCreatingBackup || isChoosingAutomaticLocation}
                 >
                   {isCreatingBackup ? tBackup('creating') : tBackup('create')}
                 </button>
@@ -362,7 +446,7 @@ export function SettingsPage({ onBack }: SettingsPageProps): JSX.Element {
                   type="button"
                   className="button button-secondary"
                   onClick={() => setShowRestore(true)}
-                  disabled={isCreatingBackup}
+                  disabled={isCreatingBackup || isChoosingAutomaticLocation}
                 >
                   {tBackup('restoreFromBackup')}
                 </button>

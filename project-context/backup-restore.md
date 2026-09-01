@@ -14,7 +14,7 @@ Backup/restore is **critical infrastructure**. The system must allow complete re
 | Backup extension | `.cab` (ZIP-compatible archive) |
 | Manual filename pattern | `FMT_Backup_YYYY-MM-DD.cab` |
 | Safety backup pattern | `FMT_SafetyBackup_YYYY-MM-DD_HH-mm-ss.cab` |
-| Auto-close backup pattern | `FMT_AutoClose_YYYY-MM-DD_HH-mm-ss.cab` |
+| Auto-close backup pattern | `FMT-AutoBackup-YYYY-MM-DD-HH-mm-ss.cab` |
 | Portability | Restorable on fresh install |
 | Pre-login restore | Yes — "Import Existing System" |
 | Encryption | **None in v1.0** — backups are unencrypted |
@@ -92,20 +92,27 @@ A backup is **not** reported successful unless validation succeeds.
 
 ## 5. Automatic Backup on Application Close
 
-Implemented in v1.0.
+Implemented in v1.0; user-selected location added in v1.4.0.
+
+Uses the **same** `BackupService.create()` / `.cab` format as Manual Backup. Automatic backups are restorable with the existing Restore / Import flow.
 
 | Attribute | Value |
 |-----------|-------|
-| Trigger | `before-quit` (single-flight; second quit cannot bypass) |
-| Location | `%APPDATA%\CustomerAccounting\backups\scheduled\` |
-| Filename | `FMT_AutoClose_*.cab` |
-| Retention | Keep latest **10** matching prefix |
-| Skip when | No accounting data |
+| Trigger | `before-quit` (single-flight; later quit events wait and do not start a second backup) |
+| Location | User-selected folder, persisted in `settings.automatic_backup_path` |
+| First launch | Native folder dialog: "Where should automatic backups be saved?" — asked once if no path is configured |
+| Settings | Settings → Backup → Automatic Backup shows the path and **Change Location** |
+| Filename | `FMT-AutoBackup-YYYY-MM-DD-HH-mm-ss.cab` (never overwrites an existing file) |
+| Retention | **None** for the user-chosen folder — every close keeps a new file |
+| Skip when | No folder configured, or no accounting data |
+| Cancelled first-launch dialog | Do not invent a path; mark prompted so startup is not interrupted again; configure later in Settings |
 | On failure | Log warning; **application still quits** (does not corrupt DB) |
 | Timeout | 120 seconds |
 | Validation | Create then validate; invalid file deleted |
 
 Database remains open during backup; shutdown/checkpoint occurs after auto-close backup attempt.
+
+A normal-close backup cannot protect against a hard power loss, forced process kill, or OS crash. Crash recovery remains WAL + crash sentinel + `PRAGMA integrity_check` (see `desktop-app.md`).
 
 ---
 
@@ -156,6 +163,8 @@ The renderer must pass the selected backup `filePath` to `restore:execute`. If `
 | Channel | Session required | Why |
 |---------|------------------|-----|
 | `backup:create` | Yes | Authenticated admin action |
+| `backup:getAutomaticConfig` | **No** | First-launch folder prompt |
+| `backup:chooseAutomaticLocation` | **No** | Native dialog; path not taken from renderer |
 | `backup:validate` | **No** | Pre-login disaster recovery |
 | `restore:execute` | **No** | Pre-login disaster recovery; requires `confirmed: true` |
 
@@ -182,7 +191,7 @@ The renderer must pass the selected backup `filePath` to `restore:execute`. If `
 | Category | Directory | Prefix | Keep | Deletes manual backups? |
 |----------|-----------|--------|------|-------------------------|
 | Manual | User-chosen | `FMT_Backup_` (typical) | Unlimited | N/A — never pruned by app |
-| Auto-close | `backups/scheduled/` | `FMT_AutoClose_` | 10 | No |
+| Auto-close | User-chosen folder | `FMT-AutoBackup-` | Unlimited | No |
 | Safety | `backups/auto/` | `FMT_SafetyBackup_` | 5 | No |
 
 Pruning only deletes files whose names match the **exact category prefix** and `.cab` extension. Unrelated files are never deleted. Newest valid backups are retained.
@@ -207,6 +216,6 @@ At ~100k customers / ~300k transactions, automated tests observed backup create 
 - [x] Restore/import merges customers, transactions, and photos without replacing live data (automated)
 - [x] Safety backup before import when live data exists (automated)
 - [x] Corrupted / traversal archives rejected (automated)
-- [x] Auto-close backup + retention (automated)
+- [x] Auto-close backup to the configured folder; unique names; no overwrite (automated)
 - [x] Safety retention ≤ 5 (automated)
 - [ ] Manual clean-VM restore smoke test (operator)

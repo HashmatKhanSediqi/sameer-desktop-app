@@ -26,6 +26,8 @@ import type {
   BackupProgress,
   BackupValidateData,
   RestoreExecuteData,
+  AutomaticBackupConfig,
+  AutomaticBackupChooseData,
 } from './backup';
 import type {
   CreateTransactionInput,
@@ -483,6 +485,20 @@ export interface RestoreExecuteSuccessResponse {
 
 export type RestoreExecuteResult = RestoreExecuteSuccessResponse | IpcErrorResponse;
 
+export interface AutomaticBackupConfigSuccessResponse {
+  ok: true;
+  data: AutomaticBackupConfig;
+}
+
+export type AutomaticBackupConfigResult = AutomaticBackupConfigSuccessResponse | IpcErrorResponse;
+
+export interface AutomaticBackupChooseSuccessResponse {
+  ok: true;
+  data: AutomaticBackupChooseData;
+}
+
+export type AutomaticBackupChooseResult = AutomaticBackupChooseSuccessResponse | IpcErrorResponse;
+
 export type { BackupProgress };
 
 export type AuthChangePasswordRequest = AuthenticatedRequest & {
@@ -728,6 +744,8 @@ export const IPC_CHANNELS = {
   IMPORT_DOWNLOAD_TEMPLATE: 'import:downloadTemplate',
   BACKUP_CREATE: 'backup:create',
   BACKUP_VALIDATE: 'backup:validate',
+  BACKUP_GET_AUTOMATIC_CONFIG: 'backup:getAutomaticConfig',
+  BACKUP_CHOOSE_AUTOMATIC_LOCATION: 'backup:chooseAutomaticLocation',
   RESTORE_EXECUTE: 'restore:execute',
   SETTINGS_GET: 'settings:get',
   SETTINGS_UPDATE: 'settings:update',
