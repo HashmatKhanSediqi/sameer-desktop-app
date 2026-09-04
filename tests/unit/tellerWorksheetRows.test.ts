@@ -5,6 +5,7 @@ import {
   planWorksheetSides,
   resolveWorksheetRowCount,
   suggestTellerExportFileName,
+  suggestTellerDailyExportFileName,
   worksheetRowNumbers,
 } from '../../src/shared/teller/worksheetRows';
 
@@ -50,5 +51,10 @@ describe('teller worksheet rows', () => {
     expect(suggestTellerExportFileName('AFN', '2026-08-29')).toBe('FMT-Teller-AFN-2026-08-29.xlsx');
     expect(suggestTellerExportFileName('usd', '2026-08-29')).toBe('FMT-Teller-USD-2026-08-29.xlsx');
     expect(suggestTellerExportFileName('GB/P', '2026-08-29')).toBe('FMT-Teller-GBP-2026-08-29.xlsx');
+  });
+
+  it('builds one currency-neutral filename for the combined daily workbook', () => {
+    expect(suggestTellerDailyExportFileName('2026-09-04')).toBe('FMT-Teller-2026-09-04.xlsx');
+    expect(suggestTellerDailyExportFileName('bad')).toBe('FMT-Teller-date.xlsx');
   });
 });

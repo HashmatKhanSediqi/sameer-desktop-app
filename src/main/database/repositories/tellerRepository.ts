@@ -474,6 +474,13 @@ export class TellerRepository {
       | undefined;
     return row !== undefined;
   }
+
+  listActiveCurrencyCodes(): string[] {
+    const rows = this.db
+      .prepare('SELECT code FROM currencies WHERE is_active = 1 ORDER BY sort_order ASC, code ASC')
+      .all() as Array<{ code: string }>;
+    return rows.map((row) => row.code);
+  }
 }
 
 function toSession(row: TellerSessionRecord, openingCounts: Record<string, number>): TellerSession {

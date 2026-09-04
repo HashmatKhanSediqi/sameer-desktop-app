@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { INITIAL_WORKSHEET_ROWS, suggestTellerExportFileName } from '@shared/teller/worksheetRows';
-import { tellerDayAction } from '@shared/teller/sessionState';
+import { INITIAL_WORKSHEET_ROWS, suggestTellerDailyExportFileName } from '@shared/teller/worksheetRows';
+import { isPrimaryTellerCurrency, tellerDayAction } from '@shared/teller/sessionState';
 import type { CompanyProfile } from '@shared/types/company';
 import type { Currency } from '@shared/types/currency';
 import type { TellerSheet } from '@shared/types/teller';
@@ -9,6 +9,7 @@ import { LanguageSelector } from '../../components/LanguageSelector';
 import { ModuleSwitcher, type AppModule } from '../../components/ModuleSwitcher';
 import { useAuth } from '../../context/AuthContext';
 import { TellerCurrencyForm } from './components/TellerCurrencyForm';
+import { TellerCurrencyEditor } from './components/TellerCurrencyEditor';
 import { TellerSheetPage } from './TellerSheetPage';
 
 interface TellerShellProps {
@@ -35,6 +36,8 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
   const [pendingReset, setPendingReset] = useState(false);
   const [worksheetRows, setWorksheetRows] = useState(INITIAL_WORKSHEET_ROWS);
   const [showAddCurrency, setShowAddCurrency] = useState(false);
+  const [showCurrencyEditor, setShowCurrencyEditor] = useState(false);
+  const [openSessionCount, setOpenSessionCount] = useState(0);
 
   useEffect(() => {
     if (!sessionId) {
@@ -58,7 +61,14 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
     }
     void window.api.currencies.list({ sessionId }).then((result) => {
       if (result.ok) {
-        setCurrencies(result.data.currencies.filter((item) => item.isActive));
+        const active = result.data.currencies.filter((item) => item.isActive);
+        setCurrencies(active);
+        setCurrencyCode((current) => current ?? active[0]?.code ?? null);
+      }
+    });
+    void window.api.teller.currentSession({ sessionId }).then((result) => {
+      if (result.ok) {
+        setOpenSessionCount(result.data.sessions.length);
       }
     });
   }, [sessionId, refreshKey]);
@@ -88,6 +98,7 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
     setError(null);
     setExportMessage(null);
     setShowAddCurrency(false);
+    setShowCurrencyEditor(false);
   }
 
   function handleCurrencyCreated(code: string): void {
@@ -96,15 +107,14 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
   }
 
   async function confirmEndDay(): Promise<void> {
-    if (!sessionId || !sheet?.session || pendingRows === null || ending) {
+    if (!sessionId || pendingRows === null || ending) {
       return;
     }
     setEnding(true);
     setError(null);
     const result = await window.api.teller.endDay({
       sessionId,
-      tellerSessionId: sheet.session.id,
-      fileName: suggestTellerExportFileName(sheet.currencyCode, sheet.session.sessionDate),
+      fileName: suggestTellerDailyExportFileName(sheet?.session?.sessionDate ?? ''),
       worksheetRows: pendingRows,
     });
     setEnding(false);
@@ -116,25 +126,32 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
     if ('canceled' in result.data && result.data.canceled) {
       return;
     }
-    if ('filePath' in result.data && result.data.filePath) {
+    if ('filePath' in result.data) {
+      setOpenSessionCount(0);
       setExportMessage(t('session.exportSuccess', { path: result.data.filePath }));
       bump();
     }
   }
 
   async function startToday(): Promise<void> {
-    if (!sessionId || !currencyCode || starting) {
+    if (!sessionId || starting) {
       return;
     }
     setStarting(true);
     setError(null);
-    const result = await window.api.teller.startDay({ sessionId, currencyCode });
+    const result = await window.api.teller.startDay({ sessionId });
     setStarting(false);
     if (!result.ok) {
       setError(tErrors(result.errorCode));
       return;
     }
-    setSheet(result.data);
+    setOpenSessionCount(result.data.sheets.filter((item) => item.session?.status === 'OPEN').length);
+    const selected = result.data.sheets.find((item) => item.currencyCode === currencyCode);
+    if (selected) {
+      setSheet(selected);
+    } else {
+      bump();
+    }
     setExportMessage(null);
   }
 
@@ -166,8 +183,8 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
           </div>
         </div>
         <div className="header-toolbar">
-          {currencyCode && sheet ? (
-            tellerDayAction(sheet.session?.status) === 'END' ? (
+          {isPrimaryTellerCurrency(currencyCode, currencies.map((currency) => currency.code)) ? (
+            tellerDayAction(openSessionCount) === 'END' ? (
               <button
                 type="button"
                 className="teller-end-day-btn"
@@ -187,7 +204,7 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
               </button>
             )
           ) : null}
-          {currencyCode && sheet ? (
+          {currencyCode && sheet?.session ? (
             <button
               type="button"
               className="teller-reset-cash-btn"
@@ -208,30 +225,13 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
       <main className="app-main teller-main">
         {error ? <p className="form-error">{error}</p> : null}
         {exportMessage ? <p className="teller-export-success">{exportMessage}</p> : null}
-        {!currencyCode ? (
-          <section className="teller-currency-gate">
-            <p>{t('sheet.chooseCurrency')}</p>
-            <div className="teller-currency-gate-list">
-              {currencies.map((currency) => (
-                <button
-                  key={currency.code}
-                  type="button"
-                  className={`teller-sheet-tab is-${currency.code.toLowerCase()}`}
-                  onClick={() => selectCurrency(currency.code)}
-                >
-                  {currency.code}
-                </button>
-              ))}
-            </div>
-            <TellerCurrencyForm onCreated={handleCurrencyCreated} />
-          </section>
-        ) : sheet ? (
+        {sheet ? (
           <TellerSheetPage
             sheet={sheet}
             onChanged={bump}
             onWorksheetRowsChange={setWorksheetRows}
           />
-        ) : null}
+        ) : <p className="hint-text">{t('sheet.chooseCurrency')}</p>}
       </main>
 
       {currencyCode ? (
@@ -255,15 +255,33 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
           <button
             type="button"
             className="teller-sheet-tab"
-            onClick={() => setShowAddCurrency((value) => !value)}
+            onClick={() => {
+              setShowCurrencyEditor(false);
+              setShowAddCurrency((value) => !value);
+            }}
           >
             {t('form.addCurrency')}
+          </button>
+          <button
+            type="button"
+            className="teller-sheet-tab teller-edit-currency-tab"
+            onClick={() => {
+              setShowAddCurrency(false);
+              setShowCurrencyEditor((value) => !value);
+            }}
+          >
+            {t('form.editCurrency')}
           </button>
         </nav>
       ) : null}
       {currencyCode && showAddCurrency ? (
         <div className="teller-currency-form-inline">
           <TellerCurrencyForm onCreated={handleCurrencyCreated} />
+        </div>
+      ) : null}
+      {currencyCode && showCurrencyEditor ? (
+        <div className="teller-currency-form-inline">
+          <TellerCurrencyEditor currencyCode={currencyCode} onChanged={bump} onClose={() => setShowCurrencyEditor(false)} />
         </div>
       ) : null}
 

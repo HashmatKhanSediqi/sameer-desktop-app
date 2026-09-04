@@ -640,7 +640,6 @@ export type TellerSessionUpdateRequest = AuthenticatedRequest &
 export type TellerSessionUpdateResult = TellerSessionOpenResult;
 
 export type TellerDayEndRequest = AuthenticatedRequest & {
-  tellerSessionId: number;
   filePath?: string;
   fileName?: string;
   worksheetRows?: number;
@@ -649,12 +648,21 @@ export type TellerDayEndSuccessResponse = {
   ok: true;
   data:
     | { canceled: true }
-    | { canceled?: false; session: TellerSession; filePath: string; closingAmount: string };
+    | {
+        canceled?: false;
+        sessions: TellerSession[];
+        filePath: string;
+        closings: Array<{ currencyCode: string; closingAmount: string }>;
+      };
 };
 export type TellerDayEndResult = TellerDayEndSuccessResponse | IpcErrorResponse;
 
-export type TellerDayStartRequest = AuthenticatedRequest & { currencyCode: string };
-export type TellerDayStartResult = TellerSheetGetResult;
+export type TellerDayStartRequest = AuthenticatedRequest;
+export interface TellerDayStartSuccessResponse {
+  ok: true;
+  data: { sheets: TellerSheet[] };
+}
+export type TellerDayStartResult = TellerDayStartSuccessResponse | IpcErrorResponse;
 
 export type TellerCashResetRequest = AuthenticatedRequest & { currencyCode: string };
 export type TellerCashResetResult = TellerSheetGetResult;

@@ -34,14 +34,16 @@ export interface TellerDayExportInput {
   closingCounts: Record<string, number>;
 }
 
-export async function writeTellerDayWorkbook(filePath: string, input: TellerDayExportInput): Promise<string> {
+export async function writeTellerDayWorkbook(filePath: string, inputs: TellerDayExportInput[]): Promise<string> {
   const target = uniqueExcelPath(filePath);
   try {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet(input.sheet.currencyCode, {
-      views: [{ showGridLines: true }],
-    });
-    renderWorkbook(worksheet, input);
+    for (const input of inputs) {
+      const worksheet = workbook.addWorksheet(input.sheet.currencyCode, {
+        views: [{ showGridLines: true, state: 'frozen', ySplit: 14 }],
+      });
+      renderWorkbook(worksheet, input);
+    }
     await workbook.xlsx.writeFile(target);
     return target;
   } catch (error) {
@@ -119,8 +121,6 @@ function renderWorkbook(sheet: ExcelJS.Worksheet, input: TellerDayExportInput): 
     ['Total Withdrawal', summary.withdrawalTransactionCount],
     ['Total Transactions', summary.totalTransactionCount],
     ['Opp-Amount', Number(summary.oppAmount)],
-    ['CASH IN (ICBA)', Number(summary.cashInICBA)],
-    ['CASH OUT (ICBA)', Number(summary.cashOutICBA)],
     ['TOTAL', Number(summary.headerTotal)],
     ['RESULT', Number(summary.result)],
     ['Closing cash', Number(input.closingAmount)],

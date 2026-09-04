@@ -320,6 +320,8 @@ Direction `IN` increases physical cash; `OUT` decreases it; `OPENING` is a snaps
 
 Working period for a teller in a company.
 
+The current UI lifecycle is global: START creates/reopens the per-currency session records for every active currency in one action, and END writes one daily Excel workbook with one worksheet per currency before closing every open currency session together. Per-currency rows remain the persistence model so balances, denominations, OP carry-forward, and history are never mixed.
+
 - `company_id` (default 1), `teller_user_id` → `admin_users`
 - `opened_at`, `closed_at`, `status` (`OPEN` / `CLOSED`)
 - `created_by` / `updated_by`

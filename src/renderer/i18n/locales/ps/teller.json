@@ -107,10 +107,20 @@
     "currency": "اسعار",
     "noDenoms": "د دې اسعارو لپاره د پیسو واحدونه نه دي تنظیم شوي.",
     "addCurrency": "اسعار اضافه کول",
+    "saveCurrency": "اسعار خوندي کول",
     "addCurrencyHint": "د صندوق لپاره نوی اسعار اضافه کړئ او د هغه واحدونه وټاکئ.",
     "currencyCode": "کوډ",
     "currencyName": "نوم",
     "denominations": "د پیسو واحدونه",
-    "denominationsHint": "50 20 10 5 2 1"
+    "denominationsHint": "50 20 10 5 2 1",
+    "editCurrency": "اسعار سمول",
+    "editCurrencyLabel": "د {{currency}} واحدونه سمول",
+    "closeEditor": "تړل",
+    "denominationValue": "د واحد ارزښت",
+    "addDenomination": "واحد اضافه کول",
+    "retireDenomination": "غیرفعالول",
+    "restoreDenomination": "بیا فعالول",
+    "historicalDenomination": "دا واحد د صندوق په تاریخي معلوماتو کې کارول شوی.",
+    "inUse": "کارول شوی"
   }
 }

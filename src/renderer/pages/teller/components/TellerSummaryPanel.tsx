@@ -10,7 +10,7 @@ interface TellerSummaryPanelProps {
   session: TellerSession;
   summary: TellerSessionSummary;
   disabled: boolean;
-  onSaveMeta: (input: { oppAmount?: string; cashInICBA?: string; cashOutICBA?: string }) => void;
+  onSaveMeta: (input: { oppAmount?: string }) => void;
 }
 
 export function TellerSummaryPanel({
@@ -24,13 +24,9 @@ export function TellerSummaryPanel({
   const { t } = useTranslation('teller');
   const { formatMoney } = useLocaleFormat();
   const [oppAmount, setOppAmount] = useState(formatTellerPlainAmount(session.oppAmount));
-  const [cashIn, setCashIn] = useState(formatTellerPlainAmount(session.cashInICBA));
-  const [cashOut, setCashOut] = useState(formatTellerPlainAmount(session.cashOutICBA));
 
   useEffect(() => {
     setOppAmount(formatTellerPlainAmount(session.oppAmount));
-    setCashIn(formatTellerPlainAmount(session.cashInICBA));
-    setCashOut(formatTellerPlainAmount(session.cashOutICBA));
   }, [session]);
 
   const banner =
@@ -122,32 +118,6 @@ export function TellerSummaryPanel({
                   disabled={disabled}
                   onChange={(event) => setOppAmount(event.target.value)}
                   onBlur={() => onSaveMeta({ oppAmount: oppAmount.trim() || '0' })}
-                />
-              </td>
-            </tr>
-            <tr>
-              <th>{t('sheet.cashInIcba')}</th>
-              <td>
-                <input
-                  className="teller-input-amount"
-                  inputMode="decimal"
-                  value={cashIn}
-                  disabled={disabled}
-                  onChange={(event) => setCashIn(event.target.value)}
-                  onBlur={() => onSaveMeta({ cashInICBA: cashIn.trim() || '0' })}
-                />
-              </td>
-            </tr>
-            <tr>
-              <th>{t('sheet.cashOutIcba')}</th>
-              <td>
-                <input
-                  className="teller-input-amount"
-                  inputMode="decimal"
-                  value={cashOut}
-                  disabled={disabled}
-                  onChange={(event) => setCashOut(event.target.value)}
-                  onBlur={() => onSaveMeta({ cashOutICBA: cashOut.trim() || '0' })}
                 />
               </td>
             </tr>

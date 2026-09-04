@@ -84,7 +84,7 @@ export function TellerCurrencyForm({ onCreated }: TellerCurrencyFormProps): JSX.
         </label>
       </div>
       <button type="submit" className="teller-sheet-tab" disabled={saving}>
-        {t('form.addCurrency')}
+        {t('form.saveCurrency')}
       </button>
     </form>
   );

@@ -449,7 +449,7 @@ describe('teller service workbook model', () => {
     }
   });
 
-  it('exports the finalized day to Excel and keeps AFN/USD close isolated', async () => {
+  it('exports and finalizes every open currency together', async () => {
     const harness = await createTellerHarness();
     const exportPath = path.join(tmpdir(), suggestTellerExportFileName('USD', '2026-08-29'));
     const files = [exportPath];
@@ -465,6 +465,12 @@ describe('teller service workbook model', () => {
         sessionDate: '2026-08-29',
         openingCounts: counts({ '1000': 2 }),
         openingAmount: '2000',
+      });
+      const eur = harness.tellerService.openSession(harness.userId, {
+        currencyCode: 'EUR',
+        sessionDate: '2026-08-29',
+        openingCounts: counts({ '100': 3 }),
+        openingAmount: '300',
       });
       for (let index = 0; index < 35; index += 1) {
         harness.tellerService.upsertTransaction(harness.userId, {
@@ -483,17 +489,22 @@ describe('teller service workbook model', () => {
         denominationCounts: counts({ '100': 2 }),
       });
 
-      const ended = await harness.tellerService.endDay(harness.userId, usd.id, exportPath, 36);
+      const ended = await harness.tellerService.endDay(harness.userId, exportPath, 36);
       files.push(ended.filePath);
-      expect(ended.session.status).toBe('CLOSED');
-      expect(ended.session.currencyCode).toBe('USD');
-      expect(amountsEqual(ended.closingAmount, '4300')).toBe(true);
-      expect(harness.tellerService.getCurrentSession('AFN')?.id).toBe(afn.id);
-      expect(harness.tellerService.getCurrentSession('AFN')?.status).toBe('OPEN');
+      expect(ended.sessions.every((session) => session.status === 'CLOSED')).toBe(true);
+      expect(ended.sessions.map((session) => session.currencyCode).sort()).toEqual(['AFN', 'EUR', 'USD']);
+      const usdClosing = ended.closings.find((item) => item.currencyCode === 'USD')!;
+      expect(amountsEqual(usdClosing.closingAmount, '4300')).toBe(true);
+      expect(harness.tellerService.getCurrentSession('AFN')).toBeNull();
       expect(harness.tellerService.getCurrentSession('USD')).toBeNull();
+      expect(harness.tellerService.getCurrentSession('EUR')).toBeNull();
 
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(ended.filePath);
+      expect(workbook.worksheets.map((item) => item.name).sort()).toEqual(['AFN', 'EUR', 'USD']);
+      expect(workbook.getWorksheet('AFN')?.getCell(2, 2).value).toBe('AFN');
+      expect(workbook.getWorksheet('EUR')?.getCell(15, 2).value).toBe('OP');
+      expect(ended.sessions.some((session) => session.id === eur.id)).toBe(true);
       const worksheet = workbook.getWorksheet('USD');
       expect(worksheet).toBeTruthy();
       expect(worksheet!.getCell(2, 2).value).toBe('USD');
@@ -548,7 +559,7 @@ describe('teller service workbook model', () => {
         denominationCounts: counts({ '1000': 1 }),
       });
       const badPath = path.join(tmpdir(), 'missing-teller-dir', 'FMT-Teller-AFN-2026-08-29.xlsx');
-      await expect(harness.tellerService.endDay(harness.userId, session.id, badPath, 20)).rejects.toThrow(
+      await expect(harness.tellerService.endDay(harness.userId, badPath, 20)).rejects.toThrow(
         /TELLER_EXPORT_FAILED/,
       );
       expect(harness.tellerService.getCurrentSession('AFN')?.id).toBe(session.id);
@@ -559,7 +570,7 @@ describe('teller service workbook model', () => {
     }
   });
 
-  it('does not close AFN when USD is finalized', async () => {
+  it('closes AFN and USD in the same global end action', async () => {
     const harness = await createTellerHarness();
     const exportPath = path.join(tmpdir(), suggestTellerExportFileName('AFN', '2026-08-29'));
     try {
@@ -571,11 +582,10 @@ describe('teller service workbook model', () => {
         currencyCode: 'USD',
         sessionDate: '2026-08-29',
       });
-      const ended = await harness.tellerService.endDay(harness.userId, afn.id, exportPath, 20);
-      expect(ended.session.currencyCode).toBe('AFN');
-      expect(ended.session.status).toBe('CLOSED');
-      expect(harness.tellerService.getCurrentSession('USD')?.id).toBe(usd.id);
-      expect(harness.tellerService.getCurrentSession('USD')?.status).toBe('OPEN');
+      const ended = await harness.tellerService.endDay(harness.userId, exportPath, 20);
+      expect(ended.sessions.map((session) => session.id).sort()).toEqual([afn.id, usd.id].sort());
+      expect(ended.sessions.every((session) => session.status === 'CLOSED')).toBe(true);
+      expect(harness.tellerService.getCurrentSession('USD')).toBeNull();
     } finally {
       if (existsSync(exportPath)) {
         unlinkSync(exportPath);
@@ -606,8 +616,8 @@ describe('teller service workbook model', () => {
         declaredAmount: '50',
         denominationCounts: counts({ '50': 1 }),
       });
-      const ended = await harness.tellerService.endDay(harness.userId, session.id, exportPath, 20);
-      expect(ended.session.status).toBe('CLOSED');
+      const ended = await harness.tellerService.endDay(harness.userId, exportPath, 20);
+      expect(ended.sessions.find((item) => item.id === session.id)?.status).toBe('CLOSED');
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(ended.filePath);
       const worksheet = workbook.getWorksheet('GBP');
@@ -646,7 +656,7 @@ describe('teller service workbook model', () => {
         denominationCounts: counts({ '500': 1 }),
       });
 
-      await harness.tellerService.endDay(harness.userId, afn.id, exportPath, 20);
+      await harness.tellerService.endDay(harness.userId, exportPath, 20);
 
       const closed = harness.tellerService.getSheet('AFN', { userId: harness.userId });
       expect(closed.session?.id).toBe(afn.id);
@@ -655,7 +665,8 @@ describe('teller service workbook model', () => {
       expect(amountsEqual(closed.summary.currentCash, '1500')).toBe(true);
       expect(amountsEqual(closed.summary.openingAmount, '1000')).toBe(true);
 
-      const next = harness.tellerService.startDay(harness.userId, 'AFN');
+      const started = harness.tellerService.startDay(harness.userId);
+      const next = started.find((item) => item.currencyCode === 'AFN')!;
       expect(next.session?.status).toBe('OPEN');
       expect(next.session?.id).not.toBe(afn.id);
       expect(next.session?.sessionDate).toBe(nextTellerBusinessDate(today));
@@ -679,7 +690,7 @@ describe('teller service workbook model', () => {
       const history = harness.tellerService.listTransactions({ sessionId: afn.id });
       expect(history.totalCount).toBe(1);
       expect(history.transactions[0]?.referenceLabel).toBe('YESTERDAY');
-      expect(harness.tellerService.getCurrentSession('USD')?.id).toBe(usd.id);
+      expect(harness.tellerService.getCurrentSession('USD')?.id).not.toBe(usd.id);
       expect(harness.tellerService.getCurrentSession('USD')?.status).toBe('OPEN');
     } finally {
       if (existsSync(exportPath)) {
@@ -727,7 +738,7 @@ describe('teller service workbook model', () => {
     }
   });
 
-  it('tracks START/END independently per currency without auto-opening idle currencies', async () => {
+  it('starts every active currency and ends every open currency globally', async () => {
     const harness = await createTellerHarness();
     const today = (() => {
       const now = new Date();
@@ -743,19 +754,20 @@ describe('teller service workbook model', () => {
 
       harness.tellerService.openSession(harness.userId, { currencyCode: 'USD', sessionDate: today });
       const afn = harness.tellerService.openSession(harness.userId, { currencyCode: 'AFN', sessionDate: today });
-      await harness.tellerService.endDay(harness.userId, afn.id, exportPath, 20);
+      await harness.tellerService.endDay(harness.userId, exportPath, 20);
 
       const afnSheet = harness.tellerService.getSheet('AFN', { userId: harness.userId });
       const usdSheet = harness.tellerService.getSheet('USD', { userId: harness.userId });
       const gbpSheet = harness.tellerService.getSheet('GBP', { userId: harness.userId });
 
-      expect(tellerDayAction(afnSheet.session?.status)).toBe('START');
-      expect(tellerDayAction(usdSheet.session?.status)).toBe('END');
+      expect(tellerDayAction(harness.tellerService.listOpenSessions().length)).toBe('START');
+      expect(afnSheet.session?.status).toBe('CLOSED');
+      expect(usdSheet.session?.status).toBe('CLOSED');
       expect(gbpSheet.session).toBeNull();
-      expect(tellerDayAction(gbpSheet.session?.status)).toBe('START');
-
-      expect(harness.tellerService.getCurrentSession('USD')?.status).toBe('OPEN');
-      expect(harness.tellerService.getCurrentSession('GBP')).toBeNull();
+      const started = harness.tellerService.startDay(harness.userId);
+      expect(started.map((sheet) => sheet.currencyCode)).toEqual(['AFN', 'USD', 'EUR', 'GBP']);
+      expect(started.every((sheet) => sheet.session?.status === 'OPEN')).toBe(true);
+      expect(tellerDayAction(harness.tellerService.listOpenSessions().length)).toBe('END');
     } finally {
       if (existsSync(exportPath)) {
         unlinkSync(exportPath);
@@ -778,22 +790,23 @@ describe('teller service workbook model', () => {
         openingCounts: counts({ '1000': 10, '500': 5, '100': 10 }),
         openingAmount: '13500.0000',
       });
-      await harness.tellerService.endDay(harness.userId, session.id, exportPath, 20);
+      await harness.tellerService.endDay(harness.userId, exportPath, 20);
 
       let started: ReturnType<TellerService['startDay']> | undefined;
       expect(() => {
-        started = harness.tellerService.startDay(harness.userId, 'AFN');
+        started = harness.tellerService.startDay(harness.userId);
       }).not.toThrow();
-      expect(started?.session?.status).toBe('OPEN');
-      expect(amountsEqual(started!.opening!.declaredAmount, '13500')).toBe(true);
-      expect(started!.opening!.denominationCounts['1000']).toBe(10);
-      expect(started!.opening!.denominationCounts['500']).toBe(5);
-      expect(started!.opening!.denominationCounts['100']).toBe(10);
-      expect(started!.deposits).toHaveLength(0);
-      expect(started!.withdrawals).toHaveLength(0);
+      const startedAfn = started!.find((item) => item.currencyCode === 'AFN')!;
+      expect(startedAfn.session?.status).toBe('OPEN');
+      expect(amountsEqual(startedAfn.opening!.declaredAmount, '13500')).toBe(true);
+      expect(startedAfn.opening!.denominationCounts['1000']).toBe(10);
+      expect(startedAfn.opening!.denominationCounts['500']).toBe(5);
+      expect(startedAfn.opening!.denominationCounts['100']).toBe(10);
+      expect(startedAfn.deposits).toHaveLength(0);
+      expect(startedAfn.withdrawals).toHaveLength(0);
 
       const created = harness.tellerService.upsertTransaction(harness.userId, {
-        sessionId: started!.session!.id,
+        sessionId: startedAfn.session!.id,
         direction: 'DEPOSIT',
         referenceLabel: 'NEXT',
         declaredAmount: '1000',
@@ -947,7 +960,7 @@ describe('teller service workbook model', () => {
         declaredAmount: '1000',
         denominationCounts: counts({ '1000': 1 }),
       });
-      await harness.tellerService.endDay(harness.userId, afn.id, exportPath, 20);
+      await harness.tellerService.endDay(harness.userId, exportPath, 20);
 
       const reset = harness.tellerService.resetCash(harness.userId, 'AFN');
       expect(reset.session?.status).toBe('OPEN');

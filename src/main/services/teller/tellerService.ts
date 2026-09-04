@@ -201,27 +201,63 @@ export class TellerService {
 
   async endDay(
     userId: number,
-    sessionId: number,
     filePath: string,
     worksheetRows?: number,
-  ): Promise<{ session: TellerSession; filePath: string; closingAmount: string }> {
+  ): Promise<{
+    sessions: TellerSession[];
+    filePath: string;
+    closings: Array<{ currencyCode: string; closingAmount: string }>;
+  }> {
     const companyId = this.companyId();
-    const session = this.requireOpenSession(companyId, sessionId);
-    const denominations = this.requireDenominations(session.currencyCode);
-    const sheet = this.buildSheet(session, denominations);
-    const closing = computeDayClosing(sheet);
-    const rows = Math.max(INITIAL_WORKSHEET_ROWS, worksheetRows ?? 0, sheet.deposits.length + 1, sheet.withdrawals.length);
-    const writtenPath = await writeTellerDayWorkbook(filePath, {
-      sheet,
-      worksheetRows: rows,
-      closingAmount: closing.amount,
-      closingCounts: closing.counts,
+    const openSessions = this.listOpenSessions();
+    if (openSessions.length === 0) {
+      throw new AppError('TELLER_SESSION_NOT_FOUND', 'TELLER_SESSION_NOT_FOUND');
+    }
+    const exportInputs = [];
+    const closings: Array<{ currencyCode: string; closingAmount: string }> = [];
+    for (const session of openSessions) {
+      const denominations = this.requireDenominations(session.currencyCode);
+      const sheet = this.buildSheet(session, denominations);
+      const closing = computeDayClosing(sheet);
+      const rows = Math.max(INITIAL_WORKSHEET_ROWS, worksheetRows ?? 0, sheet.deposits.length + 1, sheet.withdrawals.length);
+      exportInputs.push({
+        sheet,
+        worksheetRows: rows,
+        closingAmount: closing.amount,
+        closingCounts: closing.counts,
+      });
+      closings.push({ currencyCode: session.currencyCode, closingAmount: closing.amount });
+    }
+    const writtenPath = await writeTellerDayWorkbook(filePath, exportInputs);
+    const closedSessions: TellerSession[] = [];
+    this.write(() => {
+      const closedAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      for (const session of openSessions) {
+        if (!this.repo.closeSession(companyId, session.id, closedAt, userId)) {
+          throw new AppError('TELLER_SESSION_CLOSED', 'TELLER_SESSION_CLOSED');
+        }
+      }
     });
-    const closed = this.closeSession(userId, sessionId);
-    return { session: closed, filePath: writtenPath, closingAmount: closing.amount };
+    for (const session of openSessions) {
+      const closed = this.repo.getSession(companyId, session.id);
+      if (closed) {
+        closedSessions.push(this.hydrateSession(closed));
+      }
+    }
+    return { sessions: closedSessions, filePath: writtenPath, closings };
   }
 
-  startDay(userId: number, currencyCode: string, opening?: StartTellerDayOpening): TellerSheet {
+  startDay(userId: number): TellerSheet[] {
+    const sheets: TellerSheet[] = [];
+    this.write(() => {
+      for (const currencyCode of this.repo.listActiveCurrencyCodes()) {
+        sheets.push(this.startCurrencyDay(userId, currencyCode));
+      }
+    });
+    return sheets;
+  }
+
+  private startCurrencyDay(userId: number, currencyCode: string, opening?: StartTellerDayOpening): TellerSheet {
     const code = parseCurrencyCode(currencyCode);
     if (!this.repo.currencyExists(code) || !this.repo.currencyActive(code)) {
       throw new AppError('INVALID_CURRENCY', 'INVALID_CURRENCY');
@@ -283,7 +319,7 @@ export class TellerService {
       this.logger.info('Teller cash reset to zero', { sessionId: open.id, companyId, currencyCode: code, userId });
       return this.buildSheet(this.hydrateSession(session), denominations);
     }
-    return this.startDay(userId, code, { openingAmount: '0', openingCounts: zeroCounts });
+    return this.startCurrencyDay(userId, code, { openingAmount: '0', openingCounts: zeroCounts });
   }
 
   closeSession(userId: number, sessionId: number): TellerSession {

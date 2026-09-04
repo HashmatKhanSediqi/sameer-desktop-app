@@ -107,10 +107,20 @@
     "currency": "اسعار",
     "noDenoms": "برای این اسعار واحد پولی تنظیم نشده است.",
     "addCurrency": "افزودن اسعار",
+    "saveCurrency": "ذخیره اسعار",
     "addCurrencyHint": "برای صندوق یک اسعار جدید اضافه کنید و واحدهای آن را تعریف کنید.",
     "currencyCode": "کد",
     "currencyName": "نام",
     "denominations": "واحدهای پول",
-    "denominationsHint": "50 20 10 5 2 1"
+    "denominationsHint": "50 20 10 5 2 1",
+    "editCurrency": "ویرایش اسعار",
+    "editCurrencyLabel": "ویرایش واحدهای {{currency}}",
+    "closeEditor": "بستن",
+    "denominationValue": "ارزش واحد",
+    "addDenomination": "افزودن واحد",
+    "retireDenomination": "غیرفعال",
+    "restoreDenomination": "فعال‌سازی",
+    "historicalDenomination": "این واحد در سوابق تاریخی صندوق استفاده شده است.",
+    "inUse": "استفاده‌شده"
   }
 }

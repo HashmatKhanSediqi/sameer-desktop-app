@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Teller START TODAY now opens one global business day across every active currency; END TODAY writes one multi-sheet daily workbook and then finalizes all open currency sheets together while keeping balances and history currency-isolated.
+- The bottom Teller currency tabs now include an Edit currency action for safely adding, retiring, and restoring denominations on default or custom currencies.
+- Teller worksheet columns can be resized by dragging, with compact defaults that prioritize the Tally column.
+- Default and custom currency denominations use the same safe editor; in-use historical denominations remain protected.
+
+### Fixed
+- Teller worksheet row identity and refresh merging now preserve the actively edited Name/Amount/denomination cell instead of replacing its draft during an asynchronous save refresh.
+- Removed the Teller summary's CASH IN (ICBA) and CASH OUT (ICBA) display rows and improved Denominations header contrast.
+
 ---
 
 ## [1.4.1] — 2026-09-01 (Windows installer Defender false-positive)

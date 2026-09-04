@@ -107,10 +107,20 @@
     "currency": "Currency",
     "noDenoms": "No denominations are configured for this currency.",
     "addCurrency": "Add currency",
+    "saveCurrency": "Save currency",
     "addCurrencyHint": "Add a currency for Teller and define its denomination list.",
     "currencyCode": "Code",
     "currencyName": "Name",
     "denominations": "Denominations",
-    "denominationsHint": "50 20 10 5 2 1"
+    "denominationsHint": "50 20 10 5 2 1",
+    "editCurrency": "Edit currency",
+    "editCurrencyLabel": "Edit {{currency}} denominations",
+    "closeEditor": "Close",
+    "denominationValue": "Denomination value",
+    "addDenomination": "Add denomination",
+    "retireDenomination": "Retire",
+    "restoreDenomination": "Restore",
+    "historicalDenomination": "This denomination is referenced by historical Teller data.",
+    "inUse": "In use"
   }
 }

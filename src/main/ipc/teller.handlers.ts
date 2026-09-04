@@ -98,7 +98,6 @@ export function registerTellerHandlers(ipcMain: IpcMain, ctx: ApplicationContext
     wrapIpcHandler(async () => {
       const { sessionId, record } = parseSessionRequest(input);
       const session = ctx.authService.requireSession(sessionId);
-      const tellerSessionId = parsePositiveIntegerId(record.tellerSessionId, 'TELLER_SESSION_NOT_FOUND');
       const worksheetRows = typeof record.worksheetRows === 'number' ? record.worksheetRows : undefined;
       let filePath = parseOptionalString(record.filePath);
       if (!filePath) {
@@ -111,19 +110,15 @@ export function registerTellerHandlers(ipcMain: IpcMain, ctx: ApplicationContext
         }
         filePath = chosen;
       }
-      return ctx.tellerService.endDay(session.userId, tellerSessionId, filePath, worksheetRows);
+      return ctx.tellerService.endDay(session.userId, filePath, worksheetRows);
     }),
   );
 
   ipcMain.handle(IPC_CHANNELS.TELLER_DAY_START, (_event, input: unknown) =>
     wrapIpcHandler(() => {
-      const { sessionId, record } = parseSessionRequest(input);
+      const { sessionId } = parseSessionRequest(input);
       const session = ctx.authService.requireSession(sessionId);
-      const currencyCode = parseOptionalString(record.currencyCode);
-      if (!currencyCode) {
-        throw new AppError('INVALID_CURRENCY', 'CURRENCY_REQUIRED');
-      }
-      return ctx.tellerService.startDay(session.userId, currencyCode);
+      return { sheets: ctx.tellerService.startDay(session.userId) };
     }),
   );
 

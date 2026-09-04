@@ -167,6 +167,14 @@ describe('CurrencyService settings operations', () => {
         '0.02',
         '0.01',
       ]);
+      for (const code of ['AFN', 'USD', 'EUR']) {
+        const original = service.listDenominations(code)[0]!;
+        const added = service.createDenomination({ currencyCode: code, value: `0.${original.id}` });
+        expect(added.currencyCode).toBe(code);
+        service.deactivateDenomination(original.id);
+        expect(service.listDenominations(code).some((item) => item.id === original.id)).toBe(false);
+        expect(service.listDenominations(code, true).find((item) => item.id === original.id)?.isActive).toBe(false);
+      }
     } finally {
       testDb.cleanup();
     }

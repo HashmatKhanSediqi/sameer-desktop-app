@@ -2995,8 +2995,9 @@ input[type='radio'] {
 
 .teller-sheet-table {
   table-layout: fixed;
-  width: max-content;
-  min-width: 100%;
+  width: auto;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .teller-summary-table th,
@@ -3011,11 +3012,12 @@ input[type='radio'] {
   font-size: 11px;
   line-height: 1.2;
   height: 18px;
+  box-sizing: border-box;
 }
 
 .teller-summary-table thead th {
   background: #5b9bd5;
-  color: #c00000;
+  color: #0f172a;
   font-weight: 800;
 }
 
@@ -3099,17 +3101,6 @@ input[type='radio'] {
   overflow: hidden;
 }
 
-.teller-log-head {
-  flex: 0 0 auto;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-}
-
-.teller-log-head::-webkit-scrollbar {
-  height: 0;
-}
-
 .teller-log-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -3127,6 +3118,21 @@ input[type='radio'] {
   background: #548235;
   color: #fff;
   font-weight: 700;
+  height: 22px;
+  line-height: 20px;
+  padding-block: 0;
+}
+
+.teller-sheet-table thead tr:first-child th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.teller-sheet-table thead tr:nth-child(2) th {
+  position: sticky;
+  top: 24px;
+  z-index: 2;
 }
 
 .teller-sheet-table .teller-th-title {
@@ -3136,11 +3142,8 @@ input[type='radio'] {
   text-transform: uppercase;
   font-size: 13px;
   letter-spacing: 0.04em;
-}
-
-.teller-sheet-table .teller-th-name,
-.teller-sheet-table .teller-cell-name {
-  min-width: 9.5rem;
+  height: 24px;
+  line-height: 22px;
 }
 
 .teller-col-resizer {
@@ -3150,11 +3153,19 @@ input[type='radio'] {
   width: 6px;
   height: 100%;
   cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.teller-col-resizer:hover,
+.teller-col-resizer:active {
+  background: rgb(255 255 255 / 55%);
 }
 
 .teller-sheet-table tbody td {
   background: #e2efda;
   height: 22px;
+  padding-block: 0;
 }
 
 .teller-sheet-table tr.is-op td,
@@ -3167,7 +3178,6 @@ input[type='radio'] {
 
 .teller-sheet-table .teller-cell-no {
   background: #fff;
-  min-width: 2rem;
 }
 
 .teller-sheet-table tr.is-op .teller-cell-no {
@@ -3205,6 +3215,58 @@ input[type='radio'] {
 .teller-sheet-tab.is-active {
   background: #fff;
   border-bottom-color: #fff;
+}
+
+.teller-edit-currency-tab {
+  color: var(--color-primary);
+}
+
+.teller-currency-editor {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.teller-currency-editor-title,
+.teller-currency-editor-add,
+.teller-currency-editor-list,
+.teller-denomination-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.teller-currency-editor-title {
+  justify-content: space-between;
+}
+
+.teller-currency-editor-list {
+  flex-wrap: wrap;
+}
+
+.teller-denomination-chip {
+  padding: 4px 6px;
+  border: 1px solid var(--color-border);
+  background: var(--summary-tone-1-bg);
+}
+
+.teller-denomination-chip.is-inactive {
+  opacity: 0.65;
+}
+
+.teller-denomination-chip button {
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.teller-currency-editor-add label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 @media (max-width: 1100px) {

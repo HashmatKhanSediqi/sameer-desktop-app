@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type UIEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   computeCheckFlag,
@@ -7,6 +7,10 @@ import {
   isBlankAmount,
 } from '@shared/teller/workbookMath';
 import { nextWorksheetFocus, type WorksheetNavCol } from '@shared/teller/worksheetNav';
+import {
+  buildTellerWorksheetColumns,
+} from '@shared/teller/worksheetColumns';
+import { mergeActiveWorksheetRow } from '@shared/teller/worksheetRows';
 import type { TellerDenomination, TellerDirection, TellerOpeningRow, TellerTransaction } from '@shared/types/teller';
 import { useLocaleFormat } from '../../../hooks/useLocaleFormat';
 import { formatTellerMoney, formatTellerPlainAmount, parsePieceInput } from '../tellerDisplay';
@@ -34,6 +38,8 @@ interface TellerLogTableProps {
   onNeedRow: () => void;
   onBodyScroll?: (scrollTop: number, source: HTMLDivElement) => void;
   bodyRef?: (element: HTMLDivElement | null) => void;
+  columnWidths: Record<string, number>;
+  onColumnWidthsChange: (widths: Record<string, number>) => void;
 }
 
 type EditableCol = WorksheetNavCol;
@@ -80,7 +86,7 @@ function toDrafts(
     const transaction = transactions[txIndex];
     if (transaction) {
       rows.push({
-        key: `row-${transaction.id}`,
+        key: `slot-${index}`,
         id: transaction.id,
         sequenceNo,
         referenceLabel: transaction.referenceLabel,
@@ -90,7 +96,7 @@ function toDrafts(
       continue;
     }
     rows.push({
-      key: `draft-${index}`,
+      key: `slot-${index}`,
       sequenceNo,
       referenceLabel: '',
       declaredAmount: '',
@@ -100,32 +106,11 @@ function toDrafts(
   return rows;
 }
 
-function defaultColWidths(denominations: TellerDenomination[]): Record<string, number> {
-  const widths: Record<string, number> = {
-    no: 36,
-    name: 148,
-    amount: 76,
-    check: 48,
-    total: 64,
-    tally: 64,
-  };
-  for (const denom of denominations) {
-    widths[`d:${denom.value}`] = 42;
-  }
-  return widths;
-}
-
-const COL_BOUNDS: Record<string, { min: number; max: number }> = {
-  no: { min: 28, max: 52 },
-  name: { min: 120, max: 280 },
-  amount: { min: 64, max: 140 },
-  check: { min: 40, max: 80 },
-  total: { min: 48, max: 120 },
-  tally: { min: 48, max: 120 },
-};
-
 function boundsFor(colId: string): { min: number; max: number } {
-  return COL_BOUNDS[colId] ?? { min: 36, max: 88 };
+  const column = buildTellerWorksheetColumns([]).find((item) => item.id === colId);
+  return column
+    ? { min: column.minWidth, max: column.maxWidth }
+    : { min: 26, max: 88 };
 }
 
 function measureColumnWidth(table: HTMLTableElement, colIndex: number, colId: string): number {
@@ -174,26 +159,42 @@ export function TellerLogTable({
   onNeedRow,
   onBodyScroll,
   bodyRef,
+  columnWidths,
+  onColumnWidthsChange,
 }: TellerLogTableProps): JSX.Element {
   const { t } = useTranslation('teller');
   const { formatMoney } = useLocaleFormat();
   const tableRef = useRef<HTMLTableElement>(null);
-  const headRef = useRef<HTMLDivElement>(null);
   const bodyElRef = useRef<HTMLDivElement | null>(null);
   const pendingFocus = useRef<{ rowKey: string; col: EditableCol } | null>(null);
   const [rows, setRows] = useState<DraftRow[]>(() =>
     toDrafts(direction, transactions, denominations, rowCount, opening),
   );
-  const [colWidths, setColWidths] = useState(() => defaultColWidths(denominations));
   const denomValues = denominations.map((denom) => denom.value);
-  const colIds = ['no', 'name', 'amount', ...denomValues.map((value) => `d:${value}`), 'check', 'total', 'tally'];
+  const columns = buildTellerWorksheetColumns(denomValues);
+  const colIds = columns.map((column) => column.id);
+  const effectiveWidths: Record<string, number> = Object.fromEntries(
+    columns.map((column) => [column.id, columnWidths[column.id] ?? column.defaultWidth]),
+  );
+  const tableWidth = columns.reduce(
+    (total, column) => total + (effectiveWidths[column.id] ?? column.defaultWidth),
+    0,
+  );
 
   useEffect(() => {
-    setColWidths(defaultColWidths(denominations));
-  }, [currencyCode, direction]);
-
-  useEffect(() => {
-    setRows(toDrafts(direction, transactions, denominations, rowCount, opening));
+    const fresh = toDrafts(direction, transactions, denominations, rowCount, opening);
+    const active = document.activeElement;
+    const activeRowKey =
+      active instanceof HTMLInputElement && tableRef.current?.contains(active)
+        ? active.dataset.row ?? null
+        : null;
+    setRows((current) =>
+      mergeActiveWorksheetRow(
+        fresh.map((row) => ({ key: row.key, id: row.id, value: row })),
+        current.map((row) => ({ key: row.key, id: row.id, value: row })),
+        activeRowKey,
+      ).map(({ id, value }) => ({ ...value, id })),
+    );
   }, [direction, transactions, denominations, opening, rowCount]);
 
   useEffect(() => {
@@ -213,9 +214,6 @@ export function TellerLogTable({
     const cell = input.closest('td') ?? input;
     if (bodyElRef.current) {
       scrollWithin(bodyElRef.current, cell);
-      if (headRef.current) {
-        headRef.current.scrollLeft = bodyElRef.current.scrollLeft;
-      }
       onBodyScroll?.(bodyElRef.current.scrollTop, bodyElRef.current);
     }
   }, [rows, onBodyScroll]);
@@ -261,9 +259,6 @@ export function TellerLogTable({
     const cell = input.closest('td') ?? input;
     if (bodyElRef.current) {
       scrollWithin(bodyElRef.current, cell);
-      if (headRef.current) {
-        headRef.current.scrollLeft = bodyElRef.current.scrollLeft;
-      }
       onBodyScroll?.(bodyElRef.current.scrollTop, bodyElRef.current);
     }
   }
@@ -274,7 +269,7 @@ export function TellerLogTable({
       return;
     }
     if (next.append) {
-      pendingFocus.current = { rowKey: `draft-${rowCount}`, col: next.col };
+      pendingFocus.current = { rowKey: `slot-${rowCount}`, col: next.col };
       onNeedRow();
       return;
     }
@@ -337,21 +332,35 @@ export function TellerLogTable({
       return;
     }
     const width = measureColumnWidth(table, colIndex, colId);
-    setColWidths((current) => ({ ...current, [colId]: width }));
+    onColumnWidthsChange({ ...columnWidths, [colId]: width });
+  }
+
+  function beginResize(event: PointerEvent<HTMLSpanElement>, colId: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startWidth = effectiveWidths[colId] ?? boundsFor(colId).min;
+    const { min, max } = boundsFor(colId);
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    const move = (moveEvent: globalThis.PointerEvent): void => {
+      const directionFactor = document.documentElement.dir === 'rtl' ? -1 : 1;
+      const width = Math.min(max, Math.max(min, startWidth + (moveEvent.clientX - startX) * directionFactor));
+      onColumnWidthsChange({ ...columnWidths, [colId]: Math.round(width) });
+    };
+    const finish = (): void => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', finish);
+      handle.removeEventListener('pointercancel', finish);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', finish);
+    handle.addEventListener('pointercancel', finish);
   }
 
   function handleBodyScroll(event: UIEvent<HTMLDivElement>): void {
     const body = event.currentTarget;
-    if (headRef.current) {
-      headRef.current.scrollLeft = body.scrollLeft;
-    }
     onBodyScroll?.(body.scrollTop, body);
-  }
-
-  function handleHeadScroll(event: UIEvent<HTMLDivElement>): void {
-    if (bodyElRef.current) {
-      bodyElRef.current.scrollLeft = event.currentTarget.scrollLeft;
-    }
   }
 
   function setBody(element: HTMLDivElement | null): void {
@@ -368,7 +377,7 @@ export function TellerLogTable({
     return (
       <colgroup>
         {colIds.map((colId) => (
-          <col key={colId} style={{ width: colWidths[colId] }} />
+          <col key={colId} style={{ width: effectiveWidths[colId] }} />
         ))}
       </colgroup>
     );
@@ -376,8 +385,8 @@ export function TellerLogTable({
 
   return (
     <section className={direction === 'DEPOSIT' ? 'teller-log teller-log-deposit' : 'teller-log teller-log-withdrawal'}>
-      <div className="teller-log-head" ref={headRef} onScroll={handleHeadScroll}>
-        <table className="teller-sheet-table">
+      <div className="teller-log-body" ref={setBody} onScroll={handleBodyScroll}>
+        <table ref={tableRef} className="teller-sheet-table" style={{ width: '100%', minWidth: tableWidth }}>
           {renderColgroup()}
           <thead>
             <tr>
@@ -407,6 +416,9 @@ export function TellerLogTable({
                               : colId.slice(2)}
                   <span
                     className="teller-col-resizer"
+                    role="separator"
+                    aria-orientation="vertical"
+                    onPointerDown={(event) => beginResize(event, colId)}
                     onDoubleClick={(event) => {
                       event.stopPropagation();
                       autofit(colId, index);
@@ -416,11 +428,6 @@ export function TellerLogTable({
               ))}
             </tr>
           </thead>
-        </table>
-      </div>
-      <div className="teller-log-body" ref={setBody} onScroll={handleBodyScroll}>
-        <table ref={tableRef} className="teller-sheet-table">
-          {renderColgroup()}
           <tbody>
             {rows.map((row) => {
               const counted = computeCountedTotal(

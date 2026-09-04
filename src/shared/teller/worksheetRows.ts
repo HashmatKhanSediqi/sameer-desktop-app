@@ -1,5 +1,23 @@
 export const INITIAL_WORKSHEET_ROWS = 20;
 
+export interface WorksheetDraftRow<T> {
+  key: string;
+  id?: number;
+  value: T;
+}
+
+export function mergeActiveWorksheetRow<T>(
+  fresh: WorksheetDraftRow<T>[],
+  current: WorksheetDraftRow<T>[],
+  activeRowKey: string | null,
+): WorksheetDraftRow<T>[] {
+  if (!activeRowKey) {
+    return fresh;
+  }
+  const active = current.find((row) => row.key === activeRowKey);
+  return fresh.map((row) => (row.key === activeRowKey && active ? { ...active, id: row.id ?? active.id } : row));
+}
+
 export function resolveWorksheetRowCount(
   current: number,
   depositCount: number,
@@ -27,6 +45,11 @@ export function suggestTellerExportFileName(currencyCode: string, sessionDate: s
   const code = currencyCode.replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'CUR';
   const date = /^\d{4}-\d{2}-\d{2}$/.test(sessionDate) ? sessionDate : 'date';
   return `FMT-Teller-${code}-${date}.xlsx`;
+}
+
+export function suggestTellerDailyExportFileName(sessionDate: string): string {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(sessionDate) ? sessionDate : 'date';
+  return `FMT-Teller-${date}.xlsx`;
 }
 
 export function planWorksheetSides(

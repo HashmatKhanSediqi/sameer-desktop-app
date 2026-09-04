@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { defaultTellerWorksheetWidths } from '@shared/teller/worksheetColumns';
 import { INITIAL_WORKSHEET_ROWS, resolveWorksheetRowCount } from '@shared/teller/worksheetRows';
 import { useAuth } from '../../context/AuthContext';
 import type { TellerSheet } from '@shared/types/teller';
@@ -19,6 +20,10 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
   const session = sheet.session;
   const disabled = !session || session.status !== 'OPEN';
   const [rowCount, setRowCount] = useState(INITIAL_WORKSHEET_ROWS);
+  const [columnWidths, setColumnWidths] = useState(() =>
+    defaultTellerWorksheetWidths(sheet.denominations.map((denomination) => denomination.value)),
+  );
+  const denominationSignature = sheet.denominations.map((denomination) => `${denomination.id}:${denomination.value}`).join('|');
   const depositBodyRef = useRef<HTMLDivElement | null>(null);
   const withdrawalBodyRef = useRef<HTMLDivElement | null>(null);
   const syncingScroll = useRef(false);
@@ -29,7 +34,8 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
 
   useEffect(() => {
     setRowCount(resolveWorksheetRowCount(INITIAL_WORKSHEET_ROWS, sheet.deposits.length, sheet.withdrawals.length));
-  }, [sheet.currencyCode, sheet.session?.id]);
+    setColumnWidths(defaultTellerWorksheetWidths(sheet.denominations.map((denomination) => denomination.value)));
+  }, [sheet.currencyCode, sheet.session?.id, denominationSignature]);
 
   useEffect(() => {
     setRowCount((current) =>
@@ -82,8 +88,6 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
 
   async function saveMeta(input: {
     oppAmount?: string;
-    cashInICBA?: string;
-    cashOutICBA?: string;
   }): Promise<void> {
     if (!sessionId || !session) {
       return;
@@ -144,6 +148,8 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
           bodyRef={(element) => {
             depositBodyRef.current = element;
           }}
+          columnWidths={columnWidths}
+          onColumnWidthsChange={setColumnWidths}
         />
         <TellerLogTable
           key={`${sheet.currencyCode}-withdrawal-${session?.id ?? 'none'}-${session?.status ?? 'idle'}`}
@@ -159,6 +165,8 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
           bodyRef={(element) => {
             withdrawalBodyRef.current = element;
           }}
+          columnWidths={columnWidths}
+          onColumnWidthsChange={setColumnWidths}
         />
       </div>
     </div>
