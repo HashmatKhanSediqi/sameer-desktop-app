@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { defaultTellerWorksheetWidths } from '@shared/teller/worksheetColumns';
-import { INITIAL_WORKSHEET_ROWS, resolveWorksheetRowCount } from '@shared/teller/worksheetRows';
+import {
+  INITIAL_WORKSHEET_ROWS,
+  resolveWorksheetRowCountFromTransactions,
+} from '@shared/teller/worksheetRows';
 import { useAuth } from '../../context/AuthContext';
 import type { TellerSheet } from '@shared/types/teller';
 import { TellerLogTable, type DraftRow } from './components/TellerLogTable';
@@ -23,6 +26,8 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
   const [columnWidths, setColumnWidths] = useState(() =>
     defaultTellerWorksheetWidths(sheet.denominations.map((denomination) => denomination.value)),
   );
+  const [persistenceState, setPersistenceState] = useState<'saved' | 'saving' | 'failed'>('saved');
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
   const denominationSignature = sheet.denominations.map((denomination) => `${denomination.id}:${denomination.value}`).join('|');
   const depositBodyRef = useRef<HTMLDivElement | null>(null);
   const withdrawalBodyRef = useRef<HTMLDivElement | null>(null);
@@ -33,13 +38,13 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
   }, [onWorksheetRowsChange, rowCount]);
 
   useEffect(() => {
-    setRowCount(resolveWorksheetRowCount(INITIAL_WORKSHEET_ROWS, sheet.deposits.length, sheet.withdrawals.length));
+    setRowCount(resolveWorksheetRowCountFromTransactions(INITIAL_WORKSHEET_ROWS, sheet.deposits, sheet.withdrawals));
     setColumnWidths(defaultTellerWorksheetWidths(sheet.denominations.map((denomination) => denomination.value)));
   }, [sheet.currencyCode, sheet.session?.id, denominationSignature]);
 
   useEffect(() => {
     setRowCount((current) =>
-      resolveWorksheetRowCount(current, sheet.deposits.length, sheet.withdrawals.length),
+      resolveWorksheetRowCountFromTransactions(current, sheet.deposits, sheet.withdrawals),
     );
   }, [sheet.deposits.length, sheet.withdrawals.length]);
 
@@ -70,17 +75,24 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
       ) {
         return;
       }
+      setPersistenceState('saving');
       const result = await window.api.teller.upsertTransaction({
         sessionId,
         tellerSessionId: session.id,
         id: row.id,
+        worksheetRow: Number(row.sequenceNo),
         direction,
         referenceLabel: row.referenceLabel,
         declaredAmount: row.declaredAmount.trim() === '' ? null : row.declaredAmount.trim(),
         denominationCounts,
       });
       if (result.ok) {
+        setPersistenceState('saved');
+        setPersistenceError(null);
         onChanged();
+      } else {
+        setPersistenceState('failed');
+        setPersistenceError(result.message ?? t('saveFailed'));
       }
     },
     [onChanged, session, sessionId, sheet.denominations, sheet.deposits, sheet.withdrawals],
@@ -92,13 +104,19 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
     if (!sessionId || !session) {
       return;
     }
+    setPersistenceState('saving');
     const result = await window.api.teller.updateSession({
       sessionId,
       tellerSessionId: session.id,
       ...input,
     });
     if (result.ok) {
+      setPersistenceState('saved');
+      setPersistenceError(null);
       onChanged();
+    } else {
+      setPersistenceState('failed');
+      setPersistenceError(result.message ?? t('saveFailed'));
     }
   }
 
@@ -131,6 +149,9 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
       ) : (
         <p className="hint-text">{t('session.noneHint')}</p>
       )}
+      <div className={`teller-save-state teller-save-state-${persistenceState}`} role={persistenceState === 'failed' ? 'alert' : 'status'}>
+        {persistenceState === 'saving' ? t('saving') : persistenceState === 'failed' ? `${t('saveFailed')}: ${persistenceError ?? ''}` : t('saved')}
+      </div>
       <div className="teller-logs">
         <TellerLogTable
           key={`${sheet.currencyCode}-deposit-${session?.id ?? 'none'}-${session?.status ?? 'idle'}`}

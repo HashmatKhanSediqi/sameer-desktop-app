@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import Decimal from 'decimal.js';
+import { TellerCurrencyRepository } from '../../database/repositories/tellerCurrencyRepository';
 import { CurrencyRepository } from '../../database/repositories/currencyRepository';
 import { AppError } from '../../utils/errors';
 import type {
@@ -15,11 +16,11 @@ const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
 const NAME_MAX = 80;
 
 export class CurrencyService {
-  private readonly repository: CurrencyRepository;
+  private readonly repository: CurrencyRepository | TellerCurrencyRepository;
   private readonly write: (fn: () => void) => void;
 
-  constructor(db: Database.Database) {
-    this.repository = new CurrencyRepository(db);
+  constructor(db: Database.Database, private readonly owner: 'accounting' | 'teller' = 'accounting') {
+    this.repository = owner === 'teller' ? new TellerCurrencyRepository(db) : new CurrencyRepository(db);
     this.write = db.transaction((fn: () => void) => {
       fn();
     });
@@ -135,6 +136,7 @@ export class CurrencyService {
   }
 
   listDenominations(currencyCode: string, includeInactive = false): CurrencyDenomination[] {
+    if (this.owner !== 'teller') throw new AppError('INVALID_REQUEST', 'Teller configuration requires the Teller module');
     const code = this.parseCode(currencyCode);
     if (!this.repository.getByCode(code)) {
       throw new AppError('INVALID_CURRENCY', 'CURRENCY_NOT_FOUND');
@@ -143,6 +145,7 @@ export class CurrencyService {
   }
 
   createDenomination(input: CreateDenominationInput): CurrencyDenomination {
+    if (this.owner !== 'teller') throw new AppError('INVALID_REQUEST', 'Teller configuration requires the Teller module');
     const code = this.parseCode(input.currencyCode);
     const currency = this.repository.getByCode(code);
     if (!currency) {
@@ -206,6 +209,7 @@ export class CurrencyService {
   }
 
   private requireDenomination(id: number): CurrencyDenomination {
+    if (this.owner !== 'teller') throw new AppError('INVALID_REQUEST', 'Teller configuration requires the Teller module');
     if (!Number.isInteger(id) || id <= 0) {
       throw new AppError('TELLER_DENOMINATION_INVALID', 'TELLER_DENOMINATION_INVALID');
     }

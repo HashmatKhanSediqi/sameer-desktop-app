@@ -99,8 +99,11 @@ Teller **reuses this session**. No second login. `created_by` / teller identity 
 | 6 | `006_customer_number_nocase.sql` | case-insensitive customer-number index |
 | 7 | `007_teller.sql` | Teller tables, types, AFN/USD denominations (do not edit after apply) |
 | 8 | `008_dynamic_currencies.sql` | `currencies.display_name`, EUR denomination seed, denomination value index |
+| 9 | `009_teller_workbook_model.sql` | Teller workbook sessions, rows, opening/summary fields, and denomination snapshots |
+| 10 | `010_teller_daily_opening.sql` | Global Teller business-day opening metadata |
+| 11 | `011_teller_worksheet_rows.sql` | Stable per-session/per-direction worksheet row slots for free-form row entry |
 
-**Existing files must not be edited.** Later teller refinements add a new numbered migration (currently `008_dynamic_currencies.sql`).
+**Existing files must not be edited.** Teller refinements are added as new numbered migrations (currently through `011_teller_worksheet_rows.sql`).
 
 ---
 
@@ -599,3 +602,8 @@ A USD (or EUR, PKR, …) movement never changes another currency’s inventory.
 - IPC channels for denomination CRUD.
 
 Do not remove these rules in later work: mismatch reject, denomination-aware negative till, opening snapshot vs inventory, Head Teller ≠ customer, per-currency isolation, active/inactive rather than destroying history.
+## Current module boundaries
+
+Customer Accounting is the permanent financial record. Its customers, transactions, balances, company identity, account configuration, and related photos are the scope of accounting backups and recovery. Teller is a live operational worksheet for the current working day. A successful END TODAY Excel workbook is Teller's long-term archive; the database only needs to protect active work through restart/crash and until export succeeds. Teller history is not an accounting-backup recovery contract.
+
+Accounting and Teller own separate currency registries and denomination configuration. Authentication, company identity, theme, and localization may be shared infrastructure, but changing one module's currencies must not change the other module's balances, selectors, or worksheet configuration. Authoritative money calculations use decimal text and exact decimal arithmetic; floating point is presentation-only.

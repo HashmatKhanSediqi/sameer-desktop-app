@@ -101,7 +101,15 @@ async function bootstrap(): Promise<void> {
 
   logger.info('Application starting', { version: config.version, isDev: config.isDev });
 
-  appContext = await createApplicationContext(config, logger, { packaged: app.isPackaged });
+  try {
+    appContext = await createApplicationContext(config, logger, { packaged: app.isPackaged });
+  } catch (error) {
+    logger.error('Normal database startup failed; entering recovery mode', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    await createRecoveryWindow(config.appName, error instanceof Error ? error.message : 'Database initialization failed');
+    return;
+  }
   quitBackupCoordinator = new QuitBackupCoordinator(AUTO_CLOSE_BACKUP_TIMEOUT_MS, logger);
   registerIpcHandlers(ipcMain, appContext);
 
@@ -113,6 +121,26 @@ async function bootstrap(): Promise<void> {
     userData: appContext.paths.userData,
     database: appContext.paths.database,
   });
+}
+
+/** A deliberately isolated window shown when the normal database cannot initialize. */
+async function createRecoveryWindow(title: string, reason: string): Promise<void> {
+  const window = new BrowserWindow({
+    width: 760,
+    height: 520,
+    show: true,
+    autoHideMenuBar: true,
+    title: `${title} — Recovery Mode`,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+    },
+  });
+  const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
+  await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html><meta charset="utf-8"><title>Recovery Mode</title><style>body{font:16px system-ui;padding:42px;max-width:650px;margin:auto;background:#f8fafc;color:#172033}h1{color:#9f1239}p{line-height:1.55}.box{padding:18px;background:white;border:1px solid #fecdd3;border-radius:10px}button{padding:10px 16px;border:0;border-radius:7px;background:#9f1239;color:#fff}</style><h1>Recovery mode</h1><div class="box"><p>The normal Customer Accounting database could not be opened safely.</p><p><b>Reason:</b> ${escape(reason)}</p><p>Select a supported .cab backup using the normal recovery workflow after closing this window. The damaged database has not been deleted or overwritten.</p><button onclick="window.close()">Close</button></div>`)}`);
+  mainWindow = window;
 }
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();

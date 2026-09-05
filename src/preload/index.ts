@@ -219,6 +219,36 @@ const api = {
     ): Promise<CurrenciesDenominationsDeleteResult> =>
       invoke(IPC_CHANNELS.CURRENCIES_DENOMINATIONS_DELETE, request),
   },
+  tellerCurrencies: {
+    list: (request: CurrenciesListRequest): Promise<CurrenciesListResult> =>
+      invoke(IPC_CHANNELS.TELLER_CURRENCIES_LIST, request),
+    create: (request: CurrenciesCreateRequest): Promise<CurrenciesCreateResult> =>
+      invoke(IPC_CHANNELS.TELLER_CURRENCIES_CREATE, request),
+    deactivate: (request: CurrenciesDeactivateRequest): Promise<CurrenciesDeactivateResult> =>
+      invoke(IPC_CHANNELS.TELLER_CURRENCIES_DEACTIVATE, request),
+    reactivate: (request: CurrenciesReactivateRequest): Promise<CurrenciesReactivateResult> =>
+      invoke(IPC_CHANNELS.TELLER_CURRENCIES_REACTIVATE, request),
+    delete: (request: CurrenciesDeleteRequest): Promise<CurrenciesDeleteResult> =>
+      invoke(IPC_CHANNELS.TELLER_CURRENCIES_DELETE, request),
+    listDenominations: (request: CurrenciesDenominationsListRequest): Promise<CurrenciesDenominationsListResult> =>
+      invoke(IPC_CHANNELS.TELLER_CURRENCIES_DENOMINATIONS_LIST, request),
+    createDenomination: (
+      request: CurrenciesDenominationsCreateRequest,
+    ): Promise<CurrenciesDenominationsCreateResult> =>
+      invoke(IPC_CHANNELS.TELLER_CURRENCIES_DENOMINATIONS_CREATE, request),
+    deactivateDenomination: (
+      request: CurrenciesDenominationsDeactivateRequest,
+    ): Promise<CurrenciesDenominationsMutateResult> =>
+      invoke(IPC_CHANNELS.TELLER_CURRENCIES_DENOMINATIONS_DEACTIVATE, request),
+    reactivateDenomination: (
+      request: CurrenciesDenominationsReactivateRequest,
+    ): Promise<CurrenciesDenominationsMutateResult> =>
+      invoke(IPC_CHANNELS.TELLER_CURRENCIES_DENOMINATIONS_REACTIVATE, request),
+    deleteDenomination: (
+      request: CurrenciesDenominationsDeleteRequest,
+    ): Promise<CurrenciesDenominationsDeleteResult> =>
+      invoke(IPC_CHANNELS.TELLER_CURRENCIES_DENOMINATIONS_DELETE, request),
+  },
   transactions: {
     list: (request: TransactionsListRequest): Promise<TransactionsListResult> =>
       invoke(IPC_CHANNELS.TRANSACTIONS_LIST, request),

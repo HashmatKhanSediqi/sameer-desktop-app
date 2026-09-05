@@ -175,6 +175,10 @@ export function registerTellerHandlers(ipcMain: IpcMain, ctx: ApplicationContext
       const transaction = ctx.tellerService.upsertTransaction(session.userId, {
         id: typeof record.id === 'number' ? record.id : undefined,
         sessionId: parsePositiveIntegerId(record.tellerSessionId, 'TELLER_SESSION_NOT_FOUND'),
+        worksheetRow:
+          record.worksheetRow === undefined
+            ? undefined
+            : parsePositiveIntegerId(record.worksheetRow, 'INVALID_REQUEST'),
         direction: record.direction as TellerDirection,
         referenceLabel: parseOptionalString(record.referenceLabel) ?? '',
         declaredAmount: record.declaredAmount === null ? null : parseOptionalString(record.declaredAmount),

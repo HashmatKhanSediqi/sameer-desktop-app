@@ -69,6 +69,7 @@ function toDrafts(
   opening?: TellerOpeningRow | null,
 ): DraftRow[] {
   const rows: DraftRow[] = [];
+  const transactionsByRow = new Map(transactions.map((transaction) => [transaction.worksheetRow, transaction]));
   for (let index = 0; index < rowCount; index += 1) {
     const sequenceNo = index + 1;
     if (direction === 'DEPOSIT' && opening && index === 0) {
@@ -82,8 +83,7 @@ function toDrafts(
       });
       continue;
     }
-    const txIndex = direction === 'DEPOSIT' && opening ? index - 1 : index;
-    const transaction = transactions[txIndex];
+    const transaction = transactionsByRow.get(sequenceNo);
     if (transaction) {
       rows.push({
         key: `slot-${index}`,

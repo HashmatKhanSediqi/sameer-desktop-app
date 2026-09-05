@@ -75,10 +75,26 @@ export interface ReportTransactionQuery {
 
 const COLUMNS = `id, customer_id, type, currency_code, amount, note, transaction_date, created_at, updated_at, transfer_id, transfer_role, counterparty_customer_id`;
 const HISTORY_ORDER = `ORDER BY datetime(transaction_date) DESC, id DESC`;
-const AGGREGATE_AMOUNT = `printf('%.4f', SUM(CAST(amount AS REAL)))`;
+const AGGREGATE_AMOUNT = `decimal_sum(amount)`;
+const registeredDatabases = new WeakSet<Database.Database>();
+// More than enough precision for every supported amount and SQLite row count.
+const ExactDecimal = Decimal.clone({ precision: 80 });
 
 export class TransactionRepository {
-  constructor(private readonly db: Database.Database) {}
+  constructor(private readonly db: Database.Database) {
+    if (!registeredDatabases.has(db)) {
+      db.aggregate('decimal_sum', {
+        start: () => new ExactDecimal(0),
+        step: (total: Decimal, amount: unknown) => {
+          if (amount === null) return total;
+          if (typeof amount !== 'string') throw new Error('Money must be stored as decimal TEXT');
+          return total.plus(amount);
+        },
+        result: (total: Decimal) => total.toFixed(4),
+      });
+      registeredDatabases.add(db);
+    }
+  }
 
   createTransaction(input: CreateTransactionRecordInput): number {
     const result = this.db
@@ -124,13 +140,12 @@ export class TransactionRepository {
     const row = this.db
       .prepare(
         `SELECT
-           COALESCE(SUM(CASE WHEN type = 'CASH_IN' THEN CAST(amount AS REAL) ELSE 0 END), 0) -
-           COALESCE(SUM(CASE WHEN type = 'CASH_OUT' THEN CAST(amount AS REAL) ELSE 0 END), 0) AS balance
+           decimal_sum(CASE WHEN type = 'CASH_IN' THEN amount ELSE '-' || amount END) AS balance
          FROM transactions
          WHERE customer_id = ? AND currency_code = ?`,
       )
-      .get(customerId, currencyCode) as { balance: number };
-    return new Decimal(row.balance).toFixed(4);
+      .get(customerId, currencyCode) as { balance: string };
+    return row.balance;
   }
 
   deleteByTransferId(transferId: string): number {

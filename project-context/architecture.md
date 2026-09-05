@@ -273,3 +273,8 @@ All IPC channels must be typed in `src/shared/types/ipc.ts`.
 **1,000,000+ customers have not been empirically validated.**
 
 Indexes, SQL aggregation, and pagination must continue to be used — never load full tables into the renderer.
+## Accounting and Teller ownership
+
+Customer Accounting is durable financial storage and the only business data promised by the CAB recovery contract. Teller is an active worksheet whose durable archive is the successfully exported daily workbook. Active Teller rows remain locally persisted until export, while finalized workbook history is not reconstructed from accounting backups.
+
+The `currencies` table belongs to Accounting. Migration 012 creates `teller_currencies` and rebuilds Teller's denomination/session foreign keys around that registry while copying all existing rows. Teller IPC and settings use the Teller service; Accounting changes cannot block Teller START. Existing active Teller rows are preserved during the rebuild.

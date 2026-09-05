@@ -35,6 +35,7 @@ export interface TellerTransactionRecord {
   company_id: number;
   session_id: number;
   direction: TellerDirection;
+  worksheet_row: number;
   reference_label: string;
   declared_amount: string | null;
   created_at: string;
@@ -70,44 +71,22 @@ export class TellerRepository {
     return row?.id ?? 1;
   }
 
-  listDenominations(currencyCode?: string): TellerDenomination[] {
-    const rows = currencyCode
-      ? (this.db
-          .prepare(
-            `SELECT id, currency_code, value, sort_order, is_active
-             FROM denominations
-             WHERE is_active = 1 AND currency_code = ?
-             ORDER BY sort_order ASC, id ASC`,
-          )
-          .all(currencyCode) as Array<{
-          id: number;
-          currency_code: string;
-          value: string;
-          sort_order: number;
-          is_active: number;
-        }>)
-      : (this.db
-          .prepare(
-            `SELECT id, currency_code, value, sort_order, is_active
-             FROM denominations
-             WHERE is_active = 1
-             ORDER BY currency_code ASC, sort_order ASC, id ASC`,
-          )
-          .all() as Array<{
-          id: number;
-          currency_code: string;
-          value: string;
-          sort_order: number;
-          is_active: number;
-        }>);
-
-    return rows.map((row) => ({
-      id: row.id,
-      currencyCode: row.currency_code,
-      value: row.value,
-      sortOrder: row.sort_order,
-      isActive: row.is_active === 1,
-    }));
+  listDenominations(currencyCode?: string, sessionId?: number): TellerDenomination[] {
+    const rows = this.db.prepare(`
+      SELECT d.id, d.currency_code, d.value, d.sort_order, d.is_active FROM denominations d
+      WHERE (? IS NULL OR d.currency_code = ?) AND (
+        d.is_active = 1 OR EXISTS (
+          SELECT 1 FROM teller_session_ht_denominations h WHERE h.session_id = ? AND h.denomination_id = d.id
+        ) OR EXISTS (
+          SELECT 1 FROM teller_transaction_denominations td JOIN teller_transactions t ON t.id = td.transaction_id
+          WHERE t.session_id = ? AND td.denomination_id = d.id
+        )
+      ) ORDER BY d.currency_code, d.sort_order, d.id
+    `).all(currencyCode ?? null, currencyCode ?? null, sessionId ?? null, sessionId ?? null) as Array<{
+      id: number; currency_code: string; value: string; sort_order: number; is_active: number;
+    }>;
+    return rows.map(row => ({ id: row.id, currencyCode: row.currency_code, value: row.value,
+      sortOrder: row.sort_order, isActive: row.is_active === 1 }));
   }
 
   getOpenSession(companyId: number, currencyCode: string): TellerSession | undefined {
@@ -308,6 +287,7 @@ export class TellerRepository {
     companyId: number;
     sessionId: number;
     direction: TellerDirection;
+    worksheetRow: number;
     referenceLabel: string;
     declaredAmount: string | null;
     createdBy: number;
@@ -315,13 +295,14 @@ export class TellerRepository {
     const result = this.db
       .prepare(
         `INSERT INTO teller_transactions (
-           company_id, session_id, direction, reference_label, declared_amount, created_by, updated_by
-         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           company_id, session_id, direction, worksheet_row, reference_label, declared_amount, created_by, updated_by
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.companyId,
         input.sessionId,
         input.direction,
+        input.worksheetRow,
         input.referenceLabel,
         input.declaredAmount,
         input.createdBy,
@@ -333,6 +314,7 @@ export class TellerRepository {
   updateTransaction(input: {
     companyId: number;
     transactionId: number;
+    worksheetRow: number;
     referenceLabel: string;
     declaredAmount: string | null;
     updatedBy: number;
@@ -342,11 +324,19 @@ export class TellerRepository {
         `UPDATE teller_transactions
          SET reference_label = ?,
              declared_amount = ?,
+             worksheet_row = ?,
              updated_at = datetime('now'),
              updated_by = ?
          WHERE company_id = ? AND id = ?`,
       )
-      .run(input.referenceLabel, input.declaredAmount, input.updatedBy, input.companyId, input.transactionId);
+      .run(
+        input.referenceLabel,
+        input.declaredAmount,
+        input.worksheetRow,
+        input.updatedBy,
+        input.companyId,
+        input.transactionId,
+      );
     return result.changes > 0;
   }
 
@@ -385,7 +375,7 @@ export class TellerRepository {
   getTransaction(companyId: number, id: number): TellerTransactionRecord | undefined {
     return this.db
       .prepare(
-        `SELECT t.id, t.company_id, t.session_id, t.direction, t.reference_label, t.declared_amount,
+        `SELECT t.id, t.company_id, t.session_id, t.direction, t.worksheet_row, t.reference_label, t.declared_amount,
                 t.created_at, t.created_by, t.updated_at, t.updated_by, s.currency_code
          FROM teller_transactions t
          JOIN teller_sessions s ON s.id = t.session_id
@@ -398,17 +388,17 @@ export class TellerRepository {
     if (direction) {
       return this.db
         .prepare(
-          `SELECT id, company_id, session_id, direction, reference_label, declared_amount,
+          `SELECT id, company_id, session_id, direction, worksheet_row, reference_label, declared_amount,
                   created_at, created_by, updated_at, updated_by
            FROM teller_transactions
            WHERE session_id = ? AND direction = ?
-           ORDER BY id ASC`,
+           ORDER BY worksheet_row ASC, id ASC`,
         )
         .all(sessionId, direction) as TellerTransactionRecord[];
     }
     return this.db
       .prepare(
-        `SELECT id, company_id, session_id, direction, reference_label, declared_amount,
+        `SELECT id, company_id, session_id, direction, worksheet_row, reference_label, declared_amount,
                 created_at, created_by, updated_at, updated_by
          FROM teller_transactions
          WHERE session_id = ?
@@ -450,7 +440,7 @@ export class TellerRepository {
     const { where, params } = buildListWhere(filters);
     return this.db
       .prepare(
-        `SELECT t.id, t.company_id, t.session_id, t.direction, t.reference_label, t.declared_amount,
+        `SELECT t.id, t.company_id, t.session_id, t.direction, t.worksheet_row, t.reference_label, t.declared_amount,
                 t.created_at, t.created_by, t.updated_at, t.updated_by, s.currency_code
          FROM teller_transactions t
          JOIN teller_sessions s ON s.id = t.session_id
@@ -463,21 +453,50 @@ export class TellerRepository {
 
   currencyActive(code: string): boolean {
     const row = this.db
-      .prepare('SELECT code FROM currencies WHERE code = ? AND is_active = 1')
+      .prepare('SELECT code FROM teller_currencies WHERE code = ? AND is_active = 1')
       .get(code) as { code: string } | undefined;
     return row !== undefined;
   }
 
   currencyExists(code: string): boolean {
-    const row = this.db.prepare('SELECT code FROM currencies WHERE code = ?').get(code) as
+    const row = this.db.prepare('SELECT code FROM teller_currencies WHERE code = ?').get(code) as
       | { code: string }
       | undefined;
     return row !== undefined;
   }
 
+  getTransactionByWorksheetRow(
+    companyId: number,
+    sessionId: number,
+    direction: TellerDirection,
+    worksheetRow: number,
+  ): TellerTransactionRecord | undefined {
+    return this.db
+      .prepare(
+        `SELECT t.id, t.company_id, t.session_id, t.direction, t.worksheet_row, t.reference_label, t.declared_amount,
+                t.created_at, t.created_by, t.updated_at, t.updated_by, s.currency_code
+         FROM teller_transactions t
+         JOIN teller_sessions s ON s.id = t.session_id
+         WHERE t.company_id = ? AND t.session_id = ? AND t.direction = ? AND t.worksheet_row = ?`,
+      )
+      .get(companyId, sessionId, direction, worksheetRow) as TellerTransactionRecord | undefined;
+  }
+
+  nextWorksheetRow(sessionId: number, direction: TellerDirection): number {
+    const row = this.db
+      .prepare(
+        `SELECT MAX(worksheet_row) AS max_row
+         FROM teller_transactions
+         WHERE session_id = ? AND direction = ?`,
+      )
+      .get(sessionId, direction) as { max_row: number | null };
+    const firstRow = direction === 'DEPOSIT' ? 2 : 1;
+    return Math.max(firstRow, (row.max_row ?? firstRow - 1) + 1);
+  }
+
   listActiveCurrencyCodes(): string[] {
     const rows = this.db
-      .prepare('SELECT code FROM currencies WHERE is_active = 1 ORDER BY sort_order ASC, code ASC')
+      .prepare('SELECT code FROM teller_currencies WHERE is_active = 1 AND EXISTS (SELECT 1 FROM denominations d WHERE d.currency_code = teller_currencies.code AND d.is_active = 1) ORDER BY sort_order ASC, code ASC')
       .all() as Array<{ code: string }>;
     return rows.map((row) => row.code);
   }

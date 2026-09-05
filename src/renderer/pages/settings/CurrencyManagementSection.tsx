@@ -1,16 +1,14 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Currency, CurrencyDenomination } from '@shared/types/currency';
+import type { Currency } from '@shared/types/currency';
 import { useAuth } from '../../context/AuthContext';
 import { ConfirmDialog } from '../customers/components/ConfirmDialog';
-import { useLocaleFormat } from '../../hooks/useLocaleFormat';
 
 interface CurrencyManagementSectionProps {
   currencies: Currency[];
   onReload: () => Promise<void>;
   mapError: (errorCode: string, message?: string) => string;
 }
-
 export function CurrencyManagementSection({
   currencies,
   onReload,
@@ -19,14 +17,10 @@ export function CurrencyManagementSection({
   const { t } = useTranslation('settings');
   const { t: tCommon } = useTranslation('common');
   const { sessionId } = useAuth();
-  const { formatMoney } = useLocaleFormat();
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [symbol, setSymbol] = useState('');
-  const [denomDraft, setDenomDraft] = useState('');
   const [isAdding, setIsAdding] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [denoms, setDenoms] = useState<Record<string, CurrencyDenomination[]>>({});
   const [pendingDeactivate, setPendingDeactivate] = useState<Currency | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Currency | null>(null);
   const [isBusy, setIsBusy] = useState(false);
@@ -40,19 +34,6 @@ export function CurrencyManagementSection({
     const timer = window.setTimeout(() => setSuccess(null), 2500);
     return () => window.clearTimeout(timer);
   }, [success]);
-
-  useEffect(() => {
-    if (!sessionId || !expanded) {
-      return;
-    }
-    void window.api.currencies
-      .listDenominations({ sessionId, currencyCode: expanded, includeInactive: true })
-      .then((result) => {
-        if (result.ok) {
-          setDenoms((current) => ({ ...current, [expanded]: result.data.denominations }));
-        }
-      });
-  }, [sessionId, expanded, currencies]);
 
   async function handleAddCurrency(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -72,83 +53,14 @@ export function CurrencyManagementSection({
         setError(mapError(result.errorCode, result.message));
         return;
       }
-      const values = denomDraft
-        .split(/[\s,]+/)
-        .map((item) => item.trim())
-        .filter((item) => item.length > 0);
-      for (const value of values) {
-        const denomResult = await window.api.currencies.createDenomination({
-          sessionId,
-          currencyCode: result.data.currency.code,
-          value,
-        });
-        if (!denomResult.ok) {
-          setError(mapError(denomResult.errorCode, denomResult.message));
-          await onReload();
-          return;
-        }
-      }
       setCode('');
       setName('');
       setSymbol('');
-      setDenomDraft('');
-      setExpanded(result.data.currency.code);
       setSuccess(t('currencyAdded'));
       await onReload();
     } finally {
       setIsAdding(false);
     }
-  }
-
-  async function addDenomination(currencyCode: string, value: string): Promise<void> {
-    if (!sessionId || value.trim().length === 0) {
-      return;
-    }
-    setIsBusy(true);
-    setError(null);
-    const result = await window.api.currencies.createDenomination({
-      sessionId,
-      currencyCode,
-      value: value.trim(),
-    });
-    setIsBusy(false);
-    if (!result.ok) {
-      setError(mapError(result.errorCode, result.message));
-      return;
-    }
-    setSuccess(t('denominationAdded'));
-    await onReload();
-  }
-
-  async function toggleDenomination(item: CurrencyDenomination): Promise<void> {
-    if (!sessionId) {
-      return;
-    }
-    setIsBusy(true);
-    const result = item.isActive
-      ? await window.api.currencies.deactivateDenomination({ sessionId, id: item.id })
-      : await window.api.currencies.reactivateDenomination({ sessionId, id: item.id });
-    setIsBusy(false);
-    if (!result.ok) {
-      setError(mapError(result.errorCode, result.message));
-      return;
-    }
-    await onReload();
-  }
-
-  async function deleteDenomination(item: CurrencyDenomination): Promise<void> {
-    if (!sessionId) {
-      return;
-    }
-    setIsBusy(true);
-    const result = await window.api.currencies.deleteDenomination({ sessionId, id: item.id });
-    setIsBusy(false);
-    if (!result.ok) {
-      setError(mapError(result.errorCode, result.message));
-      return;
-    }
-    setSuccess(t('denominationDeleted'));
-    await onReload();
   }
 
   async function confirmDeactivate(): Promise<void> {
@@ -233,13 +145,6 @@ export function CurrencyManagementSection({
                 <td data-label={t('currencySymbol')}>{currency.symbol || tCommon('emptyValue')}</td>
                 <td data-label={t('currencyStatus')}>{currency.isActive ? t('active') : t('inactive')}</td>
                 <td className="col-actions" data-label={t('actions')}>
-                  <button
-                    type="button"
-                    className="button button-secondary button-compact"
-                    onClick={() => setExpanded(expanded === currency.code ? null : currency.code)}
-                  >
-                    {t('denominations')}
-                  </button>
                   {currency.isActive ? (
                     <button
                       type="button"
@@ -271,18 +176,6 @@ export function CurrencyManagementSection({
           </tbody>
         </table>
       </div>
-
-      {expanded ? (
-        <DenominationEditor
-          currencyCode={expanded}
-          items={denoms[expanded] ?? []}
-          disabled={isBusy}
-          formatMoney={formatMoney}
-          onAdd={(value) => void addDenomination(expanded, value)}
-          onToggle={(item) => void toggleDenomination(item)}
-          onDelete={(item) => void deleteDenomination(item)}
-        />
-      ) : null}
 
       <form className="currency-add-form" onSubmit={(event) => void handleAddCurrency(event)} autoComplete="off">
         <h3>{t('addCurrency')}</h3>
@@ -319,18 +212,6 @@ export function CurrencyManagementSection({
               maxLength={8}
               onChange={(event) => setSymbol(event.target.value)}
               disabled={isAdding}
-            />
-          </div>
-          <div className="form-field">
-            <label htmlFor="new-currency-denoms">
-              {t('denominations')} <span className="optional-label">({t('optional')})</span>
-            </label>
-            <input
-              id="new-currency-denoms"
-              value={denomDraft}
-              onChange={(event) => setDenomDraft(event.target.value)}
-              disabled={isAdding}
-              placeholder={t('denominationPlaceholder')}
             />
           </div>
           <button type="submit" className="button button-primary" disabled={isAdding}>
@@ -371,77 +252,5 @@ export function CurrencyManagementSection({
         />
       ) : null}
     </section>
-  );
-}
-
-function DenominationEditor({
-  currencyCode,
-  items,
-  disabled,
-  formatMoney,
-  onAdd,
-  onToggle,
-  onDelete,
-}: {
-  currencyCode: string;
-  items: CurrencyDenomination[];
-  disabled: boolean;
-  formatMoney: (value: string) => string;
-  onAdd: (value: string) => void;
-  onToggle: (item: CurrencyDenomination) => void;
-  onDelete: (item: CurrencyDenomination) => void;
-}): JSX.Element {
-  const { t } = useTranslation('settings');
-  const [value, setValue] = useState('');
-
-  return (
-    <div className="teller-denom-editor">
-      <h3>
-        {t('denominations')} · {currencyCode}
-      </h3>
-      {items.length === 0 ? <p className="empty-state">{t('noDenominations')}</p> : null}
-      <ul className="teller-denom-editor-list">
-        {items.map((item) => (
-          <li key={item.id}>
-            <strong>{formatMoney(item.value)}</strong>
-            <span>{item.isActive ? t('active') : t('inactive')}</span>
-            <button type="button" className="button button-secondary button-compact" disabled={disabled} onClick={() => onToggle(item)}>
-              {item.isActive ? t('deactivateCurrency') : t('reactivateCurrency')}
-            </button>
-            <button
-              type="button"
-              className="button button-danger button-compact"
-              disabled={disabled || item.inUse}
-              onClick={() => onDelete(item)}
-              title={item.inUse ? t('denominationInUse') : undefined}
-            >
-              {t('deleteCurrency')}
-            </button>
-          </li>
-        ))}
-      </ul>
-      <form
-        className="action-bar"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onAdd(value);
-          setValue('');
-        }}
-      >
-        <div className="form-field">
-          <label htmlFor={`add-denom-${currencyCode}`}>{t('denominationValue')}</label>
-          <input
-            id={`add-denom-${currencyCode}`}
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            disabled={disabled}
-            placeholder="100"
-          />
-        </div>
-        <button type="submit" className="button button-primary" disabled={disabled || value.trim().length === 0}>
-          {t('addDenomination')}
-        </button>
-      </form>
-    </div>
   );
 }

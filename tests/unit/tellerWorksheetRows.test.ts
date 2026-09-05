@@ -4,6 +4,7 @@ import {
   nextTellerBusinessDate,
   planWorksheetSides,
   resolveWorksheetRowCount,
+  resolveWorksheetRowCountFromTransactions,
   suggestTellerExportFileName,
   suggestTellerDailyExportFileName,
   worksheetRowNumbers,
@@ -51,6 +52,16 @@ describe('teller worksheet rows', () => {
     expect(suggestTellerExportFileName('AFN', '2026-08-29')).toBe('FMT-Teller-AFN-2026-08-29.xlsx');
     expect(suggestTellerExportFileName('usd', '2026-08-29')).toBe('FMT-Teller-USD-2026-08-29.xlsx');
     expect(suggestTellerExportFileName('GB/P', '2026-08-29')).toBe('FMT-Teller-GBP-2026-08-29.xlsx');
+  });
+
+  it('keeps arbitrary persisted row positions when resolving worksheet capacity', () => {
+    expect(
+      resolveWorksheetRowCountFromTransactions(
+        20,
+        [{ worksheetRow: 11 }, { worksheetRow: 15 }, { worksheetRow: 3 }],
+        [{ worksheetRow: 27 }],
+      ),
+    ).toBe(27);
   });
 
   it('builds one currency-neutral filename for the combined daily workbook', () => {

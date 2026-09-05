@@ -31,7 +31,7 @@ export function TellerCurrencyForm({ onCreated }: TellerCurrencyFormProps): JSX.
     }
     setSaving(true);
     setError(null);
-    const created = await window.api.currencies.create({
+    const created = await window.api.tellerCurrencies.create({
       sessionId,
       code: code.trim(),
       name: name.trim() || undefined,
@@ -42,7 +42,7 @@ export function TellerCurrencyForm({ onCreated }: TellerCurrencyFormProps): JSX.
       return;
     }
     for (const value of values) {
-      const denom = await window.api.currencies.createDenomination({
+      const denom = await window.api.tellerCurrencies.createDenomination({
         sessionId,
         currencyCode: created.data.currency.code,
         value,

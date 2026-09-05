@@ -178,6 +178,129 @@ export function registerTransactionHandlers(ipcMain: IpcMain, ctx: ApplicationCo
     }),
   );
 
+  ipcMain.handle(IPC_CHANNELS.TELLER_CURRENCIES_LIST, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      const includeInactive = record.includeInactive === true;
+      return {
+        currencies: includeInactive ? ctx.tellerCurrencyService.listAll() : ctx.tellerCurrencyService.listActive(),
+      };
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_CURRENCIES_CREATE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      const currency = ctx.tellerCurrencyService.create({
+        code: record.code as string,
+        name: typeof record.name === 'string' ? record.name : undefined,
+        symbol: typeof record.symbol === 'string' ? record.symbol : undefined,
+        sortOrder: typeof record.sortOrder === 'number' ? record.sortOrder : undefined,
+      });
+      return { currency };
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_CURRENCIES_DEACTIVATE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      if (typeof record.code !== 'string') {
+        throw new AppError('VALIDATION_ERROR', 'CURRENCY_CODE_INVALID');
+      }
+      const currency = ctx.tellerCurrencyService.deactivate(record.code);
+      return { currency };
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_CURRENCIES_REACTIVATE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      if (typeof record.code !== 'string') {
+        throw new AppError('VALIDATION_ERROR', 'CURRENCY_CODE_INVALID');
+      }
+      const currency = ctx.tellerCurrencyService.reactivate(record.code);
+      return { currency };
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_CURRENCIES_DELETE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      if (typeof record.code !== 'string') {
+        throw new AppError('VALIDATION_ERROR', 'CURRENCY_CODE_INVALID');
+      }
+      return ctx.tellerCurrencyService.remove(record.code);
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_CURRENCIES_DENOMINATIONS_LIST, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      if (typeof record.currencyCode !== 'string') {
+        throw new AppError('VALIDATION_ERROR', 'CURRENCY_CODE_INVALID');
+      }
+      return {
+        denominations: ctx.tellerCurrencyService.listDenominations(
+          record.currencyCode,
+          record.includeInactive === true,
+        ),
+      };
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_CURRENCIES_DENOMINATIONS_CREATE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      if (typeof record.currencyCode !== 'string') {
+        throw new AppError('VALIDATION_ERROR', 'CURRENCY_CODE_INVALID');
+      }
+      const denomination = ctx.tellerCurrencyService.createDenomination({
+        currencyCode: record.currencyCode,
+        value: typeof record.value === 'string' ? record.value : String(record.value ?? ''),
+      });
+      return { denomination };
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_CURRENCIES_DENOMINATIONS_DEACTIVATE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      const denomination = ctx.tellerCurrencyService.deactivateDenomination(
+        parsePositiveIntegerId(record.id, 'TELLER_DENOMINATION_INVALID'),
+      );
+      return { denomination };
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_CURRENCIES_DENOMINATIONS_REACTIVATE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      const denomination = ctx.tellerCurrencyService.reactivateDenomination(
+        parsePositiveIntegerId(record.id, 'TELLER_DENOMINATION_INVALID'),
+      );
+      return { denomination };
+    }),
+  );
+
+  ipcMain.handle(IPC_CHANNELS.TELLER_CURRENCIES_DENOMINATIONS_DELETE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      return ctx.tellerCurrencyService.removeDenomination(
+        parsePositiveIntegerId(record.id, 'TELLER_DENOMINATION_INVALID'),
+      );
+    }),
+  );
+
   ipcMain.handle(IPC_CHANNELS.TRANSACTIONS_LIST, (_event, input: unknown) =>
     wrapIpcHandler(() => {
       const { sessionId, record } = parseSessionRequest(input);

@@ -110,7 +110,7 @@ export class TellerService {
 
     const denominations = this.requireDenominations(currencyCode);
     const previous = this.repo.getLatestSessionBefore(companyId, currencyCode, sessionDate);
-    const inherited = previous ? this.closingPosition(this.hydrateSession(previous), denominations) : null;
+    const inherited = previous ? this.closingPosition(this.hydrateSession(previous), this.requireDenominations(previous.currencyCode, previous.id)) : null;
     const explicitOpening = input.openingCounts !== undefined || input.openingAmount !== undefined;
     const openingCounts = this.normalizeCounts(
       denominations,
@@ -156,7 +156,7 @@ export class TellerService {
   updateSession(userId: number, input: UpdateTellerSessionInput): TellerSession {
     const companyId = this.companyId();
     const session = this.requireOpenSession(companyId, input.sessionId);
-    const denominations = this.requireDenominations(session.currencyCode);
+    const denominations = this.requireDenominations(session.currencyCode, session.id);
     const openingCounts =
       input.openingCounts === undefined
         ? session.openingCounts
@@ -216,10 +216,15 @@ export class TellerService {
     const exportInputs = [];
     const closings: Array<{ currencyCode: string; closingAmount: string }> = [];
     for (const session of openSessions) {
-      const denominations = this.requireDenominations(session.currencyCode);
+      const denominations = this.requireDenominations(session.currencyCode, session.id);
       const sheet = this.buildSheet(session, denominations);
       const closing = computeDayClosing(sheet);
-      const rows = Math.max(INITIAL_WORKSHEET_ROWS, worksheetRows ?? 0, sheet.deposits.length + 1, sheet.withdrawals.length);
+      const rows = Math.max(
+        INITIAL_WORKSHEET_ROWS,
+        worksheetRows ?? 0,
+        ...sheet.deposits.map((transaction) => transaction.worksheetRow),
+        ...sheet.withdrawals.map((transaction) => transaction.worksheetRow),
+      );
       exportInputs.push({
         sheet,
         worksheetRows: rows,
@@ -265,7 +270,7 @@ export class TellerService {
     const today = parseSessionDate(undefined);
     const todaySession = this.repo.getSessionByDate(this.companyId(), code, today);
     if (todaySession?.status === 'OPEN') {
-      return this.buildSheet(this.hydrateSession(todaySession), this.requireDenominations(code));
+      return this.buildSheet(this.hydrateSession(todaySession), this.requireDenominations(code, todaySession.id));
     }
     if (todaySession?.status === 'CLOSED') {
       const next = this.openFollowingBusinessDay(userId, code, todaySession.sessionDate, opening);
@@ -349,7 +354,9 @@ export class TellerService {
     const companyId = this.companyId();
     const session = this.requireOpenSession(companyId, input.sessionId);
     const direction = parseTellerDirection(input.direction);
-    const denominations = this.requireDenominations(session.currencyCode);
+    const requestedWorksheetRow =
+      input.worksheetRow === undefined ? undefined : parseWorksheetRow(input.worksheetRow, direction);
+    const denominations = this.requireDenominations(session.currencyCode, session.id);
     const counts = this.normalizeCounts(denominations, parsePieceCounts(input.denominationCounts));
     const referenceLabel = (input.referenceLabel ?? '').trim();
     const declaredAmount = parseOptionalTellerAmount(input.declaredAmount);
@@ -368,14 +375,34 @@ export class TellerService {
     let transactionId = input.id ?? 0;
     this.write(() => {
       if (input.id === undefined) {
-        transactionId = this.repo.insertTransaction({
+        const worksheetRow = requestedWorksheetRow ?? this.repo.nextWorksheetRow(session.id, direction);
+        const existingAtRow = this.repo.getTransactionByWorksheetRow(
           companyId,
-          sessionId: session.id,
+          session.id,
           direction,
-          referenceLabel,
-          declaredAmount: declaredAmount === null ? null : formatAmount(declaredAmount),
-          createdBy: userId,
-        });
+          worksheetRow,
+        );
+        if (existingAtRow) {
+          transactionId = existingAtRow.id;
+          this.repo.updateTransaction({
+            companyId,
+            transactionId,
+            worksheetRow,
+            referenceLabel,
+            declaredAmount: declaredAmount === null ? null : formatAmount(declaredAmount),
+            updatedBy: userId,
+          });
+        } else {
+          transactionId = this.repo.insertTransaction({
+            companyId,
+            sessionId: session.id,
+            direction,
+            worksheetRow,
+            referenceLabel,
+            declaredAmount: declaredAmount === null ? null : formatAmount(declaredAmount),
+            createdBy: userId,
+          });
+        }
       } else {
         const existing = this.repo.getTransaction(companyId, input.id);
         if (!existing || existing.session_id !== session.id) {
@@ -387,6 +414,7 @@ export class TellerService {
         this.repo.updateTransaction({
           companyId,
           transactionId: input.id,
+          worksheetRow: requestedWorksheetRow ?? existing.worksheet_row,
           referenceLabel,
           declaredAmount: declaredAmount === null ? null : formatAmount(declaredAmount),
           updatedBy: userId,
@@ -429,7 +457,7 @@ export class TellerService {
     if (!session) {
       throw new AppError('TELLER_SESSION_NOT_FOUND', 'TELLER_SESSION_NOT_FOUND');
     }
-    const denominations = this.requireDenominations(session.currencyCode);
+    const denominations = this.requireDenominations(session.currencyCode, session.id);
     const siblings = this.repo.listSessionTransactions(session.id, record.direction);
     const sequenceNo = siblings.findIndex((row) => row.id === record.id) + 1;
     return this.toTransaction(record, denominations, sequenceNo);
@@ -466,7 +494,7 @@ export class TellerService {
     return {
       transactions: records.map((row) => {
         const session = this.repo.getSession(companyId, row.session_id);
-        const denominations = session ? this.requireDenominations(session.currencyCode) : [];
+        const denominations = session ? this.requireDenominations(session.currencyCode, session.id) : [];
         const counts = this.repo.listTransactionCounts(row.id);
         const countedTotal = denominations.length > 0 ? computeCountedTotal(denominations, counts) : ZERO_BALANCE;
         const declared = row.declared_amount ?? countedTotal;
@@ -496,12 +524,12 @@ export class TellerService {
     if (!this.repo.currencyExists(code)) {
       throw new AppError('INVALID_CURRENCY', 'INVALID_CURRENCY');
     }
-    const denominations = this.repo.listDenominations(code);
     const explicitDate = options?.sessionDate !== undefined && options.sessionDate.trim().length > 0;
     const sessionDate = parseSessionDate(options?.sessionDate);
     if (!explicitDate && options?.userId !== undefined) {
       const open = this.repo.getOpenSession(this.companyId(), code);
       if (open) {
+        const denominations = this.repo.listDenominations(code, open.id);
         return this.buildSheet(this.hydrateSession(open), denominations);
       }
     }
@@ -510,6 +538,7 @@ export class TellerService {
       session = this.ensureDailySession(options.userId, code, sessionDate);
     }
     if (!session) {
+      const denominations = this.repo.listDenominations(code);
       return {
         session: null,
         currencyCode: code,
@@ -520,7 +549,7 @@ export class TellerService {
         summary: emptySummary(code, denominations),
       };
     }
-    return this.buildSheet(this.hydrateSession(session), denominations);
+    return this.buildSheet(this.hydrateSession(session), this.repo.listDenominations(code, session.id));
   }
 
   getLongBook(sessionId: number | undefined, currencyCode: string, page?: number, pageSize?: number): TellerLongBook {
@@ -530,7 +559,7 @@ export class TellerService {
       throw new AppError('INVALID_CURRENCY', 'INVALID_CURRENCY');
     }
     const session = this.requireReadableSession(companyId, sessionId, code);
-    const denominations = this.requireDenominations(session.currencyCode);
+    const denominations = this.requireDenominations(session.currencyCode, session.id);
     const hydrated = this.hydrateSession(session);
     const movements = this.repo.listSessionTransactions(session.id);
     const openingBalance = hydrated.openingAmount;
@@ -650,8 +679,8 @@ export class TellerService {
     };
   }
 
-  private requireDenominations(currencyCode: string): TellerDenomination[] {
-    const denominations = this.repo.listDenominations(currencyCode);
+  private requireDenominations(currencyCode: string, sessionId?: number): TellerDenomination[] {
+    const denominations = this.repo.listDenominations(currencyCode, sessionId);
     if (denominations.length === 0) {
       throw new AppError('TELLER_DENOMINATION_INVALID', 'TELLER_DENOMINATION_INVALID');
     }
@@ -716,7 +745,7 @@ export class TellerService {
   }
 
   private hydrateSession(session: TellerSession): TellerSession {
-    const denominations = this.repo.listDenominations(session.currencyCode);
+    const denominations = this.repo.listDenominations(session.currencyCode, session.id);
     const openingCounts = this.normalizeCounts(denominations, session.openingCounts);
     return {
       ...session,
@@ -752,6 +781,7 @@ export class TellerService {
       id: record.id,
       sessionId: record.session_id,
       sequenceNo,
+      worksheetRow: record.worksheet_row,
       direction: record.direction,
       referenceLabel: record.reference_label,
       declaredAmount: declared,
@@ -830,6 +860,14 @@ export class TellerService {
 
 function formatAmount(value: string): string {
   return formatTellerAmount(parseTellerDecimal(value));
+}
+
+function parseWorksheetRow(value: number, direction: TellerDirection): number {
+  const minimum = direction === 'DEPOSIT' ? 2 : 1;
+  if (!Number.isSafeInteger(value) || value < minimum) {
+    throw new AppError('INVALID_REQUEST', 'INVALID_REQUEST');
+  }
+  return value;
 }
 
 function emptySummary(currencyCode: string, denominations: TellerDenomination[]): TellerSessionSummary {

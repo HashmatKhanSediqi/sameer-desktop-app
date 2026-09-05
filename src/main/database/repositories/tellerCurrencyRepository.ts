@@ -20,7 +20,7 @@ interface DenominationRecord {
   in_use?: number;
 }
 
-export class CurrencyRepository {
+export class TellerCurrencyRepository {
   constructor(private readonly db: Database.Database) {}
 
   listActive(): Currency[] {
@@ -37,7 +37,7 @@ export class CurrencyRepository {
       .prepare(
         `SELECT code, name_key, display_name, symbol, is_active, sort_order,
                 (${usageExistsSql()}) AS has_transactions
-         FROM currencies
+         FROM teller_currencies
          ${where}
          ORDER BY sort_order ASC, code ASC`,
       )
@@ -51,7 +51,7 @@ export class CurrencyRepository {
       .prepare(
         `SELECT code, name_key, display_name, symbol, is_active, sort_order,
                 (${usageExistsSql()}) AS has_transactions
-         FROM currencies
+         FROM teller_currencies
          WHERE code = ?`,
       )
       .get(code) as CurrencyRecord | undefined;
@@ -60,24 +60,21 @@ export class CurrencyRepository {
   }
 
   countActive(): number {
-    const row = this.db.prepare('SELECT COUNT(*) AS count FROM currencies WHERE is_active = 1').get() as {
+    const row = this.db.prepare('SELECT COUNT(*) AS count FROM teller_currencies WHERE is_active = 1').get() as {
       count: number;
     };
     return row.count;
   }
 
   hasTransactions(code: string): boolean {
-    const customerRow = this.db
-      .prepare('SELECT 1 AS present FROM transactions WHERE currency_code = ? LIMIT 1')
+    const tellerRow = this.db
+      .prepare('SELECT 1 AS present FROM teller_sessions WHERE currency_code = ? LIMIT 1')
       .get(code) as { present: number } | undefined;
-    if (customerRow !== undefined) {
-      return true;
-    }
-    return false;
+    return tellerRow !== undefined;
   }
 
   nextSortOrder(): number {
-    const row = this.db.prepare('SELECT COALESCE(MAX(sort_order), 0) AS max_sort FROM currencies').get() as {
+    const row = this.db.prepare('SELECT COALESCE(MAX(sort_order), 0) AS max_sort FROM teller_currencies').get() as {
       max_sort: number;
     };
     return row.max_sort + 1;
@@ -86,7 +83,7 @@ export class CurrencyRepository {
   create(input: { code: string; nameKey: string; displayName: string; symbol: string; sortOrder: number }): void {
     this.db
       .prepare(
-        `INSERT INTO currencies (code, name_key, display_name, symbol, sort_order, is_active)
+        `INSERT INTO teller_currencies (code, name_key, display_name, symbol, sort_order, is_active)
          VALUES (?, ?, ?, ?, ?, 1)`,
       )
       .run(input.code, input.nameKey, input.displayName, input.symbol, input.sortOrder);
@@ -96,7 +93,7 @@ export class CurrencyRepository {
     if (displayName !== undefined) {
       this.db
         .prepare(
-          `UPDATE currencies
+          `UPDATE teller_currencies
            SET is_active = 1,
                symbol = ?,
                display_name = ?
@@ -107,7 +104,7 @@ export class CurrencyRepository {
     }
     this.db
       .prepare(
-        `UPDATE currencies
+        `UPDATE teller_currencies
          SET is_active = 1,
              symbol = ?
          WHERE code = ?`,
@@ -116,12 +113,19 @@ export class CurrencyRepository {
   }
 
   deactivate(code: string): boolean {
-    const result = this.db.prepare('UPDATE currencies SET is_active = 0 WHERE code = ? AND is_active = 1').run(code);
+    const result = this.db.prepare('UPDATE teller_currencies SET is_active = 0 WHERE code = ? AND is_active = 1').run(code);
     return result.changes > 0;
   }
 
   deleteByCode(code: string): boolean {
-    const result = this.db.prepare('DELETE FROM currencies WHERE code = ?').run(code);
+    this.db
+      .prepare(
+        `DELETE FROM teller_session_ht_denominations
+         WHERE denomination_id IN (SELECT id FROM denominations WHERE currency_code = ?)`,
+      )
+      .run(code);
+    this.db.prepare('DELETE FROM denominations WHERE currency_code = ?').run(code);
+    const result = this.db.prepare('DELETE FROM teller_currencies WHERE code = ?').run(code);
     return result.changes > 0;
   }
 
@@ -199,7 +203,7 @@ export class CurrencyRepository {
 }
 
 function usageExistsSql(): string {
-  return `EXISTS(SELECT 1 FROM transactions t WHERE t.currency_code = currencies.code)`;
+  return `EXISTS(SELECT 1 FROM teller_sessions ts WHERE ts.currency_code = teller_currencies.code)`;
 }
 
 function denominationInUseSql(): string {

@@ -36,6 +36,7 @@ describe('migrations', () => {
 
       expect(afterSecond.has(7)).toBe(true);
       expect(afterSecond.has(8)).toBe(true);
+      expect(afterSecond.has(11)).toBe(true);
       const teller = testDb.db
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'teller_transactions'")
         .get();
@@ -48,6 +49,9 @@ describe('migrations', () => {
         .prepare("SELECT COUNT(*) AS count FROM denominations WHERE currency_code = 'EUR'")
         .get() as { count: number };
       expect(eurDenoms.count).toBe(13);
+
+      const tellerColumns = testDb.db.prepare('PRAGMA table_info(teller_transactions)').all() as Array<{ name: string }>;
+      expect(tellerColumns.some((column) => column.name === 'worksheet_row')).toBe(true);
     } finally {
       testDb.cleanup();
     }

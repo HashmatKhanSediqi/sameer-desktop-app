@@ -37,6 +37,7 @@ export interface TellerTransaction {
   id: number;
   sessionId: number;
   sequenceNo: number;
+  worksheetRow: number;
   direction: TellerDirection;
   referenceLabel: string;
   declaredAmount: string | null;
@@ -164,6 +165,7 @@ export interface UpdateTellerSessionInput {
 export interface UpsertTellerTransactionInput {
   id?: number;
   sessionId: number;
+  worksheetRow?: number;
   direction: TellerDirection;
   referenceLabel?: string;
   declaredAmount?: string | null;

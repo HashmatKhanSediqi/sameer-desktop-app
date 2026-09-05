@@ -27,6 +27,64 @@ function counts(pieces: Record<string, number>): Record<string, number> {
 }
 
 describe('teller service workbook model', () => {
+  it('preserves arbitrary worksheet rows across saves and sheet refreshes', async () => {
+    const harness = await createTellerHarness();
+    try {
+      const session = harness.tellerService.openSession(harness.userId, { currencyCode: 'AFN' });
+      const row11 = harness.tellerService.upsertTransaction(harness.userId, {
+        sessionId: session.id,
+        worksheetRow: 11,
+        direction: 'DEPOSIT',
+        referenceLabel: 'ROW-11',
+        declaredAmount: '1000',
+        denominationCounts: counts({ '1000': 1 }),
+      });
+      const row11SecondSave = harness.tellerService.upsertTransaction(harness.userId, {
+        sessionId: session.id,
+        worksheetRow: 11,
+        direction: 'DEPOSIT',
+        referenceLabel: 'ROW-11-UPDATED',
+        declaredAmount: '1500',
+        denominationCounts: counts({ '1000': 1, '500': 1 }),
+      });
+      expect(row11SecondSave?.id).toBe(row11?.id);
+
+      for (const [worksheetRow, label, denomination] of [
+        [15, 'ROW-15', '500'],
+        [3, 'ROW-3', '100'],
+      ] as const) {
+        harness.tellerService.upsertTransaction(harness.userId, {
+          sessionId: session.id,
+          worksheetRow,
+          direction: 'DEPOSIT',
+          referenceLabel: label,
+          declaredAmount: denomination,
+          denominationCounts: counts({ [denomination]: 1 }),
+        });
+      }
+      harness.tellerService.upsertTransaction(harness.userId, {
+        sessionId: session.id,
+        worksheetRow: 8,
+        direction: 'WITHDRAWAL',
+        referenceLabel: 'WITHDRAW-8',
+        declaredAmount: '100',
+        denominationCounts: counts({ '100': 1 }),
+      });
+
+      const refreshed = harness.tellerService.getSheet('AFN');
+      expect(refreshed.deposits.map((row) => [row.worksheetRow, row.referenceLabel])).toEqual([
+        [3, 'ROW-3'],
+        [11, 'ROW-11-UPDATED'],
+        [15, 'ROW-15'],
+      ]);
+      expect(refreshed.withdrawals.map((row) => [row.worksheetRow, row.referenceLabel])).toEqual([
+        [8, 'WITHDRAW-8'],
+      ]);
+    } finally {
+      harness.testDb.cleanup();
+    }
+  });
+
   it('saves a mixed-denomination deposit: 1×1000 + 1×500 = 1500, Check OK', async () => {
     const harness = await createTellerHarness();
     try {
@@ -472,6 +530,14 @@ describe('teller service workbook model', () => {
         openingCounts: counts({ '100': 3 }),
         openingAmount: '300',
       });
+      harness.tellerService.upsertTransaction(harness.userId, {
+        sessionId: eur.id,
+        worksheetRow: 2,
+        direction: 'DEPOSIT',
+        referenceLabel: 'EUR-DECIMAL',
+        declaredAmount: '100.25',
+        denominationCounts: counts({ '100': 1, '0.20': 1, '0.05': 1 }),
+      });
       for (let index = 0; index < 35; index += 1) {
         harness.tellerService.upsertTransaction(harness.userId, {
           sessionId: usd.id,
@@ -521,6 +587,19 @@ describe('teller service workbook model', () => {
       expect(worksheet!.getCell(50, 2).value).toBe('IN-35');
       expect(worksheet!.getCell(15, 14).value).toBe(1);
       expect(worksheet!.getCell(15, 15).value).toBe('OUT-1');
+      expect(worksheet!.getCell(13, 1).fill).toMatchObject({ fgColor: { argb: 'FF548235' } });
+      expect(worksheet!.getCell(14, 1).border.top?.style).toBe('thin');
+      expect(worksheet!.getCell(15, 1).border.bottom?.style).toBe('thin');
+      expect(worksheet!.getCell(4, 1).border.right?.style).toBe('thin');
+      expect(worksheet!.getColumn(1).width).toBe(6);
+      expect(worksheet!.getColumn(2).width).toBe(22);
+      expect(worksheet!.getColumn(15).width).toBe(22);
+      expect(worksheet!.getRow(13).height).toBe(24);
+      expect(worksheet!.getRow(14).height).toBe(22);
+      expect(worksheet!.getRow(15).height).toBe(20);
+      expect(worksheet!.getCell(15, 3).numFmt).toBe('#,##0.####');
+      expect(workbook.getWorksheet('EUR')!.getCell(16, 3).value).toBe(100.25);
+      expect(workbook.getWorksheet('EUR')!.getCell(16, 3).numFmt).toBe('#,##0.####');
 
       const day2 = harness.tellerService.openSession(harness.userId, {
         currencyCode: 'USD',

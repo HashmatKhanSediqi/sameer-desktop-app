@@ -219,3 +219,6 @@ At ~100k customers / ~300k transactions, automated tests observed backup create 
 - [x] Auto-close backup to the configured folder; unique names; no overwrite (automated)
 - [x] Safety retention ≤ 5 (automated)
 - [ ] Manual clean-VM restore smoke test (operator)
+## Recovery scope
+
+CAB protects Customer Accounting: customers, transactions, company/account configuration, and accounting-related images. Teller's successful daily Excel export is its permanent archive. A live worksheet remains in SQLite for operational crash/restart safety until END TODAY completes; it is not required to be restored as historical accounting data.

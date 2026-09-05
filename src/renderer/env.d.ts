@@ -157,6 +157,7 @@ export interface PreloadApi {
     delete: (request: CustomersDeleteRequest) => Promise<CustomersDeleteResult>;
     getPhoto: (request: CustomersGetPhotoRequest) => Promise<CustomersGetPhotoResult>;
   };
+  tellerCurrencies: PreloadApi['currencies'];
   currencies: {
     list: (request: CurrenciesListRequest) => Promise<CurrenciesListResult>;
     create: (request: CurrenciesCreateRequest) => Promise<CurrenciesCreateResult>;

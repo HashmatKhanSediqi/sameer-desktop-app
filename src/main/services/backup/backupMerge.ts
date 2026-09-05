@@ -1,4 +1,5 @@
 import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { extname, join } from 'node:path';
 import type Database from 'better-sqlite3';
 import { AppError } from '../../utils/errors';
@@ -52,7 +53,6 @@ export function mergeBackupAccountingData(options: {
 
   const merge = liveDb.transaction(() => {
     mergeCurrencies(liveDb, backupDb);
-    mergeDenominations(liveDb, backupDb);
     const customerMap = mergeCustomers(liveDb, backupDb);
     const transactionsImported = mergeTransactions(liveDb, backupDb, customerMap);
     return {
@@ -105,33 +105,6 @@ function mergeCurrencies(liveDb: Database.Database, backupDb: Database.Database)
       sort_order: row.sort_order,
       display_name: row.display_name || row.code,
     });
-  }
-}
-
-function mergeDenominations(liveDb: Database.Database, backupDb: Database.Database): void {
-  if (!tableExists(backupDb, 'denominations') || !tableExists(liveDb, 'denominations')) {
-    return;
-  }
-
-  const rows = backupDb
-    .prepare(
-      `SELECT currency_code, value, sort_order, is_active
-       FROM denominations`,
-    )
-    .all() as Array<{
-    currency_code: string;
-    value: string;
-    sort_order: number;
-    is_active: number;
-  }>;
-
-  const insert = liveDb.prepare(
-    `INSERT OR IGNORE INTO denominations (currency_code, value, sort_order, is_active)
-     VALUES (@currency_code, @value, @sort_order, @is_active)`,
-  );
-
-  for (const row of rows) {
-    insert.run(row);
   }
 }
 
@@ -208,6 +181,7 @@ function mergeTransactions(
   }
 
   const hasTransferColumns = columnExists(backupDb, 'transactions', 'transfer_id');
+  const transferMap = new Map<string, string>();
   const rows = backupDb
     .prepare(
       hasTransferColumns
@@ -252,13 +226,24 @@ function mergeTransactions(
       transaction_date: row.transaction_date,
       created_at: row.created_at,
       updated_at: row.updated_at,
-      transfer_id: row.transfer_id,
+      transfer_id: row.transfer_id === null ? null : remapTransfer(row.transfer_id),
       transfer_role: row.transfer_role,
       counterparty_customer_id: localCounterparty,
     });
   }
 
   return rows.length;
+
+  function remapTransfer(sourceId: string): string {
+    let destinationId = transferMap.get(sourceId);
+    if (destinationId === undefined) {
+      do {
+        destinationId = randomUUID();
+      } while (liveDb.prepare('SELECT 1 FROM transactions WHERE transfer_id = ? LIMIT 1').get(destinationId));
+      transferMap.set(sourceId, destinationId);
+    }
+    return destinationId;
+  }
 }
 
 function copyCustomerPhoto(

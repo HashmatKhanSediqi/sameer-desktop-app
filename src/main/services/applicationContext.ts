@@ -34,6 +34,7 @@ export interface ApplicationContext {
   customerService: CustomerService;
   transactionService: TransactionService;
   currencyService: CurrencyService;
+  tellerCurrencyService: CurrencyService;
   settingsService: SettingsService;
   reportsService: ReportsService;
   importService: ImportService;
@@ -85,6 +86,7 @@ export function bindApplicationServices(ctx: ApplicationContext, migrationsDir?:
   ctx.customerService = new CustomerService(db, photoService, ctx.logger);
   ctx.transactionService = new TransactionService(db, ctx.logger);
   ctx.currencyService = new CurrencyService(db);
+  ctx.tellerCurrencyService = new CurrencyService(db, 'teller');
   ctx.settingsService = new SettingsService(db);
   ctx.companyService = new CompanyService(db, logoService, ctx.logger);
   ctx.tellerService = new TellerService(db, ctx.logger);

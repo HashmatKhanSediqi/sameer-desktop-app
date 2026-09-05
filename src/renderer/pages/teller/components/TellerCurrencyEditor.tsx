@@ -20,7 +20,7 @@ export function TellerCurrencyEditor({ currencyCode, onChanged, onClose }: Telle
 
   async function load(): Promise<void> {
     if (!sessionId) return;
-    const result = await window.api.currencies.listDenominations({ sessionId, currencyCode, includeInactive: true });
+    const result = await window.api.tellerCurrencies.listDenominations({ sessionId, currencyCode, includeInactive: true });
     if (result.ok) setItems(result.data.denominations);
     else setError(tErrors(result.errorCode));
   }
@@ -34,7 +34,7 @@ export function TellerCurrencyEditor({ currencyCode, onChanged, onClose }: Telle
     if (!sessionId || !value.trim() || busy) return;
     setBusy(true);
     setError(null);
-    const result = await window.api.currencies.createDenomination({ sessionId, currencyCode, value: value.trim() });
+    const result = await window.api.tellerCurrencies.createDenomination({ sessionId, currencyCode, value: value.trim() });
     setBusy(false);
     if (!result.ok) {
       setError(tErrors(result.errorCode));
@@ -50,8 +50,8 @@ export function TellerCurrencyEditor({ currencyCode, onChanged, onClose }: Telle
     setBusy(true);
     setError(null);
     const result = item.isActive
-      ? await window.api.currencies.deactivateDenomination({ sessionId, id: item.id })
-      : await window.api.currencies.reactivateDenomination({ sessionId, id: item.id });
+      ? await window.api.tellerCurrencies.deactivateDenomination({ sessionId, id: item.id })
+      : await window.api.tellerCurrencies.reactivateDenomination({ sessionId, id: item.id });
     setBusy(false);
     if (!result.ok) {
       setError(tErrors(result.errorCode));

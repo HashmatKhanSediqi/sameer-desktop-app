@@ -47,6 +47,19 @@ export function suggestTellerExportFileName(currencyCode: string, sessionDate: s
   return `FMT-Teller-${code}-${date}.xlsx`;
 }
 
+export function resolveWorksheetRowCountFromTransactions(
+  current: number,
+  deposits: ReadonlyArray<{ worksheetRow: number }>,
+  withdrawals: ReadonlyArray<{ worksheetRow: number }>,
+): number {
+  return Math.max(
+    INITIAL_WORKSHEET_ROWS,
+    current,
+    ...deposits.map((transaction) => transaction.worksheetRow),
+    ...withdrawals.map((transaction) => transaction.worksheetRow),
+  );
+}
+
 export function suggestTellerDailyExportFileName(sessionDate: string): string {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(sessionDate) ? sessionDate : 'date';
   return `FMT-Teller-${date}.xlsx`;

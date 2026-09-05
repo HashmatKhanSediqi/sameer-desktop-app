@@ -59,7 +59,7 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
     if (!sessionId) {
       return;
     }
-    void window.api.currencies.list({ sessionId }).then((result) => {
+    void window.api.tellerCurrencies.list({ sessionId }).then((result) => {
       if (result.ok) {
         const active = result.data.currencies.filter((item) => item.isActive);
         setCurrencies(active);
