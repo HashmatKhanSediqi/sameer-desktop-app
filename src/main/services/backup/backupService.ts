@@ -323,7 +323,7 @@ export class BackupService {
       if (!verifySqliteIntegrity(backupCopy)) {
         throw new AppError('BACKUP_CORRUPTED', 'integrityFailed');
       }
-      runMigrations(backupDb, this.deps.migrationsDir, this.deps.logger);
+      runMigrations(backupDb, this.deps.migrationsDir, this.deps.logger, { safetyDirectory: this.deps.paths.backups });
       mergeBackupAccountingData({
         liveDb: this.deps.getDatabase(),
         backupDb,

@@ -46,7 +46,7 @@ Important historical drift:
 | `src/preload/index.ts` | Explicit contextBridge API and allowed invoke channels; restricted event subscriptions |
 | `src/shared/` | IPC/domain types, locale/amount/date/theme helpers, pure Teller worksheet/calculation helpers |
 | `src/renderer/` | React pages/components, AuthContext, local view state, translations, styles |
-| `migrations/` | Sequential SQL, currently 001 through 011 in the working tree |
+| `migrations/` | Sequential SQL, currently 001 through 012 |
 | `assets/` | Bundled offline fonts/icons and NSIS customization |
 | `tests/unit`, `tests/integration`, `tests/helpers` | Vitest tests, temporary SQLite harnesses, scale/export fixtures |
 | `scripts/` | Native rebuilds, build guards, icon/font tooling, installer verification |
@@ -99,7 +99,7 @@ Representative flow: React UI -> explicit `window.api` method -> typed IPC handl
 - `migrationRunner.ts` discovers zero-padded numbered SQL filenames in lexical order, skips recorded versions, and applies each pending SQL file plus its version record in a transaction. The whole sequence is not one transaction. Applied `schema_migrations` is the operational schema-version authority, not stale `app_metadata` values.
 - Add the next numbered migration for authorized schema changes. Do not edit already-applied migrations or reset a database to make tests pass. Test upgrades from populated earlier schemas as well as fresh initialization and failed migration rollback.
 - Protect existing installed databases, image references, transfer links, and backup compatibility. A new installer preserves the data directory but pending SQL can still change/delete its contents.
-- Migration 009 already drops/recreates old Teller tables without copying their data. Startup has no general pre-migration backup step. This is a confirmed upgrade data-loss hazard for populated 007/008 databases; never copy it as a safe migration pattern or rewrite that historical file casually.
+- Migration 009 is shipped and remains unchanged, but the runner now detects schema 007/008 before applying it. It checkpoints and validates a unique full database copy under `backups/`, snapshots all legacy Teller tables transactionally, converts open operational work by currency after 010 adds the required columns, and then continues through 012. Closed legacy Teller history stays in the safety database because Excel is the permanent archive. Persistent compatibility tables allow resume if startup stops between 009 and 010. Never bypass or remove this compatibility step.
 - Migration 010 creates a unique date index without deduplicating existing sessions and does not update `app_metadata.schema_version`. Inspect real upgrade fixtures before release claims.
 
 ## Backup, restore, shutdown, and update safety
@@ -160,16 +160,14 @@ Both passed during the 2026-09-05 audit; runtime tests/builds were not run.
 
 ## Known audit concerns to recheck before affected work
 
-These were reported, not fixed; inspect current source before assuming they remain:
+This list began as the 2026-09-05 audit. FMT-04 through FMT-09 and legacy migration safety were subsequently resolved; inspect current source and the focused verification documents rather than treating the original wording as current:
 
-- Destructive 009 Teller upgrade; full-system backup lacks a full-system recovery path; corruption aborts bootstrap before a recovery window can open; Teller-only close backup is skipped.
-- Backup merge preserves original transfer_id while inserting duplicate new customers/legs. Reimporting the same transfer can cause later delete-by-transfer-ID to delete original and imported copies together.
-- Retiring a used denomination hides it from TellerRepository.listDenominations, while stored counts still include it. normalizeCounts then rejects sheet/transaction hydration; history totals may omit inactive values.
-- Global START requires denominations for every active currency; a currency created in Accounting settings without denominations can block START for all currencies.
-- SQL REAL aggregation/transfer balance checks and XLSX numeric conversion lose exact decimal precision at sufficiently large accepted amounts.
-- Teller row/metadata save failures are ignored by TellerSheetPage; endDay snapshots before awaiting XLSX I/O and has no service-level write/finalization lock.
+- Recovery and the legacy 009 upgrade path have dedicated safety handling. Recheck their focused verification documents and current tests before changing either path.
+- Backup imports remap transfer groups; retired denominations remain readable; and Accounting/Teller currency ownership is separate. Regression coverage is in `financialIntegrityRegression.test.ts`.
+- Authoritative accounting aggregation and transfer checks use exact decimal text. XLSX conversion remains presentation output and can lose precision at very large values.
+- Teller save failures remain visible and retryable, stale completions cannot acknowledge newer drafts, and finalization excludes concurrent writes. Queue and service tests cover these paths.
 - Quantity parser uses parseInt for string values (truncation/trailing garbage accepted); business-date validation checks shape but not calendar validity. Trusted OP parsing is also exposed by session-update input.
-- Migration tests cover fresh/repeated application and SQL failure, not preservation of populated old Teller schemas. Existing green typechecks do not establish safe upgrades or complete recovery.
+- Migration tests now include populated 007/008 compatibility, interrupted resume, and populated 011-to-012 preservation. Continue to use real old-schema fixtures for future migration changes.
 
 ## Change discipline and actions requiring explicit scope
 

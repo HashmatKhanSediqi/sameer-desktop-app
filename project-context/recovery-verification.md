@@ -26,6 +26,6 @@ FMT-05 regression coverage verifies distinct transfer IDs for repeated imports a
 
 FMT-09 now serializes/coalesces writes, retains failed drafts/errors across unrelated successes, retries failed saves, protects drafts from stale refreshes, and prevents END/module/currency navigation from hiding pending failures. Export finalization rejects concurrent Teller writes. Tests cover validation, authentication, database and IPC-style failures and stale responses.
 
-## Separate known upgrade concern
+## Legacy upgrade follow-up
 
-Historical migration 009 still drops/recreates legacy Teller tables without copying populated 007/008 active worksheet data. This task does not alter that migration. Safe legacy upgrade handling remains a separate release concern; current recovery/test success does not establish preservation of those older active worksheets.
+The historical migration-009 risk was closed on 2026-09-06 without editing the shipped SQL. The migration runner now protects and converts schema-007/008 open operational Teller work. See [legacy Teller upgrade](legacy-teller-upgrade.md).

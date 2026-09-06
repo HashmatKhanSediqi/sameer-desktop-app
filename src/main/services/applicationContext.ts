@@ -63,7 +63,7 @@ export async function createApplicationContext(
     database.connect();
 
     const migrationsDir = options?.migrationsDir ?? getMigrationsDirectory();
-    runMigrations(database.getConnection(), migrationsDir, logger);
+    runMigrations(database.getConnection(), migrationsDir, logger, { safetyDirectory: paths.backups });
     verifyApplicationSchema(database.getConnection());
     await seedDefaultAdminIfEmpty(database.getConnection(), logger);
 

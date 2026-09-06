@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type Database from 'better-sqlite3';
 import type { Logger } from '../utils/logger';
 import { AppError } from '../utils/errors';
+import { createLegacyTellerSafetyCopy, hasLegacyTellerSnapshot, importLegacyActiveTeller, snapshotLegacyTeller } from './legacyTellerUpgrade';
 
 export interface MigrationRecord {
   version: number;
@@ -82,9 +83,16 @@ export function runMigrations(
   db: Database.Database,
   migrationsDir: string,
   logger: Logger,
+  options?: { safetyDirectory?: string },
 ): void {
   const migrations = discoverMigrations(migrationsDir);
   const applied = getAppliedMigrationVersions(db);
+  const legacyTellerUpgrade = (applied.has(7) || applied.has(8)) && !applied.has(9);
+  const resumeLegacyTellerUpgrade = applied.has(9) && !applied.has(10) && hasLegacyTellerSnapshot(db);
+  if (legacyTellerUpgrade) {
+    const safetyPath = createLegacyTellerSafetyCopy(db, options?.safetyDirectory);
+    logger.info('Validated pre-migration 009 safety copy created', { path: safetyPath });
+  }
 
   for (const migration of migrations) {
     if (applied.has(migration.version)) {
@@ -100,7 +108,9 @@ export function runMigrations(
     });
 
     const applyMigration = db.transaction(() => {
+      if (legacyTellerUpgrade && migration.version === 9) snapshotLegacyTeller(db);
       db.exec(sql);
+      if ((legacyTellerUpgrade || resumeLegacyTellerUpgrade) && migration.version === 10) importLegacyActiveTeller(db);
       db.prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)').run(
         migration.version,
         migration.name,

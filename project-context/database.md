@@ -86,6 +86,8 @@ Global totals: SQL aggregation across customers (paginated list does **not** loa
 2. Each migration runs inside a SQLite transaction
 3. Version row inserted **only** after successful execution
 4. Failed migration must not appear completed; app must not continue on a half-applied schema
+
+Schema 007/008 has a special compatibility boundary before shipped migration 009. The runner must create and validate a unique database safety copy before any destructive SQL, preserve the old Teller tables, and convert active work after migration 010. See [legacy Teller upgrade](legacy-teller-upgrade.md).
 5. Indexes use `IF NOT EXISTS` where appropriate for safe re-open
 
 ---
