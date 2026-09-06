@@ -100,6 +100,18 @@ Reports use the same ledger rows and label transfer legs as Transfer in / Transf
 - Customer list balances update
 - Main page global totals update
 
+### Customer currency exchange
+
+Customer Detail exposes **Exchange Currency** beside Cash In, Cash Out, and Transfer. It uses only active Customer Accounting `currencies`; the independent `teller_currencies` registry is never queried.
+
+An exchange is two immutable transaction legs for the same customer and timestamp: a `CASH_OUT`/`SOLD` source leg and a `CASH_IN`/`BOUGHT` destination leg. Both share `exchange_id`, gross from/to amounts, the manual rate, optional commission metadata, note, and an idempotency request ID. Creation and deletion run atomically; editing an individual leg is rejected.
+
+The fixed rate convention is `1 destination currency = rate source currency`. Destination amount = source amount / rate; destination-driven entry calculates source amount = destination amount × rate. Decimal.js rounds authoritative values to four decimal places using ROUND_HALF_UP.
+
+The repository rechecks the exact source-currency balance inside the write transaction. Source-currency commission is added to the debit; destination-currency commission is subtracted from the credit. Blank/zero commission has no effect. The commission currency must be one side of the exchange and the destination credit must remain positive.
+
+Ledger rows and PDF/XLSX reports retain the two-leg balance model but label both rows as Exchange and describe both gross amounts, currencies, rate, commission, and note. Deleting either displayed leg deletes the complete exchange group.
+
 ---
 
 ## 4. Transaction List

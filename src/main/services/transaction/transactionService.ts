@@ -24,6 +24,8 @@ import type {
   UpdateTransactionInput,
 } from '@shared/types/transaction';
 import type { CreateTransferInput, TransferResult } from '@shared/types/transfer';
+import type { CreateCustomerExchangeInput, CustomerExchangeResult } from '@shared/types/exchange';
+import { calculateFromAmount, calculateToAmount } from '@shared/exchange';
 import { formatBalance, ZERO_BALANCE } from './money';
 import {
   buildAccountingMapFromAggregates,
@@ -86,6 +88,9 @@ export class TransactionService {
     if (existing.transfer_id) {
       throw new AppError('VALIDATION_ERROR', 'TRANSFER_IMMUTABLE');
     }
+    if (existing.exchange_id) {
+      throw new AppError('VALIDATION_ERROR', 'EXCHANGE_IMMUTABLE');
+    }
 
     const type = parseTransactionType(input.type);
     const amount = parseAmount(input.amount);
@@ -128,6 +133,12 @@ export class TransactionService {
         transferId: existing.transfer_id,
         customerId: existing.customer_id,
       });
+      return { success: true };
+    }
+    if (existing.exchange_id) {
+      const removed = this.transactions.deleteByExchangeId(existing.exchange_id);
+      if (removed !== 2) throw new AppError('DATABASE_ERROR', 'EXCHANGE_GROUP_INVALID');
+      this.logger.info('Customer currency exchange deleted', { exchangeId: existing.exchange_id });
       return { success: true };
     }
 
@@ -193,6 +204,66 @@ export class TransactionService {
       outTransactionId: pair.outId,
       inTransactionId: pair.inId,
     };
+  }
+
+  exchange(input: CreateCustomerExchangeInput): CustomerExchangeResult {
+    const customerId = this.requireCustomer(input.customerId);
+    const fromCurrency = this.requireActiveCurrency(input.fromCurrency);
+    const toCurrency = this.requireActiveCurrency(input.toCurrency);
+    if (fromCurrency === toCurrency) throw new AppError('VALIDATION_ERROR', 'EXCHANGE_SAME_CURRENCY');
+    const fromAmount = parseAmount(input.fromAmount);
+    const toAmount = parseAmount(input.toAmount);
+    const rate = parseAmount(input.rate);
+    if (calculateToAmount(fromAmount, rate) !== new Decimal(toAmount).toFixed(4)
+      && calculateFromAmount(toAmount, rate) !== new Decimal(fromAmount).toFixed(4)) {
+      throw new AppError('VALIDATION_ERROR', 'EXCHANGE_AMOUNTS_MISMATCH');
+    }
+    const note = parseOptionalNote(input.note);
+    const transactionDate = parseTransactionDate(input.transactionDate);
+    if (typeof input.requestId !== 'string' || !/^[0-9a-f-]{36}$/i.test(input.requestId)) {
+      throw new AppError('VALIDATION_ERROR', 'EXCHANGE_REQUEST_INVALID');
+    }
+
+    const rawCommission = input.commissionAmount?.trim() ?? '';
+    let commissionAmount: string | null = null;
+    if (rawCommission !== '') {
+      if (!/^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/.test(rawCommission)) {
+        throw new AppError('VALIDATION_ERROR', 'EXCHANGE_COMMISSION_INVALID');
+      }
+      if (!new Decimal(rawCommission).isZero()) commissionAmount = parseAmount(rawCommission);
+    }
+    let commissionCurrency: string | null = null;
+    if (commissionAmount) {
+      commissionCurrency = this.requireActiveCurrency(input.commissionCurrency);
+      if (commissionCurrency !== fromCurrency && commissionCurrency !== toCurrency) {
+        throw new AppError('VALIDATION_ERROR', 'EXCHANGE_COMMISSION_CURRENCY_INVALID');
+      }
+    }
+    const sourceDebit = commissionCurrency === fromCurrency
+      ? new Decimal(fromAmount).plus(commissionAmount!).toFixed(4)
+      : new Decimal(fromAmount).toFixed(4);
+    const destinationCredit = commissionCurrency === toCurrency
+      ? new Decimal(toAmount).minus(commissionAmount!).toFixed(4)
+      : new Decimal(toAmount).toFixed(4);
+    if (new Decimal(destinationCredit).lte(0)) {
+      throw new AppError('VALIDATION_ERROR', 'EXCHANGE_COMMISSION_TOO_LARGE');
+    }
+    const exchangeId = randomUUID();
+    const metadata = {
+      customerId, note, transactionDate, exchangeId,
+      exchangeFromCurrency: fromCurrency, exchangeFromAmount: new Decimal(fromAmount).toFixed(4),
+      exchangeToCurrency: toCurrency, exchangeToAmount: new Decimal(toAmount).toFixed(4),
+      exchangeRate: new Decimal(rate).toFixed(), exchangeCommissionCurrency: commissionCurrency,
+      exchangeCommissionAmount: commissionAmount ? new Decimal(commissionAmount).toFixed(4) : null,
+      exchangeRequestId: input.requestId,
+    };
+    const pair = this.transactions.createExchangePair(
+      { ...metadata, type: 'CASH_OUT', currencyCode: fromCurrency, amount: sourceDebit, exchangeRole: 'SOLD' },
+      { ...metadata, type: 'CASH_IN', currencyCode: toCurrency, amount: destinationCredit, exchangeRole: 'BOUGHT' },
+    );
+    this.logger.info('Customer currency exchange created', { exchangeId, customerId, fromCurrency, toCurrency });
+    return { exchangeId: pair.duplicate ? this.getById(pair.soldId).exchangeId! : exchangeId,
+      soldTransactionId: pair.soldId, boughtTransactionId: pair.boughtId, duplicate: pair.duplicate };
   }
 
   getById(id: unknown): Transaction {
@@ -375,6 +446,15 @@ function toTransaction(record: TransactionRecord): Transaction {
     transferRole: record.transfer_role ?? null,
     counterpartyCustomerId: record.counterparty_customer_id ?? null,
     counterpartyName: record.counterparty_name ?? null,
+    exchangeId: record.exchange_id ?? null,
+    exchangeRole: record.exchange_role ?? null,
+    exchangeFromCurrency: record.exchange_from_currency ?? null,
+    exchangeFromAmount: record.exchange_from_amount ?? null,
+    exchangeToCurrency: record.exchange_to_currency ?? null,
+    exchangeToAmount: record.exchange_to_amount ?? null,
+    exchangeRate: record.exchange_rate ?? null,
+    exchangeCommissionCurrency: record.exchange_commission_currency ?? null,
+    exchangeCommissionAmount: record.exchange_commission_amount ?? null,
   };
 }
 

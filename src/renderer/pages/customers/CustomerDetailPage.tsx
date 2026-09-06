@@ -13,6 +13,7 @@ import { CurrencySummaryCards } from './components/CurrencySummaryCards';
 import { TransactionForm, mapTransactionError } from './components/TransactionForm';
 import { TransactionTable } from './components/TransactionTable';
 import { TransferForm } from './components/TransferForm';
+import { ExchangeForm } from './components/ExchangeForm';
 
 interface CustomerDetailPageProps {
   customerId: number;
@@ -49,6 +50,7 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
+  const [showExchange, setShowExchange] = useState(false);
   const [totalCustomerCount, setTotalCustomerCount] = useState(0);
 
   const load = useCallback(async (): Promise<void> => {
@@ -230,6 +232,9 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
             >
               {tTx('transfer.title')}
             </button>
+            <button type="button" className="button button-secondary" onClick={() => setShowExchange(true)} disabled={currencies.length < 2}>
+              {tTx('exchange.title')}
+            </button>
             <button
               type="button"
               className="button button-secondary"
@@ -399,6 +404,11 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
           }}
         />
       ) : null}
+
+      {showExchange && customer && summary && currencies.length > 1 ? <ExchangeForm
+        customerId={customer.id} currencies={currencies} summaries={summary.currencies}
+        onCancel={() => setShowExchange(false)} onSaved={() => { setShowExchange(false); setPage(1); void load(); }}
+      /> : null}
 
       {transactionForm === 'edit' && customer && editingTransaction && currencies.length > 0 ? (
         <TransactionForm

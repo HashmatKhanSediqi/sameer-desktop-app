@@ -87,6 +87,8 @@ import type {
   TransactionsUpdateResult,
   TransfersCreateRequest,
   TransfersCreateResult,
+  ExchangesCreateRequest,
+  ExchangesCreateResult,
   UpdateCheckRequest,
   UpdateCheckResult,
   UpdateDownloadRequest,
@@ -183,6 +185,7 @@ export interface PreloadApi {
     update: (request: TransactionsUpdateRequest) => Promise<TransactionsUpdateResult>;
     delete: (request: TransactionsDeleteRequest) => Promise<TransactionsDeleteResult>;
     transfer: (request: TransfersCreateRequest) => Promise<TransfersCreateResult>;
+    exchange: (request: ExchangesCreateRequest) => Promise<ExchangesCreateResult>;
   };
   settings: {
     get: () => Promise<SettingsGetResult>;

@@ -34,7 +34,10 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
             const note = transaction.note ?? '';
             const truncated = note.length > 80 && !isExpanded;
             const isTransfer = Boolean(transaction.transferId);
-            const typeLabel = isTransfer
+            const isExchange = Boolean(transaction.exchangeId);
+            const typeLabel = isExchange
+              ? transaction.exchangeRole === 'SOLD' ? t('exchange.sold') : t('exchange.bought')
+              : isTransfer
               ? transaction.transferRole === 'IN'
                 ? t('transfer.in')
                 : t('transfer.out')
@@ -57,6 +60,12 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
                       {t('transfer.with', { name: transaction.counterpartyName })}
                     </p>
                   ) : null}
+                  {isExchange ? <p className="field-hint exchange-ledger-detail">
+                    {t('exchange.businessSummary', { toAmount: transaction.exchangeToAmount, to: transaction.exchangeToCurrency,
+                      fromAmount: transaction.exchangeFromAmount, from: transaction.exchangeFromCurrency, rate: transaction.exchangeRate })}
+                    {transaction.exchangeCommissionAmount ? ` · ${t('exchange.commissionSummary', { amount: transaction.exchangeCommissionAmount, currency: transaction.exchangeCommissionCurrency })}` : ''}
+                    <span className="exchange-id">{t('exchange.id')}: {transaction.exchangeId}</span>
+                  </p> : null}
                 </td>
                 <td data-label={t('currency')}>{transaction.currencyCode}</td>
                 <td
@@ -86,7 +95,7 @@ export function TransactionTable({ transactions, onEdit, onDelete }: Transaction
                   )}
                 </td>
                 <td className="col-actions" data-label={t('edit')}>
-                  {!isTransfer ? (
+                  {!isTransfer && !isExchange ? (
                     <button type="button" className="button button-secondary button-compact" onClick={() => onEdit(transaction)}>
                       {t('edit')}
                     </button>

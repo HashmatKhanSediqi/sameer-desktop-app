@@ -66,6 +66,14 @@
     "out": "وتونکی لېږد",
     "with": "د {{name}} سره"
   },
+  "exchange": {
+    "title": "د اسعارو تبادله", "fromCurrency": "ورکوونکي اسعار", "fromAmount": "ورکوونکی مبلغ", "toCurrency": "اخیستل کېدونکي اسعار", "toAmount": "ترلاسه کېدونکی مبلغ",
+    "rateConvention": "1 {{to}} = نرخ {{from}}", "balance": "بیلانس", "commissionCurrency": "د کمېشن اسعار (اختیاري)", "commissionAmount": "د کمېشن مبلغ (اختیاري)",
+    "preview": "د تبادلې مخکتنه", "businessSummary": "{{toAmount}} {{to}} د {{fromAmount}} {{from}} په بدل کې د {{rate}} په نرخ واخیستل شول", "commissionSummary": "کمېشن: {{amount}} {{currency}}",
+    "confirm": "تبادله تایید کړئ", "confirmTitle": "د اسعارو تبادله تایید شي؟", "sold": "تبادله — پلور", "bought": "تبادله — پېرود", "id": "د تبادلې پېژند",
+    "invalid": "سم مثبت مبلغونه، دوه بېلابېل اسعار او مثبت نرخ ولیکئ.",
+    "insufficient": "د {{currency}} بیلانس کافي نه دی. شته: {{available}}؛ اړین: {{requested}}."
+  },
   "errors": {
     "VALIDATION_ERROR": "مهرباني وکړئ په نښه شوي ځایونه سم کړئ.",
     "CUSTOMER_NOT_FOUND": "پېرېدونکی ونه موندل شو.",

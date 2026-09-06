@@ -361,4 +361,24 @@ export function registerTransactionHandlers(ipcMain: IpcMain, ctx: ApplicationCo
       });
     }),
   );
+
+  ipcMain.handle(IPC_CHANNELS.EXCHANGES_CREATE, (_event, input: unknown) =>
+    wrapIpcHandler(() => {
+      const { sessionId, record } = parseSessionRequest(input);
+      ctx.authService.requireSession(sessionId);
+      return ctx.transactionService.exchange({
+        customerId: record.customerId as number,
+        fromCurrency: record.fromCurrency as string,
+        fromAmount: record.fromAmount as string,
+        toCurrency: record.toCurrency as string,
+        toAmount: record.toAmount as string,
+        rate: record.rate as string,
+        commissionCurrency: record.commissionCurrency === null ? null : parseOptionalString(record.commissionCurrency),
+        commissionAmount: record.commissionAmount === null ? null : parseOptionalString(record.commissionAmount),
+        note: record.note === null ? null : parseOptionalString(record.note),
+        transactionDate: parseOptionalString(record.transactionDate),
+        requestId: record.requestId as string,
+      });
+    }),
+  );
 }

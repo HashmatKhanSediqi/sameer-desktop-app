@@ -151,6 +151,9 @@ export interface ReportLabels {
   transferIn: string;
   transferOut: string;
   transferWith: string;
+  exchangeBought: string;
+  exchangeSold: string;
+  exchangeCommission: string;
   companyPhone: string;
   companyEmail: string;
   companyAddress: string;

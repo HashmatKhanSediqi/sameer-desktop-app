@@ -39,6 +39,7 @@ import type {
   UpdateTransactionInput,
 } from './transaction';
 import type { CreateTransferInput, TransferResult } from './transfer';
+import type { CreateCustomerExchangeInput, CustomerExchangeResult } from './exchange';
 import type { UpdateStatusSnapshot } from './update';
 import type {
   OpenTellerSessionInput,
@@ -378,6 +379,10 @@ export interface TransactionsDeleteSuccessResponse {
 }
 
 export type TransactionsDeleteResult = TransactionsDeleteSuccessResponse | IpcErrorResponse;
+
+export type ExchangesCreateRequest = AuthenticatedRequest & CreateCustomerExchangeInput;
+export interface ExchangesCreateSuccessResponse { ok: true; data: CustomerExchangeResult; }
+export type ExchangesCreateResult = ExchangesCreateSuccessResponse | IpcErrorResponse;
 
 export type TransactionsSummaryRequest = AuthenticatedRequest & { customerId: number };
 
@@ -756,6 +761,7 @@ export const IPC_CHANNELS = {
   TRANSACTIONS_DELETE: 'transactions:delete',
   TRANSACTIONS_LIST: 'transactions:list',
   TRANSACTIONS_SUMMARY: 'transactions:summary',
+  EXCHANGES_CREATE: 'exchanges:create',
   REPORTS_GENERATE: 'reports:generate',
   IMPORT_PARSE: 'import:parse',
   IMPORT_COMMIT: 'import:commit',

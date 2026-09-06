@@ -26,7 +26,7 @@ import type { CurrencySummary } from '@shared/types/transaction';
 import type { CustomerService } from '../customer/customerService';
 import type { CompanyService } from '../company/companyService';
 import type { TransactionService } from '../transaction/transactionService';
-import type { TransactionAmountRow } from '../../database/repositories/transactionRepository';
+import type { ReportTransactionRecord, TransactionAmountRow } from '../../database/repositories/transactionRepository';
 import { getFontsDirectory } from '../../config/fontsPath';
 import { reportT } from './reportI18n';
 import { buildReportFileName } from './reportValidation';
@@ -360,7 +360,7 @@ export class ReportsService {
       customerName: displayName(record.customer_name, labels.unnamedCustomer),
       customerNumber: record.customer_number?.trim() || reportT(locale, 'common', 'emptyValue'),
       type: record.type,
-      typeLabel: transferTypeLabel(record.transfer_role, record.type, record.counterparty_name, labels),
+      typeLabel: record.exchange_id ? exchangeTypeLabel(record, labels) : transferTypeLabel(record.transfer_role, record.type, record.counterparty_name, labels),
       currencyCode: record.currency_code,
       amount: formatMoneyForLocale(record.amount, locale),
       note: record.note ?? '',
@@ -429,6 +429,9 @@ function buildLabels(locale: SupportedLocale): ReportLabels {
     transferIn: reportT(locale, 'reports', 'transferIn'),
     transferOut: reportT(locale, 'reports', 'transferOut'),
     transferWith: reportT(locale, 'reports', 'transferWith'),
+    exchangeBought: reportT(locale, 'reports', 'exchangeBought'),
+    exchangeSold: reportT(locale, 'reports', 'exchangeSold'),
+    exchangeCommission: reportT(locale, 'reports', 'exchangeCommission'),
     companyPhone: reportT(locale, 'reports', 'companyPhone'),
     companyEmail: reportT(locale, 'reports', 'companyEmail'),
     companyAddress: reportT(locale, 'reports', 'companyAddress'),
@@ -541,6 +544,15 @@ function transferTypeLabel(
       : labels.transferIn;
   }
   return type === 'CASH_IN' ? labels.cashIn : labels.cashOut;
+}
+
+function exchangeTypeLabel(record: ReportTransactionRecord, labels: ReportLabels): string {
+  const template = record.exchange_role === 'SOLD' ? labels.exchangeSold : labels.exchangeBought;
+  let value = template.replace('{{fromAmount}}', record.exchange_from_amount ?? '')
+    .replace('{{from}}', record.exchange_from_currency ?? '').replace('{{toAmount}}', record.exchange_to_amount ?? '')
+    .replace('{{to}}', record.exchange_to_currency ?? '').replace('{{rate}}', record.exchange_rate ?? '');
+  if (record.exchange_commission_amount) value += ` · ${labels.exchangeCommission.replace('{{amount}}', record.exchange_commission_amount).replace('{{currency}}', record.exchange_commission_currency ?? '')}`;
+  return value;
 }
 
 function fillBalances(currencies: Currency[], balances: Record<string, string>): Record<string, string> {

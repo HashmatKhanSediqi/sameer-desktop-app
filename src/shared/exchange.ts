@@ -15,6 +15,18 @@ export interface ExchangeConvertInput {
   toCurrency: string;
 }
 
+export function calculateToAmount(fromAmount: string, rate: string): string {
+  return parsePositiveDecimal(fromAmount, 'EXCHANGE_AMOUNT_INVALID')
+    .dividedBy(parsePositiveDecimal(rate, 'EXCHANGE_RATE_INVALID'))
+    .toFixed(4, Decimal.ROUND_HALF_UP);
+}
+
+export function calculateFromAmount(toAmount: string, rate: string): string {
+  return parsePositiveDecimal(toAmount, 'EXCHANGE_AMOUNT_INVALID')
+    .times(parsePositiveDecimal(rate, 'EXCHANGE_RATE_INVALID'))
+    .toFixed(4, Decimal.ROUND_HALF_UP);
+}
+
 export interface ExchangeConvertResult {
   amount: string;
   rate: string;

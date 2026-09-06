@@ -22,7 +22,11 @@ describe('migrations', () => {
       const tables = ['customers','transactions','currencies','denominations','teller_sessions','teller_transactions','teller_session_ht_denominations','teller_transaction_denominations'];
       const before = tables.map(table => h.db.prepare(`SELECT * FROM ${table}`).all());
       applyProjectMigrations(h.db, h.logger);
-      expect(tables.map(table => h.db.prepare(`SELECT * FROM ${table}`).all())).toEqual(before);
+      const after = tables.map(table => h.db.prepare(`SELECT * FROM ${table}`).all());
+      expect(after[0]).toEqual(before[0]);
+      expect(after.slice(2)).toEqual(before.slice(2));
+      expect(after[1]).toMatchObject(before[1] as object[]);
+      expect((after[1] as Array<Record<string, unknown>>)[0]?.exchange_id).toBeNull();
       expect(h.db.prepare('SELECT * FROM teller_currencies').all()).toEqual(before[2]);
       expect(h.db.pragma('foreign_key_check')).toEqual([]);
       const foreignKeys = h.db.pragma('foreign_key_list(teller_sessions)') as Array<{ table: string }>;
@@ -79,6 +83,9 @@ describe('migrations', () => {
 
       const tellerColumns = testDb.db.prepare('PRAGMA table_info(teller_transactions)').all() as Array<{ name: string }>;
       expect(tellerColumns.some((column) => column.name === 'worksheet_row')).toBe(true);
+      const transactionColumns = testDb.db.prepare('PRAGMA table_info(transactions)').all() as Array<{ name: string }>;
+      expect(transactionColumns.some((column) => column.name === 'exchange_id')).toBe(true);
+      expect(afterSecond.has(13)).toBe(true);
     } finally {
       testDb.cleanup();
     }

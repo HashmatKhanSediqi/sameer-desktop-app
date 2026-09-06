@@ -63,6 +63,8 @@ import {
   type TransactionsCreateResult,
   type TransactionsDeleteRequest,
   type TransactionsDeleteResult,
+  type ExchangesCreateRequest,
+  type ExchangesCreateResult,
   type TransactionsListRequest,
   type TransactionsListResult,
   type TransactionsSummaryRequest,
@@ -263,6 +265,8 @@ const api = {
       invoke(IPC_CHANNELS.TRANSACTIONS_DELETE, request),
     transfer: (request: TransfersCreateRequest): Promise<TransfersCreateResult> =>
       invoke(IPC_CHANNELS.TRANSFERS_CREATE, request),
+    exchange: (request: ExchangesCreateRequest): Promise<ExchangesCreateResult> =>
+      invoke(IPC_CHANNELS.EXCHANGES_CREATE, request),
   },
   settings: {
     get: (): Promise<SettingsGetResult> => invoke(IPC_CHANNELS.SETTINGS_GET),

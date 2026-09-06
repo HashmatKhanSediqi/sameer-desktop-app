@@ -52,6 +52,8 @@ Migrations applied in order:
 
 ### Transactions
 
+Migration 013 adds nullable Customer Accounting exchange metadata to `transactions`: `exchange_id`, `exchange_role`, gross from/to currency and amount fields, `exchange_rate`, optional commission currency/amount, and `exchange_request_id`. Partial unique indexes enforce one `SOLD` and one `BOUGHT` leg per exchange and one role per idempotency request. Existing rows upgrade with null metadata and are unchanged financially. No Teller table or foreign key is modified.
+
 - Types: `CASH_IN`, `CASH_OUT`
 - Amount: TEXT decimal
 - Optional transfer linkage: `transfer_id`, `transfer_role`, `counterparty_customer_id`

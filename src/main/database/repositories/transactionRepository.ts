@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3';
 import Decimal from 'decimal.js';
 import type { TransactionType } from '@shared/types/transaction';
 import type { TransferRole } from '@shared/types/transfer';
+import type { ExchangeRole } from '@shared/types/exchange';
 import { AppError } from '../../utils/errors';
 
 export interface TransactionRecord {
@@ -18,6 +19,16 @@ export interface TransactionRecord {
   transfer_role: TransferRole | null;
   counterparty_customer_id: number | null;
   counterparty_name?: string | null;
+  exchange_id: string | null;
+  exchange_role: ExchangeRole | null;
+  exchange_from_currency: string | null;
+  exchange_from_amount: string | null;
+  exchange_to_currency: string | null;
+  exchange_to_amount: string | null;
+  exchange_rate: string | null;
+  exchange_commission_currency: string | null;
+  exchange_commission_amount: string | null;
+  exchange_request_id: string | null;
 }
 
 export interface CreateTransactionRecordInput {
@@ -30,6 +41,16 @@ export interface CreateTransactionRecordInput {
   transferId?: string | null;
   transferRole?: TransferRole | null;
   counterpartyCustomerId?: number | null;
+  exchangeId?: string | null;
+  exchangeRole?: ExchangeRole | null;
+  exchangeFromCurrency?: string | null;
+  exchangeFromAmount?: string | null;
+  exchangeToCurrency?: string | null;
+  exchangeToAmount?: string | null;
+  exchangeRate?: string | null;
+  exchangeCommissionCurrency?: string | null;
+  exchangeCommissionAmount?: string | null;
+  exchangeRequestId?: string | null;
 }
 
 export interface UpdateTransactionRecordInput {
@@ -73,7 +94,7 @@ export interface ReportTransactionQuery {
   endDate?: string;
 }
 
-const COLUMNS = `id, customer_id, type, currency_code, amount, note, transaction_date, created_at, updated_at, transfer_id, transfer_role, counterparty_customer_id`;
+const COLUMNS = `id, customer_id, type, currency_code, amount, note, transaction_date, created_at, updated_at, transfer_id, transfer_role, counterparty_customer_id, exchange_id, exchange_role, exchange_from_currency, exchange_from_amount, exchange_to_currency, exchange_to_amount, exchange_rate, exchange_commission_currency, exchange_commission_amount, exchange_request_id`;
 const HISTORY_ORDER = `ORDER BY datetime(transaction_date) DESC, id DESC`;
 const AGGREGATE_AMOUNT = `decimal_sum(amount)`;
 const registeredDatabases = new WeakSet<Database.Database>();
@@ -101,9 +122,12 @@ export class TransactionRepository {
       .prepare(
         `INSERT INTO transactions (
            customer_id, type, currency_code, amount, note, transaction_date,
-           transfer_id, transfer_role, counterparty_customer_id
+           transfer_id, transfer_role, counterparty_customer_id,
+           exchange_id, exchange_role, exchange_from_currency, exchange_from_amount,
+           exchange_to_currency, exchange_to_amount, exchange_rate,
+           exchange_commission_currency, exchange_commission_amount, exchange_request_id
          )
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.customerId,
@@ -115,8 +139,41 @@ export class TransactionRepository {
         input.transferId ?? null,
         input.transferRole ?? null,
         input.counterpartyCustomerId ?? null,
+        input.exchangeId ?? null,
+        input.exchangeRole ?? null,
+        input.exchangeFromCurrency ?? null,
+        input.exchangeFromAmount ?? null,
+        input.exchangeToCurrency ?? null,
+        input.exchangeToAmount ?? null,
+        input.exchangeRate ?? null,
+        input.exchangeCommissionCurrency ?? null,
+        input.exchangeCommissionAmount ?? null,
+        input.exchangeRequestId ?? null,
       );
     return Number(result.lastInsertRowid);
+  }
+
+  createExchangePair(
+    sold: CreateTransactionRecordInput,
+    bought: CreateTransactionRecordInput,
+  ): { soldId: number; boughtId: number; duplicate: boolean } {
+    return this.db.transaction(() => {
+      const prior = this.db.prepare(
+        `SELECT id, exchange_role FROM transactions WHERE exchange_request_id = ? ORDER BY id`,
+      ).all(sold.exchangeRequestId) as Array<{ id: number; exchange_role: ExchangeRole }>;
+      if (prior.length === 2) {
+        return {
+          soldId: prior.find((row) => row.exchange_role === 'SOLD')!.id,
+          boughtId: prior.find((row) => row.exchange_role === 'BOUGHT')!.id,
+          duplicate: true,
+        };
+      }
+      const balance = this.balanceForCustomerCurrency(sold.customerId, sold.currencyCode);
+      if (new Decimal(balance).lt(new Decimal(sold.amount))) {
+        throw new AppError('INSUFFICIENT_BALANCE', `INSUFFICIENT_BALANCE:${balance}:${sold.amount}`);
+      }
+      return { soldId: this.createTransaction(sold), boughtId: this.createTransaction(bought), duplicate: false };
+    })();
   }
 
   createTransferPair(
@@ -151,6 +208,10 @@ export class TransactionRepository {
   deleteByTransferId(transferId: string): number {
     const result = this.db.prepare('DELETE FROM transactions WHERE transfer_id = ?').run(transferId);
     return result.changes;
+  }
+
+  deleteByExchangeId(exchangeId: string): number {
+    return this.db.transaction(() => this.db.prepare('DELETE FROM transactions WHERE exchange_id = ?').run(exchangeId).changes)();
   }
 
   getTransactionById(id: number): TransactionRecord | undefined {
@@ -302,6 +363,9 @@ export class TransactionRepository {
     return this.listFilteredRows(
       `SELECT t.id, t.customer_id, t.type, t.currency_code, t.amount, t.note, t.transaction_date,
               t.created_at, t.updated_at, t.transfer_id, t.transfer_role, t.counterparty_customer_id,
+              t.exchange_id, t.exchange_role, t.exchange_from_currency, t.exchange_from_amount,
+              t.exchange_to_currency, t.exchange_to_amount, t.exchange_rate,
+              t.exchange_commission_currency, t.exchange_commission_amount, t.exchange_request_id,
               c.name AS customer_name, c.customer_number AS customer_number,
               cp.name AS counterparty_name
        FROM transactions t

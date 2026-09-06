@@ -1,4 +1,5 @@
 import type { TransferRole } from './transfer';
+import type { ExchangeRole } from './exchange';
 
 export type TransactionType = 'CASH_IN' | 'CASH_OUT';
 
@@ -17,6 +18,15 @@ export interface Transaction {
   transferRole: TransferRole | null;
   counterpartyCustomerId: number | null;
   counterpartyName: string | null;
+  exchangeId: string | null;
+  exchangeRole: ExchangeRole | null;
+  exchangeFromCurrency: string | null;
+  exchangeFromAmount: string | null;
+  exchangeToCurrency: string | null;
+  exchangeToAmount: string | null;
+  exchangeRate: string | null;
+  exchangeCommissionCurrency: string | null;
+  exchangeCommissionAmount: string | null;
 }
 
 export interface CreateTransactionInput {

@@ -66,6 +66,14 @@
     "out": "انتقال خروجی",
     "with": "با {{name}}"
   },
+  "exchange": {
+    "title": "تبادله اسعار", "fromCurrency": "ارز پرداختی", "fromAmount": "مبلغ پرداختی", "toCurrency": "ارز خریداری‌شده", "toAmount": "مبلغ دریافتی",
+    "rateConvention": "1 {{to}} = نرخ {{from}}", "balance": "بیلانس", "commissionCurrency": "ارز کمیسیون (اختیاری)", "commissionAmount": "مبلغ کمیسیون (اختیاری)",
+    "preview": "پیش‌نمایش تبادله", "businessSummary": "خرید {{toAmount}} {{to}} در مقابل {{fromAmount}} {{from}} با نرخ {{rate}}", "commissionSummary": "کمیسیون: {{amount}} {{currency}}",
+    "confirm": "تأیید تبادله", "confirmTitle": "تبادله اسعار تأیید شود؟", "sold": "تبادله — فروش", "bought": "تبادله — خرید", "id": "شناسه تبادله",
+    "invalid": "مبالغ مثبت معتبر، دو ارز متفاوت و نرخ مثبت را وارد کنید.",
+    "insufficient": "بیلانس {{currency}} کافی نیست. موجود: {{available}}؛ مورد نیاز: {{requested}}."
+  },
   "errors": {
     "VALIDATION_ERROR": "لطفاً خانه‌های مشخص‌شده را اصلاح کنید.",
     "CUSTOMER_NOT_FOUND": "مشتری یافت نشد.",
