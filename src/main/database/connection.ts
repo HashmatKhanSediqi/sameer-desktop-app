@@ -100,14 +100,14 @@ export class DatabaseConnection {
 
     try {
       this.checkpoint();
-      this.db.close();
-      this.logger.info('Database closed', { path: this.databasePath });
     } catch (error) {
       this.logger.error('Error closing database', {
         error: formatUnknownError(error),
         stack: error instanceof Error ? error.stack : undefined,
       });
     } finally {
+      // A checkpoint failure must not leave a Windows file handle locked.
+      this.db.close();
       this.db = null;
     }
   }

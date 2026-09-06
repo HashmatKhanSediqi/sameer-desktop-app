@@ -2,6 +2,8 @@
 
 ## Authoritative product rules
 
+Recovery update, 2026-09-06: initialization failures now enter restricted Recovery Mode with validated CAB snapshot recovery, staging/post-restore initialization, unique preservation of the failed data directory, retries, and fresh login. Normal in-app backup import still merges. The older audit concerns below about an unavailable startup recovery window are superseded by this implementation. See `project-context/recovery-verification.md`; do not infer release certification from the historical audit.
+
 Customer Accounting is permanent financial storage and the scope of CAB backup/recovery, including customers, transactions, company/account configuration, and related photos. Teller is a live operational worksheet. Its SQLite rows are protected for active-day restart/crash safety until END TODAY succeeds; the successfully exported Excel workbook is the long-term Teller archive. Teller history is not required to be reconstructed from accounting backups.
 
 Accounting and Teller own independent currency and denomination configuration. Shared authentication, company identity, theme, and localization do not imply shared business data. No authoritative money calculation may use floating point, and every failed Teller save must remain visible to the operator.

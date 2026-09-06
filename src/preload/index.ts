@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { RECOVERY_CHANNELS, type RecoveryApi } from '@shared/types/recovery';
 import {
   IPC_CHANNELS,
   type AppGetPathsResult,
@@ -361,6 +362,16 @@ const api = {
   },
 };
 
-contextBridge.exposeInMainWorld('api', api);
+if (process.argv.includes('--fmt-recovery')) {
+  const recovery: RecoveryApi = {
+    status: () => ipcRenderer.invoke(RECOVERY_CHANNELS.status),
+    select: () => ipcRenderer.invoke(RECOVERY_CHANNELS.select),
+    restore: () => ipcRenderer.invoke(RECOVERY_CHANNELS.restore),
+    login: () => ipcRenderer.invoke(RECOVERY_CHANNELS.login),
+  };
+  contextBridge.exposeInMainWorld('recovery', recovery);
+} else {
+  contextBridge.exposeInMainWorld('api', api);
+}
 
 export type PreloadApi = typeof api;

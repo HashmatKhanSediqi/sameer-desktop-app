@@ -51,6 +51,10 @@ import {
 const DEFAULT_PAGE_SIZE = 50;
 
 export class TellerService {
+  private finalizing = false;
+  private assertWritable(): void {
+    if (this.finalizing) throw new AppError('TELLER_SESSION_CLOSED', 'Export in progress; retry after export completes');
+  }
   private readonly repo: TellerRepository;
 
   constructor(
@@ -91,6 +95,7 @@ export class TellerService {
   }
 
   openSession(userId: number, input: OpenTellerSessionInput): TellerSession {
+    this.assertWritable();
     const companyId = this.companyId();
     const currencyCode = parseCurrencyCode(input.currencyCode);
     if (!this.repo.currencyExists(currencyCode) || !this.repo.currencyActive(currencyCode)) {
@@ -114,7 +119,9 @@ export class TellerService {
     const explicitOpening = input.openingCounts !== undefined || input.openingAmount !== undefined;
     const openingCounts = this.normalizeCounts(
       denominations,
-      parsePieceCounts(explicitOpening ? input.openingCounts : (inherited?.counts ?? {})),
+      parsePieceCounts(explicitOpening ? input.openingCounts : Object.fromEntries(
+        denominations.map(denom => [denom.value, inherited?.counts[denom.value] ?? 0]),
+      )),
     );
     const openingAmount = formatAmount(
       explicitOpening
@@ -154,6 +161,7 @@ export class TellerService {
   }
 
   updateSession(userId: number, input: UpdateTellerSessionInput): TellerSession {
+    this.assertWritable();
     const companyId = this.companyId();
     const session = this.requireOpenSession(companyId, input.sessionId);
     const denominations = this.requireDenominations(session.currencyCode, session.id);
@@ -200,6 +208,15 @@ export class TellerService {
   }
 
   async endDay(
+    userId: number, filePath: string, worksheetRows?: number,
+  ): Promise<{ sessions: TellerSession[]; filePath: string; closings: Array<{ currencyCode: string; closingAmount: string }> }> {
+    this.assertWritable();
+    this.finalizing = true;
+    try { return await this.performEndDay(userId, filePath, worksheetRows); }
+    finally { this.finalizing = false; }
+  }
+
+  private async performEndDay(
     userId: number,
     filePath: string,
     worksheetRows?: number,
@@ -253,6 +270,7 @@ export class TellerService {
   }
 
   startDay(userId: number): TellerSheet[] {
+    this.assertWritable();
     const sheets: TellerSheet[] = [];
     this.write(() => {
       for (const currencyCode of this.repo.listActiveCurrencyCodes()) {
@@ -289,6 +307,7 @@ export class TellerService {
   }
 
   resetCash(userId: number, currencyCode: string): TellerSheet {
+    this.assertWritable();
     const code = parseCurrencyCode(currencyCode);
     if (!this.repo.currencyExists(code) || !this.repo.currencyActive(code)) {
       throw new AppError('INVALID_CURRENCY', 'INVALID_CURRENCY');
@@ -328,6 +347,7 @@ export class TellerService {
   }
 
   closeSession(userId: number, sessionId: number): TellerSession {
+    this.assertWritable();
     const companyId = this.companyId();
     const session = this.repo.getSession(companyId, sessionId);
     if (!session) {
@@ -351,6 +371,7 @@ export class TellerService {
   }
 
   upsertTransaction(userId: number, input: UpsertTellerTransactionInput): TellerTransaction | null {
+    this.assertWritable();
     const companyId = this.companyId();
     const session = this.requireOpenSession(companyId, input.sessionId);
     const direction = parseTellerDirection(input.direction);
@@ -366,8 +387,12 @@ export class TellerService {
       Object.values(counts).every((quantity) => quantity === 0);
 
     if (blankRow) {
-      if (input.id !== undefined) {
-        this.deleteTransaction(input.id);
+      const existing = input.id === undefined && requestedWorksheetRow !== undefined
+        ? this.repo.getTransactionByWorksheetRow(companyId, session.id, direction, requestedWorksheetRow)
+        : input.id === undefined ? undefined : this.repo.getTransaction(companyId, input.id);
+      if (existing) {
+        if (existing.session_id !== session.id || existing.direction !== direction) throw new AppError('INVALID_REQUEST', 'INVALID_REQUEST');
+        this.deleteTransaction(existing.id);
       }
       return null;
     }
@@ -434,6 +459,7 @@ export class TellerService {
   }
 
   deleteTransaction(id: number): { success: true } {
+    this.assertWritable();
     const companyId = this.companyId();
     const existing = this.repo.getTransaction(companyId, id);
     if (!existing) {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { TellerSaveQueue } from '@shared/teller/saveQueue';
 import { useTranslation } from 'react-i18next';
 import { INITIAL_WORKSHEET_ROWS, suggestTellerDailyExportFileName } from '@shared/teller/worksheetRows';
 import { isPrimaryTellerCurrency, tellerDayAction } from '@shared/teller/sessionState';
@@ -38,6 +39,22 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
   const [showAddCurrency, setShowAddCurrency] = useState(false);
   const [showCurrencyEditor, setShowCurrencyEditor] = useState(false);
   const [openSessionCount, setOpenSessionCount] = useState(0);
+  const [queue] = useState(() => new TellerSaveQueue());
+  const [saveState, setSaveState] = useState(queue.snapshot());
+  const [resetRevision, setResetRevision] = useState(0);
+  useEffect(() => queue.subscribe(setSaveState), [queue]);
+  const editsBlocked = saveState.state !== 'saved';
+  function canLeave(): boolean {
+    if (queue.snapshot().state !== 'saved' || ending) { setError(t('unsavedEdits')); return false; }
+    return true;
+  }
+  useEffect(() => {
+    const protect = (event: BeforeUnloadEvent) => {
+      if (queue.snapshot().state !== 'saved') { event.preventDefault(); event.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', protect);
+    return () => window.removeEventListener('beforeunload', protect);
+  }, [queue]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -78,14 +95,17 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
       setSheet(null);
       return;
     }
+    let canceled = false;
     void window.api.teller.getSheet({ sessionId, currencyCode }).then((result) => {
+      if (canceled) return;
       if (result.ok) {
         setSheet(result.data);
         setError(null);
       } else {
         setError(tErrors(result.errorCode));
       }
-    });
+    }).catch(() => { if (!canceled) setError(tErrors('INTERNAL_ERROR')); });
+    return () => { canceled = true; };
   }, [sessionId, currencyCode, refreshKey, tErrors]);
 
   function bump(): void {
@@ -93,6 +113,7 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
   }
 
   function selectCurrency(code: string): void {
+    if (!canLeave()) return;
     setCurrencyCode(code);
     setSheet(null);
     setError(null);
@@ -107,7 +128,7 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
   }
 
   async function confirmEndDay(): Promise<void> {
-    if (!sessionId || pendingRows === null || ending) {
+    if (!sessionId || pendingRows === null || ending || !canLeave()) {
       return;
     }
     setEnding(true);
@@ -156,7 +177,7 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
   }
 
   async function confirmResetCash(): Promise<void> {
-    if (!sessionId || !currencyCode || resetting) {
+    if (!sessionId || !currencyCode || resetting || !canLeave()) {
       return;
     }
     setResetting(true);
@@ -169,6 +190,7 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
       return;
     }
     setSheet(result.data);
+    setResetRevision(value => value + 1);
     setExportMessage(null);
   }
 
@@ -188,8 +210,8 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
               <button
                 type="button"
                 className="teller-end-day-btn"
-                disabled={ending}
-                onClick={() => setPendingRows(worksheetRows)}
+                disabled={ending || editsBlocked}
+                onClick={() => { if (canLeave()) setPendingRows(worksheetRows); }}
               >
                 {t('session.endDay')}
               </button>
@@ -214,9 +236,9 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
               {t('session.resetCash')}
             </button>
           ) : null}
-          <ModuleSwitcher current="teller" onSwitch={onSwitchModule} />
+          <ModuleSwitcher current="teller" onSwitch={module => { if (canLeave()) onSwitchModule(module); }} />
           <LanguageSelector />
-          <button type="button" className="button button-secondary" onClick={() => void logout()}>
+          <button type="button" className="button button-secondary" onClick={() => { if (canLeave()) void logout(); }}>
             {tCommon('logout')}
           </button>
         </div>
@@ -227,7 +249,10 @@ export function TellerShell({ onSwitchModule }: TellerShellProps): JSX.Element {
         {exportMessage ? <p className="teller-export-success">{exportMessage}</p> : null}
         {sheet ? (
           <TellerSheetPage
+            key={`${sheet.currencyCode}:${sheet.session?.id}:${resetRevision}`}
             sheet={sheet}
+            queue={queue}
+            locked={ending || pendingRows !== null || resetting}
             onChanged={bump}
             onWorksheetRowsChange={setWorksheetRows}
           />

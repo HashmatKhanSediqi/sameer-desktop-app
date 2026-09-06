@@ -165,6 +165,7 @@ export function TellerLogTable({
   const { t } = useTranslation('teller');
   const { formatMoney } = useLocaleFormat();
   const tableRef = useRef<HTMLTableElement>(null);
+  const editedRows = useRef(new Map<string, DraftRow>());
   const bodyElRef = useRef<HTMLDivElement | null>(null);
   const pendingFocus = useRef<{ rowKey: string; col: EditableCol } | null>(null);
   const [rows, setRows] = useState<DraftRow[]>(() =>
@@ -193,7 +194,7 @@ export function TellerLogTable({
         fresh.map((row) => ({ key: row.key, id: row.id, value: row })),
         current.map((row) => ({ key: row.key, id: row.id, value: row })),
         activeRowKey,
-      ).map(({ id, value }) => ({ ...value, id })),
+      ).map(({ id, value }) => editedRows.current.get(value.key) ?? ({ ...value, id })),
     );
   }, [direction, transactions, denominations, opening, rowCount]);
 
@@ -235,6 +236,10 @@ export function TellerLogTable({
       counts: patch.counts ? { ...nextRow.counts, ...patch.counts } : nextRow.counts,
     };
     setRows((current) => current.map((row) => (row.key === key ? nextRow! : row)));
+    if (!nextRow.isOpening) {
+      editedRows.current.set(key, nextRow);
+      onPersist(nextRow);
+    }
     return nextRow;
   }
 
@@ -242,7 +247,7 @@ export function TellerLogTable({
     if (row.isOpening) {
       return;
     }
-    onPersist(row);
+    // updateRow enqueues each edit, including input that has not blurred yet.
   }
 
   function focusCell(rowKey: string, col: EditableCol): void {
@@ -437,8 +442,12 @@ export function TellerLogTable({
                 ),
               );
               const declared = row.declaredAmount.trim();
-              const check = isBlankAmount(declared) ? '' : computeCheckFlag(declared, counted);
-              const variance = isBlankAmount(declared) ? '' : computeVariance(declared, counted);
+              let check = '';
+              let variance = '';
+              try {
+                check = isBlankAmount(declared) ? '' : computeCheckFlag(declared, counted);
+                variance = isBlankAmount(declared) ? '' : computeVariance(declared, counted);
+              } catch { /* Keep invalid drafts visible; the save queue reports validation failure. */ }
               return (
                 <tr key={row.key} className={row.isOpening ? 'is-op' : undefined}>
                   <td className="teller-cell-calc teller-cell-no">{row.sequenceNo}</td>

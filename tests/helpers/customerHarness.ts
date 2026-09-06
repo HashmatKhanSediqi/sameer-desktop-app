@@ -117,6 +117,7 @@ export async function createCustomerTestHarness(): Promise<CustomerTestHarness> 
     ctx.customerService = harness.customerService;
     ctx.transactionService = harness.transactionService;
     ctx.currencyService = new CurrencyService(testDb.db);
+    ctx.tellerCurrencyService = new CurrencyService(testDb.db, 'teller');
     ctx.settingsService = new SettingsService(testDb.db);
     ctx.reportsService = harness.reportsService;
     ctx.importService = harness.importService;

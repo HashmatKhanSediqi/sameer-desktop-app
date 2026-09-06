@@ -27,7 +27,7 @@ export function TellerSummaryPanel({
 
   useEffect(() => {
     setOppAmount(formatTellerPlainAmount(session.oppAmount));
-  }, [session]);
+  }, [session.id]);
 
   const banner =
     currencyCode === 'AFN'
@@ -116,8 +116,10 @@ export function TellerSummaryPanel({
                   inputMode="decimal"
                   value={oppAmount}
                   disabled={disabled}
-                  onChange={(event) => setOppAmount(event.target.value)}
-                  onBlur={() => onSaveMeta({ oppAmount: oppAmount.trim() || '0' })}
+                  onChange={(event) => {
+                    setOppAmount(event.target.value);
+                    onSaveMeta({ oppAmount: event.target.value.trim() || '0' });
+                  }}
                 />
               </td>
             </tr>

@@ -3,6 +3,7 @@ import { getMigrationsDirectory } from '../config/migrationsPath';
 import { ensureUserDataDirectories, resolveAppPaths } from '../config/paths';
 import { DatabaseConnection } from '../database/connection';
 import { runMigrations } from '../database/migrationRunner';
+import { verifyApplicationSchema } from '../database/verifyApplicationSchema';
 import { seedDefaultAdminIfEmpty } from '../services/auth/adminSeedService';
 import { AuthService } from '../services/auth/authService';
 import { SessionStore } from '../services/auth/sessionStore';
@@ -47,9 +48,9 @@ export interface ApplicationContext {
 export async function createApplicationContext(
   config: AppConfig,
   logger: Logger,
-  options?: { packaged?: boolean },
+  options?: { packaged?: boolean; paths?: AppPaths; migrationsDir?: string },
 ): Promise<ApplicationContext> {
-  const paths = resolveAppPaths();
+  const paths = options?.paths ?? resolveAppPaths();
   ensureUserDataDirectories(paths);
 
   if (hadUncleanShutdown(paths.userData)) {
@@ -58,22 +59,28 @@ export async function createApplicationContext(
   setCrashSentinel(paths.userData);
 
   const database = new DatabaseConnection(paths.database, logger);
-  database.connect();
+  try {
+    database.connect();
 
-  const migrationsDir = getMigrationsDirectory();
-  runMigrations(database.getConnection(), migrationsDir, logger);
-  await seedDefaultAdminIfEmpty(database.getConnection(), logger);
+    const migrationsDir = options?.migrationsDir ?? getMigrationsDirectory();
+    runMigrations(database.getConnection(), migrationsDir, logger);
+    verifyApplicationSchema(database.getConnection());
+    await seedDefaultAdminIfEmpty(database.getConnection(), logger);
 
-  const ctx = {
-    config,
-    paths,
-    logger,
-    database,
-    packaged: options?.packaged ?? false,
-  } as ApplicationContext;
+    const ctx = {
+      config,
+      paths,
+      logger,
+      database,
+      packaged: options?.packaged ?? false,
+    } as ApplicationContext;
 
-  bindApplicationServices(ctx, migrationsDir);
-  return ctx;
+    bindApplicationServices(ctx, migrationsDir);
+    return ctx;
+  } catch (error) {
+    database.close();
+    throw error;
+  }
 }
 
 export function bindApplicationServices(ctx: ApplicationContext, migrationsDir?: string): void {

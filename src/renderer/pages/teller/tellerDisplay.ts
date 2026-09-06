@@ -30,6 +30,6 @@ export function parsePieceInput(value: string): number {
   if (trimmed.length === 0) {
     return 0;
   }
-  const parsed = Number.parseInt(trimmed, 10);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+  const parsed = /^\d+$/.test(trimmed) ? Number(trimmed) : NaN;
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
 }

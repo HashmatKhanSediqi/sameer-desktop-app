@@ -4559,3 +4559,12 @@ html[data-theme='dark'] .login-app-icon {
   background: var(--color-logo-fill);
 }
 
+.recovery-mode { max-width: 800px; margin: 32px auto; padding: 24px; }
+.recovery-mode .card { padding: 28px; }
+.recovery-mode p { line-height: 1.6; }
+.recovery-mode select { margin-inline-start: 12px; }
+.recovery-selection { display: grid; gap: 12px; margin-block: 20px; }
+.recovery-selection input { width: auto; }
+.recovery-path { overflow-wrap: anywhere; unicode-bidi: plaintext; }
+.teller-save-state { padding: 6px 12px; display: flex; gap: 12px; align-items: center; }
+.teller-save-state-failed { border: 2px solid currentColor; color: var(--color-danger, #b91c1c); font-weight: 600; }

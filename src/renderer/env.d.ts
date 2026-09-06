@@ -232,6 +232,7 @@ export interface PreloadApi {
 
 declare global {
   interface Window {
+    recovery?: import('@shared/types/recovery').RecoveryApi;
     api: PreloadApi;
   }
 }

@@ -1,5 +1,7 @@
 # FMT — Project Context (Phase 3)
 
+Current recovery behavior (2026-09-06): failed database initialization opens restricted Recovery Mode. It validates a Customer Accounting CAB snapshot, initializes a staged copy, preserves the failed data directory, restores and validates the live context, then returns to secure login. Invalid backups and failed restores can be retried in the same window. Normal in-app import remains additive merge. Teller's permanent archive remains the exported Excel workbook. See [recovery verification](project-context/recovery-verification.md) for the current implementation and test evidence; older recovery descriptions below are historical.
+
 This file is the architectural reference for **Phase 3: Teller / Cash Management**. It was written after inspecting the current source, migrations, IPC layer, tests, and configuration. It describes what exists today and how the Teller module is added **inside** the existing application — not as a second product.
 
 Official product name: **FMT**. Compatibility identifiers (`%APPDATA%\CustomerAccounting\`, `com.customeraccounting.app`, npm `customer-accounting`) remain unchanged.

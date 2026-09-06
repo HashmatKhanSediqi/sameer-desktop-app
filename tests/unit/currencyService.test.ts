@@ -148,7 +148,7 @@ describe('CurrencyService settings operations', () => {
     const testDb = createTestDatabase();
     try {
       applyProjectMigrations(testDb.db, testDb.logger);
-      const service = new CurrencyService(testDb.db);
+      const service = new CurrencyService(testDb.db, 'teller');
       const afn = service.listAll().find((currency) => currency.code === 'AFN');
       expect(afn?.displayName).toBe('Afghan Afghani');
       const eur = service.listDenominations('EUR');
@@ -184,7 +184,7 @@ describe('CurrencyService settings operations', () => {
     const testDb = createTestDatabase();
     try {
       applyProjectMigrations(testDb.db, testDb.logger);
-      const service = new CurrencyService(testDb.db);
+      const service = new CurrencyService(testDb.db, 'teller');
 
       const pkr = service.create({ code: 'PKR', name: 'Pakistani Rupee', symbol: '₨' });
       expect(pkr.displayName).toBe('Pakistani Rupee');

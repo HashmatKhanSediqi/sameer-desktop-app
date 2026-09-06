@@ -488,13 +488,13 @@ describe('teller service workbook model', () => {
   it('creates a custom currency with its own denominations and opens that sheet', async () => {
     const harness = await createTellerHarness();
     try {
-      const currencies = new CurrencyService(harness.testDb.db);
+      const currencies = new CurrencyService(harness.testDb.db, 'teller');
       currencies.create({ code: 'GBP', name: 'Pound' });
       for (const value of ['50', '20', '10', '5', '2', '1']) {
         currencies.createDenomination({ currencyCode: 'GBP', value });
       }
 
-      const persisted = new CurrencyService(harness.testDb.db).listDenominations('GBP');
+      const persisted = new CurrencyService(harness.testDb.db, 'teller').listDenominations('GBP');
       expect(persisted.map((item) => item.value)).toEqual(['50', '20', '10', '5', '2', '1']);
 
       const sheet = harness.tellerService.getSheet('GBP', { userId: harness.userId, sessionDate: '2026-08-29' });
@@ -677,7 +677,7 @@ describe('teller service workbook model', () => {
     const harness = await createTellerHarness();
     const exportPath = path.join(tmpdir(), suggestTellerExportFileName('GBP', '2026-08-29'));
     try {
-      const currencies = new CurrencyService(harness.testDb.db);
+      const currencies = new CurrencyService(harness.testDb.db, 'teller');
       currencies.create({ code: 'GBP', name: 'Pound' });
       for (const value of ['50', '20', '10', '5', '2', '1']) {
         currencies.createDenomination({ currencyCode: 'GBP', value });
@@ -825,7 +825,7 @@ describe('teller service workbook model', () => {
     })();
     const exportPath = path.join(tmpdir(), suggestTellerExportFileName('AFN', today));
     try {
-      const currencies = new CurrencyService(harness.testDb.db);
+      const currencies = new CurrencyService(harness.testDb.db, 'teller');
       currencies.create({ code: 'GBP', name: 'Pound' });
       for (const value of ['50', '20', '10', '5', '2', '1']) {
         currencies.createDenomination({ currencyCode: 'GBP', value });

@@ -336,7 +336,8 @@ export class BackupService {
     }
   }
 
-  private extractAndValidate(filePath: string): ExtractedBackup {
+  /** Validated snapshot for disaster recovery; caller owns staging-directory cleanup. */
+  extractAndValidate(filePath: string): ExtractedBackup {
     const archivePath = filePath.trim();
     if (archivePath.length === 0 || archivePath.includes('\u0000')) {
       throw new AppError('INVALID_REQUEST', 'INVALID_REQUEST');
@@ -550,6 +551,14 @@ export class BackupService {
 
     const inspect = new Database(databasePath, { readonly: true, fileMustExist: true });
     try {
+      const actualVersion = getAppliedSchemaVersion(inspect);
+      this.assertSchemaCompatible(actualVersion);
+      if (actualVersion !== manifest.schema_version) {
+        throw new AppError('INVALID_BACKUP', 'invalidManifest');
+      }
+      if ((inspect.pragma('foreign_key_check') as unknown[]).length !== 0) {
+        throw new AppError('BACKUP_CORRUPTED', 'integrityFailed');
+      }
       const customerCount = countRowsIfPresent(inspect, 'customers');
       const transactionCount = countRowsIfPresent(inspect, 'transactions');
       if (

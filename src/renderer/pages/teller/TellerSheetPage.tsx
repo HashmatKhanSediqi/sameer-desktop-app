@@ -9,25 +9,29 @@ import { useAuth } from '../../context/AuthContext';
 import type { TellerSheet } from '@shared/types/teller';
 import { TellerLogTable, type DraftRow } from './components/TellerLogTable';
 import { TellerSummaryPanel } from './components/TellerSummaryPanel';
-import { parsePieceInput } from './tellerDisplay';
+import { TellerSaveQueue, type SaveSnapshot } from '@shared/teller/saveQueue';
 
 interface TellerSheetPageProps {
   sheet: TellerSheet;
   onChanged: () => void;
   onWorksheetRowsChange: (rows: number) => void;
+  queue: TellerSaveQueue;
+  locked: boolean;
 }
 
-export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: TellerSheetPageProps): JSX.Element {
+export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange, queue, locked }: TellerSheetPageProps): JSX.Element {
   const { t } = useTranslation('teller');
-  const { sessionId } = useAuth();
+  const { sessionId, username, login } = useAuth();
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
   const session = sheet.session;
-  const disabled = !session || session.status !== 'OPEN';
+  const disabled = locked || !session || session.status !== 'OPEN';
   const [rowCount, setRowCount] = useState(INITIAL_WORKSHEET_ROWS);
   const [columnWidths, setColumnWidths] = useState(() =>
     defaultTellerWorksheetWidths(sheet.denominations.map((denomination) => denomination.value)),
   );
-  const [persistenceState, setPersistenceState] = useState<'saved' | 'saving' | 'failed'>('saved');
-  const [persistenceError, setPersistenceError] = useState<string | null>(null);
+  const [persistence, setPersistence] = useState<SaveSnapshot>(queue.snapshot());
+  const { state: persistenceState, error: persistenceError } = persistence;
   const denominationSignature = sheet.denominations.map((denomination) => `${denomination.id}:${denomination.value}`).join('|');
   const depositBodyRef = useRef<HTMLDivElement | null>(null);
   const withdrawalBodyRef = useRef<HTMLDivElement | null>(null);
@@ -48,76 +52,43 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
     );
   }, [sheet.deposits.length, sheet.withdrawals.length]);
 
-  const persistRow = useCallback(
-    async (direction: 'DEPOSIT' | 'WITHDRAWAL', row: DraftRow) => {
-      if (!sessionId || !session || row.isOpening) {
-        return;
-      }
+  const credentials = useRef(sessionId);
+  credentials.current = sessionId;
+  useEffect(() => queue.subscribe(setPersistence), [queue]);
+  useEffect(() => { if (sessionId) queue.retry(); }, [sessionId, queue]);
+  const persistRow = useCallback((direction: 'DEPOSIT' | 'WITHDRAWAL', row: DraftRow) => {
+    if (!session || row.isOpening) return;
+    queue.enqueue(`${session.id}:${direction}:${row.sequenceNo}`, async () => {
+      if (!credentials.current) throw new Error('NOT_AUTHENTICATED');
       const denominationCounts: Record<string, number> = {};
       for (const denom of sheet.denominations) {
-        denominationCounts[denom.value] = parsePieceInput(row.counts[denom.value] ?? '');
+        const raw = (row.counts[denom.value] ?? '').trim();
+        if (raw && (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw)))) {
+          throw new Error('TELLER_DENOMINATION_INVALID');
+        }
+        denominationCounts[denom.value] = raw ? Number(raw) : 0;
       }
-      const blank =
-        row.referenceLabel.trim().length === 0 &&
-        row.declaredAmount.trim().length === 0 &&
-        Object.values(denominationCounts).every((quantity) => quantity === 0);
-      if (blank && row.id === undefined) {
-        return;
-      }
-      const existing = (direction === 'DEPOSIT' ? sheet.deposits : sheet.withdrawals).find((item) => item.id === row.id);
-      if (
-        existing &&
-        existing.referenceLabel === row.referenceLabel.trim() &&
-        (existing.declaredAmount ?? '') === row.declaredAmount.trim() &&
-        sheet.denominations.every(
-          (denom) => (existing.denominationCounts[denom.value] ?? 0) === (denominationCounts[denom.value] ?? 0),
-        )
-      ) {
-        return;
-      }
-      setPersistenceState('saving');
       const result = await window.api.teller.upsertTransaction({
-        sessionId,
-        tellerSessionId: session.id,
-        id: row.id,
-        worksheetRow: Number(row.sequenceNo),
-        direction,
+        sessionId: credentials.current, tellerSessionId: session.id,
+        worksheetRow: Number(row.sequenceNo), direction,
         referenceLabel: row.referenceLabel,
-        declaredAmount: row.declaredAmount.trim() === '' ? null : row.declaredAmount.trim(),
-        denominationCounts,
+        declaredAmount: row.declaredAmount.trim() || null, denominationCounts,
       });
-      if (result.ok) {
-        setPersistenceState('saved');
-        setPersistenceError(null);
-        onChanged();
-      } else {
-        setPersistenceState('failed');
-        setPersistenceError(result.message ?? t('saveFailed'));
-      }
-    },
-    [onChanged, session, sessionId, sheet.denominations, sheet.deposits, sheet.withdrawals],
-  );
-
-  async function saveMeta(input: {
-    oppAmount?: string;
-  }): Promise<void> {
-    if (!sessionId || !session) {
-      return;
-    }
-    setPersistenceState('saving');
-    const result = await window.api.teller.updateSession({
-      sessionId,
-      tellerSessionId: session.id,
-      ...input,
-    });
-    if (result.ok) {
-      setPersistenceState('saved');
-      setPersistenceError(null);
+      if (!result.ok) throw new Error(result.errorCode);
       onChanged();
-    } else {
-      setPersistenceState('failed');
-      setPersistenceError(result.message ?? t('saveFailed'));
-    }
+    });
+  }, [queue, session, sheet.denominations, onChanged]);
+
+  function saveMeta(input: { oppAmount?: string }): void {
+    if (!session) return;
+    queue.enqueue(`${session.id}:meta`, async () => {
+      if (!credentials.current) throw new Error('NOT_AUTHENTICATED');
+      const result = await window.api.teller.updateSession({
+        sessionId: credentials.current, tellerSessionId: session.id, ...input,
+      });
+      if (!result.ok) throw new Error(result.errorCode);
+      onChanged();
+    });
   }
 
   function syncBodyScroll(scrollTop: number, source: HTMLDivElement): void {
@@ -150,8 +121,22 @@ export function TellerSheetPage({ sheet, onChanged, onWorksheetRowsChange }: Tel
         <p className="hint-text">{t('session.noneHint')}</p>
       )}
       <div className={`teller-save-state teller-save-state-${persistenceState}`} role={persistenceState === 'failed' ? 'alert' : 'status'}>
-        {persistenceState === 'saving' ? t('saving') : persistenceState === 'failed' ? `${t('saveFailed')}: ${persistenceError ?? ''}` : t('saved')}
+        {persistenceState === 'saving' ? t('saving') : persistenceState === 'failed' ? `${t('saveFailed')}: ${t(persistenceError ?? 'INTERNAL_ERROR', { ns: 'errors' })}` : t('saved')}
+        {persistenceState === 'failed' && <button className="button button-secondary" onClick={() => queue.retry()}>{t('retrySave')}</button>}
       </div>
+      {persistenceState === 'failed' && (persistenceError === 'SESSION_EXPIRED' || persistenceError === 'NOT_AUTHENTICATED') && (
+        <form className="action-bar" onSubmit={event => {
+          event.preventDefault();
+          if (username) void login(username, password).then(result => {
+            setPassword(''); setLoginError(result.ok ? null : result.errorCode);
+          }).catch(() => setLoginError('INTERNAL_ERROR'));
+        }}>
+          <label htmlFor="teller-reauth">{t('passwordLabel', { ns: 'auth' })}</label>
+          <input id="teller-reauth" type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} />
+          <button className="button button-primary" type="submit">{t('loginButton', { ns: 'auth' })}</button>
+          {loginError && <span role="alert">{t(loginError, { ns: 'errors' })}</span>}
+        </form>
+      )}
       <div className="teller-logs">
         <TellerLogTable
           key={`${sheet.currencyCode}-deposit-${session?.id ?? 'none'}-${session?.status ?? 'idle'}`}

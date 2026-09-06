@@ -1,4 +1,22 @@
 {
+  "recovery": {
+    "title": "Recovery Mode",
+    "explanation": "FMT could not safely open the Customer Accounting database. Normal accounting is unavailable until recovery succeeds.",
+    "details": "Startup error details",
+    "failed": "Recovery did not complete",
+    "retry": "You can retry or select another backup. Your preserved database copy will not be overwritten.",
+    "success": "Recovery completed. The restored database passed initialization and is ready for login.",
+    "preserved": "The previous database and images are preserved at:",
+    "login": "Continue to login",
+    "scope": "Select a Customer Accounting .cab backup. It restores accounts, credentials, company settings and images. Teller’s permanent archive remains your exported Excel workbooks.",
+    "select": "Select and validate backup",
+    "contents": "Created: {{date}} · Customers: {{customers}} · Transactions: {{transactions}}",
+    "confirm": "Replace the current database with this backup after preserving the current data.",
+    "restore": "Recover from this backup",
+    "validating": "Validating archive, checksums, database and compatibility…",
+    "restoring": "Preparing and checking the backup, preserving current data, and initializing the recovered database…",
+    "valid": "Backup validated. Review the details before recovering."
+  },
   "title": "Backup",
   "create": "Create backup",
   "creating": "Creating backup…",

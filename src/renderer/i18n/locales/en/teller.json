@@ -1,4 +1,9 @@
 {
+  "saving": "Saving…",
+  "saved": "Saved",
+  "saveFailed": "Save failed — your input is retained",
+  "retrySave": "Retry saves",
+  "unsavedEdits": "Finish saving or retry failed edits before leaving, resetting, or ending the day.",
   "nav": {
     "sheet": "Cash sheet",
     "longBook": "Long Book",

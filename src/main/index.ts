@@ -1,4 +1,10 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { IPC_CHANNELS } from '@shared/types/ipc';
+import { getMigrationsDirectory } from './config/migrationsPath';
+import { BackupService } from './services/backup/backupService';
+import { RecoveryService, RECOVERY_PENDING_FILE } from './services/backup/recoveryService';
+import { registerRecoveryHandlers } from './ipc/recovery.handlers';
+import { initializeOrRecover } from './services/startupRecovery';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { UPDATE_AUTO_CHECK_STARTUP_DELAY_MS } from '@shared/constants/updateConfig';
@@ -101,15 +107,21 @@ async function bootstrap(): Promise<void> {
 
   logger.info('Application starting', { version: config.version, isDev: config.isDev });
 
-  try {
-    appContext = await createApplicationContext(config, logger, { packaged: app.isPackaged });
-  } catch (error) {
-    logger.error('Normal database startup failed; entering recovery mode', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    await createRecoveryWindow(config.appName, error instanceof Error ? error.message : 'Database initialization failed');
-    return;
-  }
+  appContext = await initializeOrRecover(
+    () => {
+      if (existsSync(join(paths.userData, RECOVERY_PENDING_FILE))) {
+        return Promise.reject(new Error('An earlier recovery was interrupted. Preserved data is in the backups folder. Select a backup to complete recovery.'));
+      }
+      return createApplicationContext(config, logger, { packaged: app.isPackaged });
+    },
+    async (error) => {
+      logger.error('Normal database startup failed; entering recovery mode', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      await createRecoveryWindow(error instanceof Error ? error.message : 'Database initialization failed');
+    },
+  );
+  if (!appContext) return;
   quitBackupCoordinator = new QuitBackupCoordinator(AUTO_CLOSE_BACKUP_TIMEOUT_MS, logger);
   registerIpcHandlers(ipcMain, appContext);
 
@@ -123,24 +135,62 @@ async function bootstrap(): Promise<void> {
   });
 }
 
-/** A deliberately isolated window shown when the normal database cannot initialize. */
-async function createRecoveryWindow(title: string, reason: string): Promise<void> {
+async function createRecoveryWindow(reason: string): Promise<void> {
+  const config = loadAppConfig();
+  const paths = resolveAppPaths();
+  const logger = new Logger(paths.logs, config);
+  const unavailable = (): never => { throw new Error('Normal database unavailable in Recovery Mode'); };
+  const backups = new BackupService({
+    paths, logger, appVersion: config.version, migrationsDir: getMigrationsDirectory(),
+    getDatabase: unavailable, checkpoint: unavailable, closeDatabase: unavailable,
+    reopenDatabase: unavailable, rebindServices: unavailable, invalidateSessions: unavailable,
+  });
+  const recovery = new RecoveryService({ paths, backups,
+    initialize: (paths) => createApplicationContext(config, logger, { paths, packaged: app.isPackaged }),
+  });
   const window = new BrowserWindow({
-    width: 760,
-    height: 520,
-    show: true,
-    autoHideMenuBar: true,
-    title: `${title} — Recovery Mode`,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
+    width: 1024, height: 760, minWidth: 760, minHeight: 600, show: false,
+    autoHideMenuBar: true, title: 'FMT — Recovery Mode',
+    webPreferences: { preload: join(__dirname, '../preload/index.js'), additionalArguments: ['--fmt-recovery'],
+      contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true },
+  });
+  mainWindow = window;
+  window.once('ready-to-show', () => window.show());
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  window.webContents.on('will-navigate', (event) => event.preventDefault());
+  const handlers = registerRecoveryHandlers(ipcMain, {
+    reason, backups, recovery,
+    allowed: (event) => event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame,
+    chooseFile: async () => {
+      const choice = await dialog.showOpenDialog(window, { properties: ['openFile'],
+        filters: [{ name: 'FMT Customer Accounting backup', extensions: ['cab'] }] });
+      return choice.canceled ? undefined : choice.filePaths[0];
+    },
+    login: async (context) => {
+      registerIpcHandlers(ipcMain, context);
+      try {
+        const normalWindow = await createMainWindow(context);
+        appContext = context;
+        quitBackupCoordinator = new QuitBackupCoordinator(AUTO_CLOSE_BACKUP_TIMEOUT_MS, logger);
+        mainWindow = normalWindow;
+        handlers.dispose();
+        // Transfer ownership before destroying the recovery window.
+        window.removeAllListeners('closed');
+        window.destroy();
+        scheduleAutomaticUpdateCheck(context);
+      } catch (error) {
+        for (const channel of Object.values(IPC_CHANNELS)) ipcMain.removeHandler(channel);
+        throw error;
+      }
     },
   });
-  const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
-  await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`<!doctype html><meta charset="utf-8"><title>Recovery Mode</title><style>body{font:16px system-ui;padding:42px;max-width:650px;margin:auto;background:#f8fafc;color:#172033}h1{color:#9f1239}p{line-height:1.55}.box{padding:18px;background:white;border:1px solid #fecdd3;border-radius:10px}button{padding:10px 16px;border:0;border-radius:7px;background:#9f1239;color:#fff}</style><h1>Recovery mode</h1><div class="box"><p>The normal Customer Accounting database could not be opened safely.</p><p><b>Reason:</b> ${escape(reason)}</p><p>Select a supported .cab backup using the normal recovery workflow after closing this window. The damaged database has not been deleted or overwritten.</p><button onclick="window.close()">Close</button></div>`)}`);
-  mainWindow = window;
+  window.on('close', (event) => { if (handlers.isBusy()) event.preventDefault(); });
+  window.once('closed', () => { handlers.dispose(); handlers.close(); });
+  if (isDev && process.env['ELECTRON_RENDERER_URL']) {
+    await window.loadURL(process.env['ELECTRON_RENDERER_URL']);
+  } else {
+    await window.loadFile(join(__dirname, '../renderer/index.html'));
+  }
 }
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();

@@ -221,4 +221,6 @@ At ~100k customers / ~300k transactions, automated tests observed backup create 
 - [ ] Manual clean-VM restore smoke test (operator)
 ## Recovery scope
 
+Failed-startup disaster recovery is separate from the normal additive import described above. Recovery Mode validates the archive/manifest/SHA-256 integrity metadata, SQLite integrity/foreign keys, and schema compatibility before replacement. It initializes and migrates a staged snapshot, preserves the entire failed data directory under a unique `backups/pre-recovery-<timestamp>-<suffix>/data`, then initializes the replacement in its final location. Preservation failure stops recovery. A failed final initialization retains the safety copy and permits another attempt; an interruption marker forces recovery at the next startup. Success returns to a new authenticated-login flow without reusing sessions. See [recovery verification](recovery-verification.md).
+
 CAB protects Customer Accounting: customers, transactions, company/account configuration, and accounting-related images. Teller's successful daily Excel export is its permanent archive. A live worksheet remains in SQLite for operational crash/restart safety until END TODAY completes; it is not required to be restored as historical accounting data.
