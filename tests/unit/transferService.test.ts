@@ -46,6 +46,35 @@ describe('customer transfers', () => {
     }
   });
 
+  it('transfers a very large amount without losing digits', async () => {
+    const harness = await createCustomerTestHarness();
+    try {
+      const source = harness.customerService.create({ name: 'Large source' });
+      const destination = harness.customerService.create({ name: 'Large destination' });
+      harness.transactionService.create({
+        customerId: source.id,
+        type: 'CASH_IN',
+        amount: '99999999999999999999',
+        currencyCode: 'AFN',
+      });
+
+      const result = harness.transactionService.transfer({
+        fromCustomerId: source.id,
+        toCustomerId: destination.id,
+        amount: '23923842934829348234',
+        currencyCode: 'AFN',
+      });
+
+      expect(harness.transactionService.getById(result.outTransactionId).amount).toBe('23923842934829348234');
+      expect(harness.transactionService.getById(result.inTransactionId).amount).toBe('23923842934829348234');
+      expect(harness.transactionService.getCustomerSummary(source.id).currencies[0]?.balance).toBe(
+        '76076157065170651765.0000',
+      );
+    } finally {
+      harness.cleanup();
+    }
+  });
+
   it('rejects insufficient balance, same customer, missing customer, and invalid amount', async () => {
     const harness = await createCustomerTestHarness();
     try {

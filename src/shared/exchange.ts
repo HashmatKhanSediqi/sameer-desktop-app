@@ -35,7 +35,7 @@ export interface ExchangeConvertResult {
   result: string;
 }
 
-const AMOUNT_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
+const AMOUNT_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
 
 export function convertCurrency(input: ExchangeConvertInput): ExchangeConvertResult {
   const fromCurrency = parseCurrency(input.fromCurrency);

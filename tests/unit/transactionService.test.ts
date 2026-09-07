@@ -71,6 +71,34 @@ describe('TransactionService', () => {
     }
   });
 
+  it('stores very large cash in and cash out amounts exactly', async () => {
+    const harness = await createCustomerTestHarness();
+
+    try {
+      const customer = harness.customerService.create({ name: 'Large exact amounts' });
+      const cashIn = harness.transactionService.create({
+        customerId: customer.id,
+        type: 'CASH_IN',
+        amount: '99999999999999999999',
+        currencyCode: 'AFN',
+      });
+      const cashOut = harness.transactionService.create({
+        customerId: customer.id,
+        type: 'CASH_OUT',
+        amount: '23923842934829348234.1234',
+        currencyCode: 'AFN',
+      });
+
+      expect(cashIn.amount).toBe('99999999999999999999');
+      expect(cashOut.amount).toBe('23923842934829348234.1234');
+      expect(harness.transactionService.getCustomerSummary(customer.id).currencies[0]?.balance).toBe(
+        '76076157065170651764.8766',
+      );
+    } finally {
+      harness.cleanup();
+    }
+  });
+
   it('rejects invalid types, amounts, currencies, and missing customers', async () => {
     const harness = await createCustomerTestHarness();
 
@@ -117,6 +145,24 @@ describe('TransactionService', () => {
         harness.transactionService.create({
           customerId: customer.id,
           type: 'CASH_IN',
+          amount: '0',
+          currencyCode: 'AFN',
+        }),
+      ).toThrowError(/AMOUNT_INVALID/);
+
+      expect(() =>
+        harness.transactionService.create({
+          customerId: customer.id,
+          type: 'CASH_IN',
+          amount: 'abc',
+          currencyCode: 'AFN',
+        }),
+      ).toThrowError(/AMOUNT_INVALID/);
+
+      expect(() =>
+        harness.transactionService.create({
+          customerId: customer.id,
+          type: 'CASH_IN',
           amount: '-10',
           currencyCode: 'AFN',
         }),
@@ -126,7 +172,7 @@ describe('TransactionService', () => {
         harness.transactionService.create({
           customerId: customer.id,
           type: 'CASH_IN',
-          amount: '1.12345',
+          amount: '12.12345',
           currencyCode: 'AFN',
         }),
       ).toThrowError(/AMOUNT_INVALID/);

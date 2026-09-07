@@ -227,7 +227,7 @@ export class TransactionService {
     const rawCommission = input.commissionAmount?.trim() ?? '';
     let commissionAmount: string | null = null;
     if (rawCommission !== '') {
-      if (!/^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/.test(rawCommission)) {
+      if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(rawCommission)) {
         throw new AppError('VALIDATION_ERROR', 'EXCHANGE_COMMISSION_INVALID');
       }
       if (!new Decimal(rawCommission).isZero()) commissionAmount = parseAmount(rawCommission);

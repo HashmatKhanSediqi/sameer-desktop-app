@@ -8,7 +8,7 @@ import {
   toSqliteDateTime,
 } from '@shared/transactionDateTime';
 
-const AMOUNT_PATTERN = /^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/;
+const AMOUNT_PATTERN = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?)?(?:Z|[+-]\d{2}:\d{2})?$/;
 const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 

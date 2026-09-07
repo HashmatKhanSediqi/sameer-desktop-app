@@ -23,6 +23,18 @@ describe('convertCurrency', () => {
     ).toBe('3.3747');
   });
 
+  it('accepts and preserves very large exact amounts', () => {
+    const result = convertCurrency({
+      amount: '23923842934829348234.1234',
+      rate: '1',
+      fromCurrency: 'USD',
+      toCurrency: 'AFN',
+    });
+
+    expect(result.amount).toBe('23923842934829348234.1234');
+    expect(result.result).toBe('23923842934829348234.1234');
+  });
+
   it('rejects invalid amount, rate, and identical currencies', () => {
     expect(() =>
       convertCurrency({ amount: '-1', rate: '70', fromCurrency: 'USD', toCurrency: 'AFN' }),

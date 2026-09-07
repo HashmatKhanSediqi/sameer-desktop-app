@@ -5,6 +5,29 @@ import { createCustomerTestHarness } from '../helpers/customerHarness';
 const requestId = '11111111-1111-4111-8111-111111111111';
 
 describe('customer currency exchange', () => {
+  it('stores a very large exchange exactly', async () => {
+    const h = await createCustomerTestHarness();
+    try {
+      const customer = h.customerService.create({ name: 'Large exchange' });
+      h.transactionService.create({ customerId: customer.id, type: 'CASH_IN', currencyCode: 'AFN', amount: '99999999999999999999' });
+
+      const result = h.transactionService.exchange({
+        customerId: customer.id,
+        fromCurrency: 'AFN',
+        fromAmount: '23923842934829348234.1234',
+        toCurrency: 'USD',
+        toAmount: '23923842934829348234.1234',
+        rate: '1',
+        requestId: '22222222-2222-4222-8222-222222222222',
+      });
+
+      expect(h.transactionService.getById(result.soldTransactionId).amount).toBe('23923842934829348234.1234');
+      expect(h.transactionService.getById(result.boughtTransactionId).amount).toBe('23923842934829348234.1234');
+    } finally {
+      h.cleanup();
+    }
+  });
+
   it('calculates both directions using 1 destination = rate source', () => {
     expect(calculateToAmount('10000', '70')).toBe('142.8571');
     expect(calculateFromAmount('1000', '70')).toBe('70000.0000');
