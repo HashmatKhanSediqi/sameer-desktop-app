@@ -8,7 +8,7 @@ export interface TellerWorksheetColumn {
 
 const FIXED_COLUMNS: Record<'no' | 'name' | 'amount' | 'check' | 'total' | 'tally', TellerWorksheetColumn> = {
   no: { id: 'no', defaultWidth: 28, minWidth: 28, maxWidth: 52 },
-  name: { id: 'name', defaultWidth: 120, minWidth: 120, maxWidth: 280 },
+  name: { id: 'name', defaultWidth: 64, minWidth: 64, maxWidth: 140 },
   amount: { id: 'amount', defaultWidth: 64, minWidth: 64, maxWidth: 140 },
   check: { id: 'check', defaultWidth: 40, minWidth: 40, maxWidth: 80 },
   total: { id: 'total', defaultWidth: 48, minWidth: 48, maxWidth: 120 },

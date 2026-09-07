@@ -23,5 +23,10 @@ describe('Teller worksheet column geometry', () => {
     ]);
     expect(columns.filter((column) => column.denominationValue !== undefined)).toHaveLength(denominations.length);
     expect(Object.keys(defaultTellerWorksheetWidths(denominations))).toEqual(columns.map((column) => column.id));
+    const name = columns.find((column) => column.id === 'name');
+    const amount = columns.find((column) => column.id === 'amount');
+    expect(name && [name.defaultWidth, name.minWidth, name.maxWidth]).toEqual(
+      amount && [amount.defaultWidth, amount.minWidth, amount.maxWidth],
+    );
   });
 });
