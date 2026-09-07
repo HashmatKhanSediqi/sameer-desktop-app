@@ -70,7 +70,7 @@
     "title": "تبادله اسعار", "fromCurrency": "ارز پرداختی", "fromAmount": "مبلغ پرداختی", "toCurrency": "ارز خریداری‌شده", "toAmount": "مبلغ دریافتی",
     "rateConvention": "1 {{to}} = نرخ {{from}}", "balance": "بیلانس", "commissionCurrency": "ارز کمیسیون (اختیاری)", "commissionAmount": "مبلغ کمیسیون (اختیاری)",
     "preview": "پیش‌نمایش تبادله", "businessSummary": "خرید {{toAmount}} {{to}} در مقابل {{fromAmount}} {{from}} با نرخ {{rate}}", "commissionSummary": "کمیسیون: {{amount}} {{currency}}",
-    "confirm": "تأیید تبادله", "confirmTitle": "تبادله اسعار تأیید شود؟", "sold": "تبادله — فروش", "bought": "تبادله — خرید", "id": "شناسه تبادله",
+    "confirm": "تأیید تبادله", "confirmTitle": "تبادله اسعار تأیید شود؟", "history": "تبادلات اسعار", "emptyHistory": "هنوز تبادله اسعار وجود ندارد.", "rate": "نرخ", "commission": "کمیسیون", "rateSummary": "نرخ: 1 {{to}} = {{rate}} {{from}}", "deleteTitle": "تبادله اسعار حذف شود؟", "deleteConfirm": "تمام تبادله {{fromAmount}} {{from}} به {{toAmount}} {{to}} حذف شود؟", "sold": "تبادله — فروش", "bought": "تبادله — خرید", "id": "شناسه تبادله",
     "invalid": "مبالغ مثبت معتبر، دو ارز متفاوت و نرخ مثبت را وارد کنید.",
     "insufficient": "بیلانس {{currency}} کافی نیست. موجود: {{available}}؛ مورد نیاز: {{requested}}."
   },

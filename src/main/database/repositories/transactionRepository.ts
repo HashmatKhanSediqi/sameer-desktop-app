@@ -74,6 +74,8 @@ export interface TransactionAggregateRow {
   type: TransactionType;
   tx_count: number;
   total_amount: string;
+  ordinary_tx_count: number;
+  ordinary_total_amount: string;
 }
 
 export interface GlobalTransactionAggregateRow {
@@ -81,6 +83,8 @@ export interface GlobalTransactionAggregateRow {
   type: TransactionType;
   tx_count: number;
   total_amount: string;
+  ordinary_tx_count: number;
+  ordinary_total_amount: string;
 }
 
 export interface ReportTransactionRecord extends TransactionRecord {
@@ -226,7 +230,7 @@ export class TransactionRepository {
 
   countByCustomer(customerId: number): number {
     const row = this.db
-      .prepare('SELECT COUNT(*) AS count FROM transactions WHERE customer_id = ?')
+      .prepare('SELECT COUNT(*) AS count FROM transactions WHERE customer_id = ? AND exchange_id IS NULL')
       .get(customerId) as { count: number };
     return row.count;
   }
@@ -237,11 +241,22 @@ export class TransactionRepository {
         `SELECT ${COLUMNS},
                 (SELECT name FROM customers WHERE id = transactions.counterparty_customer_id) AS counterparty_name
          FROM transactions
-         WHERE customer_id = ?
+         WHERE customer_id = ? AND exchange_id IS NULL
          ${HISTORY_ORDER}
          LIMIT ? OFFSET ?`,
       )
       .all(customerId, limit, offset) as TransactionRecord[];
+  }
+
+  listExchangeRowsByCustomer(customerId: number): TransactionRecord[] {
+    return this.db
+      .prepare(
+        `SELECT ${COLUMNS}
+         FROM transactions
+         WHERE customer_id = ? AND exchange_id IS NOT NULL
+         ${HISTORY_ORDER}`,
+      )
+      .all(customerId) as TransactionRecord[];
   }
 
   updateTransaction(id: number, input: UpdateTransactionRecordInput): boolean {
@@ -290,7 +305,9 @@ export class TransactionRepository {
     const placeholders = customerIds.map(() => '?').join(', ');
     return this.db
       .prepare(
-        `SELECT customer_id, currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount
+        `SELECT customer_id, currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount,
+                COUNT(CASE WHEN exchange_id IS NULL THEN 1 END) AS ordinary_tx_count,
+                decimal_sum(CASE WHEN exchange_id IS NULL THEN amount END) AS ordinary_total_amount
          FROM transactions
          WHERE customer_id IN (${placeholders})
          GROUP BY customer_id, currency_code, type`,
@@ -305,7 +322,9 @@ export class TransactionRepository {
   aggregateGlobal(): GlobalTransactionAggregateRow[] {
     return this.db
       .prepare(
-        `SELECT currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount
+        `SELECT currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount,
+                COUNT(CASE WHEN exchange_id IS NULL THEN 1 END) AS ordinary_tx_count,
+                decimal_sum(CASE WHEN exchange_id IS NULL THEN amount END) AS ordinary_total_amount
          FROM transactions
          GROUP BY currency_code, type`,
       )
@@ -325,7 +344,9 @@ export class TransactionRepository {
   aggregateAllCustomers(): TransactionAggregateRow[] {
     return this.db
       .prepare(
-        `SELECT customer_id, currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount
+        `SELECT customer_id, currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount,
+                COUNT(CASE WHEN exchange_id IS NULL THEN 1 END) AS ordinary_tx_count,
+                decimal_sum(CASE WHEN exchange_id IS NULL THEN amount END) AS ordinary_total_amount
          FROM transactions
          GROUP BY customer_id, currency_code, type`,
       )
@@ -352,7 +373,9 @@ export class TransactionRepository {
     const where = clauses.length > 0 ? ` WHERE ${clauses.join(' AND ')}` : '';
     return this.db
       .prepare(
-        `SELECT customer_id, currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount
+        `SELECT customer_id, currency_code, type, COUNT(*) AS tx_count, ${AGGREGATE_AMOUNT} AS total_amount,
+                COUNT(CASE WHEN exchange_id IS NULL THEN 1 END) AS ordinary_tx_count,
+                decimal_sum(CASE WHEN exchange_id IS NULL THEN amount END) AS ordinary_total_amount
          FROM transactions${where}
          GROUP BY customer_id, currency_code, type`,
       )

@@ -31,6 +31,7 @@ export interface ReportGenerateInput {
   customerId?: number;
   startDate?: string;
   endDate?: string;
+  includeExchanges?: boolean;
 }
 
 export interface GeneratedReport {
@@ -77,6 +78,22 @@ export interface ReportTransactionRow {
   counterpartyName: string | null;
 }
 
+export interface ReportExchangeRow {
+  exchangeId: string;
+  customerName: string;
+  customerNumber: string;
+  transactionDate: string;
+  displayDate: string;
+  fromCurrency: string;
+  fromAmount: string;
+  toCurrency: string;
+  toAmount: string;
+  rate: string;
+  commissionAmount: string;
+  commissionCurrency: string;
+  note: string;
+}
+
 export interface ReportCurrencySection extends CurrencySummary {
   transactionCount: number;
   customerCount: number;
@@ -97,6 +114,7 @@ export interface ReportModel {
   customer: ReportCustomerInfo | null;
   customers: ReportCustomerRow[];
   transactions: ReportTransactionRow[];
+  exchanges: ReportExchangeRow[];
   currencySummaries: ReportCurrencySection[];
   customerCount: number;
   transactionCount: number;
@@ -154,6 +172,15 @@ export interface ReportLabels {
   exchangeBought: string;
   exchangeSold: string;
   exchangeCommission: string;
+  sectionExchanges: string;
+  exchangeId: string;
+  fromCurrency: string;
+  fromAmount: string;
+  toCurrency: string;
+  toAmount: string;
+  rate: string;
+  commissionAmount: string;
+  commissionCurrency: string;
   companyPhone: string;
   companyEmail: string;
   companyAddress: string;

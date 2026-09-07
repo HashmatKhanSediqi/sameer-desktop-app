@@ -55,6 +55,7 @@ export interface PdfReportOutline {
     amount: string;
     note: string;
   }>;
+  exchanges: ReportModel['exchanges'];
   totals: Array<{ field: string; value: string }>;
 }
 
@@ -100,6 +101,7 @@ export function describePdfReport(model: ReportModel): PdfReportOutline {
       amount: row.amount,
       note: row.note,
     })),
+    exchanges: model.exchanges,
     totals: [
       ...model.currencySummaries.map((summary) => ({
         field: summary.currencyCode,
@@ -687,6 +689,31 @@ export async function renderPdfReport(model: ReportModel, filePath: string, font
       });
     }
 
+    if (model.exchanges.length > 0) {
+      drawSectionBar(model.labels.sectionExchanges);
+      const exchangeColumns = directedColumns(
+        [
+          { key: 'date', header: model.labels.date, width: 82, align: 'left', ltr: true },
+          { key: 'from', header: model.labels.fromAmount, width: 92, align: 'right', ltr: true },
+          { key: 'to', header: model.labels.toAmount, width: 92, align: 'right', ltr: true },
+          { key: 'rate', header: model.labels.rate, width: 54, align: 'right', ltr: true },
+          { key: 'commission', header: model.labels.commissionAmount, width: 72, align: 'right', ltr: true },
+          { key: 'note', header: model.labels.note, width: contentWidth - 392, align: rtl ? 'right' : 'left' },
+        ],
+        rtl,
+        contentWidth,
+      );
+      const exchangeRows = model.exchanges.map((row) => ({
+        date: row.displayDate,
+        from: `${wrapExactDecimal(row.fromAmount)}\n${row.fromCurrency}`,
+        to: `${wrapExactDecimal(row.toAmount)}\n${row.toCurrency}`,
+        rate: row.rate,
+        commission: row.commissionAmount ? `${row.commissionAmount} ${row.commissionCurrency}` : '',
+        note: row.note ? `${row.note}\n${model.labels.exchangeId}: ${row.exchangeId}` : `${model.labels.exchangeId}: ${row.exchangeId}`,
+      }));
+      drawTable(exchangeColumns, exchangeRows);
+    }
+
     if (model.empty) {
       drawSectionBar(model.labels.sectionTransactions);
       drawTable(
@@ -730,6 +757,10 @@ export async function renderPdfReport(model: ReportModel, filePath: string, font
   }
 }
 
+function wrapExactDecimal(value: string): string {
+  return value.match(/.{1,14}/g)?.join('\n') ?? value;
+}
+
 function embedExtractableArabic(doc: PDFKit.PDFDocument, font: string, model: ReportModel): void {
   const isolatedChars = new Set<string>();
   const wordProbes = new Set<string>();
@@ -762,6 +793,10 @@ function embedExtractableArabic(doc: PDFKit.PDFDocument, font: string, model: Re
     add(row.typeLabel);
     add(row.customerName);
     add(row.counterpartyName);
+  }
+  for (const row of model.exchanges) {
+    add(row.customerName);
+    add(row.note);
   }
   for (const value of Object.values(model.labels)) {
     if (typeof value === 'string') {

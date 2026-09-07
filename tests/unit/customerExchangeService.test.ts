@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import ExcelJS from 'exceljs';
 import { calculateFromAmount, calculateToAmount } from '../../src/shared/exchange';
 import { createCustomerTestHarness } from '../helpers/customerHarness';
+import { inspectPdf, pdfContainsLatin } from '../helpers/pdfInspect';
 
 const requestId = '11111111-1111-4111-8111-111111111111';
 
@@ -45,11 +47,17 @@ describe('customer currency exchange', () => {
       const second = h.transactionService.exchange(input);
       expect(first.exchangeId).toBe(second.exchangeId);
       expect(second.duplicate).toBe(true);
-      const rows = h.transactionService.list({ customerId: customer.id, page: 1, pageSize: 20 }).transactions.filter(r => r.exchangeId === first.exchangeId);
-      expect(rows).toHaveLength(2);
-      expect(new Set(rows.map(r => r.exchangeRole))).toEqual(new Set(['SOLD', 'BOUGHT']));
-      expect(rows.every(r => r.exchangeRate === '70' && r.note === 'counter 4')).toBe(true);
+      const history = h.transactionService.list({ customerId: customer.id, page: 1, pageSize: 20 });
+      expect(history.transactions).toHaveLength(1);
+      expect(history.transactions.every((row) => row.exchangeId === null)).toBe(true);
+      expect(history.exchanges).toHaveLength(1);
+      expect(history.exchanges[0]).toMatchObject({ exchangeId: first.exchangeId, fromCurrency: 'AFN',
+        fromAmount: '10000.0000', toCurrency: 'USD', toAmount: '142.8571', rate: '70',
+        commissionCurrency: 'AFN', commissionAmount: '100.0000', note: 'counter 4' });
       const summary = h.transactionService.getCustomerSummary(customer.id);
+      expect(summary.cashInCount).toBe(1);
+      expect(summary.cashOutCount).toBe(0);
+      expect(summary.currencies.find(c => c.currencyCode === 'AFN')).toMatchObject({ cashInTotal: '10100.0000', cashOutTotal: '0.0000', cashInCount: 1, cashOutCount: 0 });
       expect(summary.currencies.find(c => c.currencyCode === 'AFN')?.balance).toBe('0.0000');
       expect(summary.currencies.find(c => c.currencyCode === 'USD')?.balance).toBe('142.8571');
     } finally { h.cleanup(); }
@@ -63,7 +71,9 @@ describe('customer currency exchange', () => {
       const fx = h.transactionService.exchange({ customerId: c.id, fromCurrency: 'AFN', fromAmount: '7000', toCurrency: 'USD', toAmount: '100.0000', rate: '70', commissionCurrency: 'USD', commissionAmount: '2', requestId });
       expect(h.transactionService.getCustomerSummary(c.id).currencies.find(x => x.currencyCode === 'USD')?.balance).toBe('98.0000');
       expect(() => h.transactionService.update({ id: fx.soldTransactionId, type: 'CASH_OUT', currencyCode: 'AFN', amount: '1' })).toThrow(/EXCHANGE_IMMUTABLE/);
-      h.transactionService.delete(fx.boughtTransactionId);
+      const grouped = h.transactionService.list({ customerId: c.id }).exchanges;
+      expect(grouped).toHaveLength(1);
+      h.transactionService.delete(grouped[0]!.transactionId);
       expect(h.testDb.db.prepare('SELECT COUNT(*) count FROM transactions WHERE exchange_id=?').get(fx.exchangeId)).toEqual({ count: 0 });
     } finally { h.cleanup(); }
   });
@@ -74,11 +84,27 @@ describe('customer currency exchange', () => {
       const c = h.customerService.create({ name: 'Report FX' });
       h.transactionService.create({ customerId: c.id, type: 'CASH_IN', amount: '7100', currencyCode: 'AFN' });
       h.transactionService.exchange({ customerId: c.id, fromCurrency: 'AFN', fromAmount: '7000', toCurrency: 'USD', toAmount: '100.0000', rate: '70', commissionCurrency: 'AFN', commissionAmount: '100', note: 'receipt 9', requestId });
-      const model = h.reportsService.buildModel({ type: 'customer', format: 'xlsx', language: 'en', customerId: c.id });
-      const exchangeRows = model.transactions.filter(row => row.typeLabel.startsWith('Exchange'));
-      expect(exchangeRows).toHaveLength(2);
-      expect(exchangeRows.every(row => row.typeLabel.includes('7000.0000 AFN') && row.typeLabel.includes('100.0000 USD') && row.typeLabel.includes('70') && row.typeLabel.includes('Commission 100.0000 AFN'))).toBe(true);
-      expect(exchangeRows.every(row => row.note === 'receipt 9')).toBe(true);
+      const without = h.reportsService.buildModel({ type: 'customer', format: 'xlsx', language: 'en', customerId: c.id });
+      expect(without.transactions.every((row) => !row.typeLabel.startsWith('Exchange'))).toBe(true);
+      expect(without.exchanges).toHaveLength(0);
+      expect(without.currencySummaries.find((row) => row.currencyCode === 'AFN')?.balance).toBe('0.0000');
+      const model = h.reportsService.buildModel({ type: 'customer', format: 'xlsx', language: 'en', customerId: c.id, includeExchanges: true });
+      expect(model.exchanges).toHaveLength(1);
+      expect(model.exchanges[0]).toMatchObject({ fromAmount: '7000.0000', fromCurrency: 'AFN', toAmount: '100.0000',
+        toCurrency: 'USD', rate: '70', commissionAmount: '100.0000', commissionCurrency: 'AFN', note: 'receipt 9' });
+
+      const excel = await h.reportsService.generate({ type: 'customer', format: 'xlsx', language: 'en', customerId: c.id, includeExchanges: true });
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(excel.filePath);
+      expect(workbook.worksheets).toHaveLength(2);
+      expect(workbook.worksheets[1]!.name).toBe('Currency Exchanges');
+      const exchangeValues = workbook.worksheets[1]!.getSheetValues().flat().filter((value): value is string => typeof value === 'string');
+      expect(exchangeValues).toEqual(expect.arrayContaining(['7000.0000', '100.0000', '70', 'AFN', 'receipt 9']));
+
+      const pdf = await h.reportsService.generate({ type: 'customer', format: 'pdf', language: 'en', customerId: c.id, includeExchanges: true });
+      const inspected = inspectPdf(pdf.filePath);
+      expect(pdfContainsLatin(inspected, 'Currency Exchanges')).toBe(true);
+      expect(pdfContainsLatin(inspected, 'receipt 9')).toBe(true);
     } finally { h.cleanup(); }
   });
 

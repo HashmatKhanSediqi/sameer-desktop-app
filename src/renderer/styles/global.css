@@ -4567,6 +4567,10 @@ html[data-theme='dark'] .login-app-icon {
 .exchange-preview { padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-hover-fill); display: grid; gap: 4px; }
 .exchange-ledger-detail { max-width: 30rem; }
 .exchange-id { display: block; font-size: 10px; overflow-wrap: anywhere; opacity: .75; }
+.confirm-dialog > p { white-space: pre-line; }
+.history-tabs { display: flex; gap: 4px; padding: 0 0 8px; }
+.history-tab[aria-selected="true"] { background: var(--color-primary); color: var(--color-on-primary); }
+.exchange-history-table td { vertical-align: top; }
 @media (max-width: 640px) { .exchange-form-grid, .exchange-commission { grid-template-columns: 1fr; } }
 .recovery-mode .card { padding: 28px; }
 .recovery-mode p { line-height: 1.6; }

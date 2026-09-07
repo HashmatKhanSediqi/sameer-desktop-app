@@ -70,7 +70,7 @@
     "title": "د اسعارو تبادله", "fromCurrency": "ورکوونکي اسعار", "fromAmount": "ورکوونکی مبلغ", "toCurrency": "اخیستل کېدونکي اسعار", "toAmount": "ترلاسه کېدونکی مبلغ",
     "rateConvention": "1 {{to}} = نرخ {{from}}", "balance": "بیلانس", "commissionCurrency": "د کمېشن اسعار (اختیاري)", "commissionAmount": "د کمېشن مبلغ (اختیاري)",
     "preview": "د تبادلې مخکتنه", "businessSummary": "{{toAmount}} {{to}} د {{fromAmount}} {{from}} په بدل کې د {{rate}} په نرخ واخیستل شول", "commissionSummary": "کمېشن: {{amount}} {{currency}}",
-    "confirm": "تبادله تایید کړئ", "confirmTitle": "د اسعارو تبادله تایید شي؟", "sold": "تبادله — پلور", "bought": "تبادله — پېرود", "id": "د تبادلې پېژند",
+    "confirm": "تبادله تایید کړئ", "confirmTitle": "د اسعارو تبادله تایید شي؟", "history": "د اسعارو تبادلې", "emptyHistory": "تر اوسه د اسعارو تبادله نشته.", "rate": "نرخ", "commission": "کمېشن", "rateSummary": "نرخ: 1 {{to}} = {{rate}} {{from}}", "deleteTitle": "د اسعارو تبادله ړنګه شي؟", "deleteConfirm": "د {{fromAmount}} {{from}} څخه {{toAmount}} {{to}} ته بشپړه تبادله ړنګه شي؟", "sold": "تبادله — پلور", "bought": "تبادله — پېرود", "id": "د تبادلې پېژند",
     "invalid": "سم مثبت مبلغونه، دوه بېلابېل اسعار او مثبت نرخ ولیکئ.",
     "insufficient": "د {{currency}} بیلانس کافي نه دی. شته: {{available}}؛ اړین: {{requested}}."
   },

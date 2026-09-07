@@ -14,6 +14,7 @@
   "success": "راپور جوړ شو",
   "copyPath": "لار کاپي کړئ",
   "copied": "کاپي شو",
+  "exchangeExport": { "title": "د اسعارو تبادلې معاملات", "question": "په دې راپور کې د اسعارو تبادلې شاملې شي؟", "include": "تبادلې شاملې کړئ", "without": "له تبادلو پرته" },
   "type": {
     "label": "د راپور ډول",
     "individual": "یو پېرېدونکی",
@@ -61,7 +62,8 @@
     "transactionSummary": "د معاملاتو لنډیز",
     "transactions": "د معاملاتو تاریخچه",
     "customers": "پېرېدونکي",
-    "totals": "د مودې ټولګه"
+    "totals": "د مودې ټولګه",
+    "exchanges": "د اسعارو تبادلې"
   },
   "column": {
     "customer": "پېرېدونکی",
@@ -76,7 +78,8 @@
     "value": "ارزښت",
     "cashIn": "نغدې دننه",
     "cashOut": "نغدې وتل",
-    "balance": "پاتې"
+    "balance": "پاتې",
+    "exchangeId": "د تبادلې پېژند", "fromCurrency": "سرچینې اسعار", "fromAmount": "سرچینې مبلغ", "toCurrency": "موخې اسعار", "toAmount": "موخې مبلغ", "rate": "نرخ", "commissionAmount": "د کمېشن مبلغ", "commissionCurrency": "د کمېشن اسعار"
   },
   "errors": {
     "customerRequired": "یو پېرېدونکی وټاکئ.",

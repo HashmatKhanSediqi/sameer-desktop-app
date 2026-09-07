@@ -14,6 +14,7 @@
   "success": "Report generated",
   "copyPath": "Copy path",
   "copied": "Copied",
+  "exchangeExport": { "title": "Currency Exchange transactions", "question": "Include Currency Exchange transactions in this export?", "include": "Include Exchanges", "without": "Without Exchanges" },
   "type": {
     "label": "Report type",
     "individual": "Individual customer",
@@ -61,7 +62,8 @@
     "transactionSummary": "Transaction summary",
     "transactions": "Transaction history",
     "customers": "Customers",
-    "totals": "Period totals"
+    "totals": "Period totals",
+    "exchanges": "Currency Exchanges"
   },
   "column": {
     "customer": "Customer",
@@ -76,7 +78,8 @@
     "value": "Value",
     "cashIn": "Cash In",
     "cashOut": "Cash Out",
-    "balance": "Balance"
+    "balance": "Balance",
+    "exchangeId": "Exchange ID", "fromCurrency": "From Currency", "fromAmount": "From Amount", "toCurrency": "To Currency", "toAmount": "To Amount", "rate": "Rate", "commissionAmount": "Commission Amount", "commissionCurrency": "Commission Currency"
   },
   "errors": {
     "customerRequired": "Select a customer.",

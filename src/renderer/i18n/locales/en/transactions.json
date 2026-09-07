@@ -70,7 +70,7 @@
     "title": "Exchange Currency", "fromCurrency": "From currency", "fromAmount": "From amount", "toCurrency": "To currency", "toAmount": "To amount",
     "rateConvention": "1 {{to}} = rate {{from}}", "balance": "Balance", "commissionCurrency": "Commission currency (optional)", "commissionAmount": "Commission amount (optional)",
     "preview": "Exchange preview", "businessSummary": "Bought {{toAmount}} {{to}} for {{fromAmount}} {{from}} at rate {{rate}}", "commissionSummary": "Commission: {{amount}} {{currency}}",
-    "confirm": "Confirm Exchange", "confirmTitle": "Confirm currency exchange?", "sold": "Exchange — Sold", "bought": "Exchange — Bought", "id": "Exchange ID",
+    "confirm": "Confirm Exchange", "confirmTitle": "Confirm currency exchange?", "history": "Currency Exchanges", "emptyHistory": "No currency exchanges yet.", "rate": "Rate", "commission": "Commission", "rateSummary": "Rate: 1 {{to}} = {{rate}} {{from}}", "deleteTitle": "Delete currency exchange?", "deleteConfirm": "Delete the complete exchange of {{fromAmount}} {{from}} to {{toAmount}} {{to}}?", "sold": "Exchange — Sold", "bought": "Exchange — Bought", "id": "Exchange ID",
     "invalid": "Enter valid positive amounts, different currencies, and a positive rate.",
     "insufficient": "Insufficient {{currency}} balance. Available: {{available}}; required: {{requested}}."
   },

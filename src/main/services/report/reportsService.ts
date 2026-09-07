@@ -14,6 +14,7 @@ import type { Customer } from '@shared/types/customer';
 import type {
   GeneratedReport,
   ReportCurrencySection,
+  ReportExchangeRow,
   ReportCustomerInfo,
   ReportCustomerRow,
   ReportGenerateInput,
@@ -108,11 +109,12 @@ export class ReportsService {
       labels,
       noDataMessage: reportT(locale, 'reports', 'noData'),
       company: this.buildCompanyHeader(),
+      exchanges: [] as ReportExchangeRow[],
     };
 
     switch (input.type) {
       case 'customer':
-        return this.buildCustomerReport(base, labels, locale, input.customerId as number, input.startDate, input.endDate);
+        return this.buildCustomerReport(base, labels, locale, input.customerId as number, input.startDate, input.endDate, input.includeExchanges === true);
       case 'all_customers':
         return this.buildAllCustomersReport(base, labels, locale);
       case 'date_range':
@@ -147,6 +149,7 @@ export class ReportsService {
     customerId: number,
     startDate?: string,
     endDate?: string,
+    includeExchanges = false,
   ): ReportModel {
     const customer = this.deps.customerService.getById(customerId);
     const aggregateGroups = this.deps.transactionService.aggregateForReportScope({ customerId, startDate, endDate });
@@ -156,11 +159,13 @@ export class ReportsService {
       this.deps.transactionService.summarizeAggregates(currencies, aggregateGroups),
       scopedRows,
     );
+    const records = this.deps.transactionService.listForReport({ customerId, startDate, endDate });
     const transactions = this.mapTransactions(
-      this.deps.transactionService.listForReport({ customerId, startDate, endDate }),
+      records.filter((record) => !record.exchange_id),
       labels,
       locale,
     );
+    const exchanges = includeExchanges ? groupReportExchangeRows(records, labels, locale) : [];
     const info = toCustomerInfo(customer, labels, aggregateGroups, locale);
 
     return {
@@ -168,10 +173,11 @@ export class ReportsService {
       customer: info,
       customers: [],
       transactions,
+      exchanges,
       currencySummaries: summaries,
       customerCount: 1,
       transactionCount: transactions.length,
-      empty: transactions.length === 0,
+      empty: transactions.length === 0 && exchanges.length === 0,
     };
   }
 
@@ -192,11 +198,13 @@ export class ReportsService {
           type: group.type,
           tx_count: group.tx_count,
           total_amount: group.total_amount,
+          ordinary_tx_count: group.ordinary_tx_count,
+          ordinary_total_amount: group.ordinary_total_amount,
         })),
       ),
       distinctCustomers,
     );
-    const transactionCount = globalGroups.reduce((sum, group) => sum + group.tx_count, 0);
+    const transactionCount = globalGroups.reduce((sum, group) => sum + group.ordinary_tx_count, 0);
     const totalCount = this.deps.customerService.count();
     const customers: ReportCustomerRow[] = [];
     const pageSize = 500;
@@ -272,7 +280,7 @@ export class ReportsService {
     }
 
     const currencies = this.currenciesForScope(scopedRows);
-    const transactions = this.mapTransactions(records, labels, locale);
+    const transactions = this.mapTransactions(records.filter((record) => !record.exchange_id), labels, locale);
     const customerIds = new Set(records.map((row) => row.customer_id));
     const customer =
       customerId !== undefined
@@ -314,7 +322,7 @@ export class ReportsService {
       scopedRows,
     );
     const customerIds = new Set(aggregateGroups.map((group) => group.customer_id));
-    const transactionCount = aggregateGroups.reduce((sum, group) => sum + group.tx_count, 0);
+    const transactionCount = aggregateGroups.reduce((sum, group) => sum + group.ordinary_tx_count, 0);
 
     return {
       ...base,
@@ -360,7 +368,7 @@ export class ReportsService {
       customerName: displayName(record.customer_name, labels.unnamedCustomer),
       customerNumber: record.customer_number?.trim() || reportT(locale, 'common', 'emptyValue'),
       type: record.type,
-      typeLabel: record.exchange_id ? exchangeTypeLabel(record, labels) : transferTypeLabel(record.transfer_role, record.type, record.counterparty_name, labels),
+      typeLabel: transferTypeLabel(record.transfer_role, record.type, record.counterparty_name, labels),
       currencyCode: record.currency_code,
       amount: formatMoneyForLocale(record.amount, locale),
       note: record.note ?? '',
@@ -432,6 +440,15 @@ function buildLabels(locale: SupportedLocale): ReportLabels {
     exchangeBought: reportT(locale, 'reports', 'exchangeBought'),
     exchangeSold: reportT(locale, 'reports', 'exchangeSold'),
     exchangeCommission: reportT(locale, 'reports', 'exchangeCommission'),
+    sectionExchanges: reportT(locale, 'reports', 'section.exchanges'),
+    exchangeId: reportT(locale, 'reports', 'column.exchangeId'),
+    fromCurrency: reportT(locale, 'reports', 'column.fromCurrency'),
+    fromAmount: reportT(locale, 'reports', 'column.fromAmount'),
+    toCurrency: reportT(locale, 'reports', 'column.toCurrency'),
+    toAmount: reportT(locale, 'reports', 'column.toAmount'),
+    rate: reportT(locale, 'reports', 'column.rate'),
+    commissionAmount: reportT(locale, 'reports', 'column.commissionAmount'),
+    commissionCurrency: reportT(locale, 'reports', 'column.commissionCurrency'),
     companyPhone: reportT(locale, 'reports', 'companyPhone'),
     companyEmail: reportT(locale, 'reports', 'companyEmail'),
     companyAddress: reportT(locale, 'reports', 'companyAddress'),
@@ -486,15 +503,15 @@ function displayName(name: string | null | undefined, fallback: string): string 
 function toCustomerInfo(
   customer: Customer,
   labels: ReportLabels,
-  groups: Array<{ type: 'CASH_IN' | 'CASH_OUT'; tx_count: number }>,
+  groups: Array<{ type: 'CASH_IN' | 'CASH_OUT'; ordinary_tx_count: number }>,
   locale: SupportedLocale,
 ): ReportCustomerInfo {
   return {
     id: customer.id,
     name: displayName(customer.name, labels.unnamedCustomer),
     customerNumber: customer.customerNumber?.trim() || '',
-    cashInCount: groups.filter((group) => group.type === 'CASH_IN').reduce((sum, group) => sum + group.tx_count, 0),
-    cashOutCount: groups.filter((group) => group.type === 'CASH_OUT').reduce((sum, group) => sum + group.tx_count, 0),
+    cashInCount: groups.filter((group) => group.type === 'CASH_IN').reduce((sum, group) => sum + group.ordinary_tx_count, 0),
+    cashOutCount: groups.filter((group) => group.type === 'CASH_OUT').reduce((sum, group) => sum + group.ordinary_tx_count, 0),
     createdAt: customer.createdAt,
     updatedAt: customer.updatedAt,
     displayCreatedAt: customer.createdAt ? formatDateTimeForLocale(customer.createdAt, locale) : null,
@@ -546,13 +563,38 @@ function transferTypeLabel(
   return type === 'CASH_IN' ? labels.cashIn : labels.cashOut;
 }
 
-function exchangeTypeLabel(record: ReportTransactionRecord, labels: ReportLabels): string {
-  const template = record.exchange_role === 'SOLD' ? labels.exchangeSold : labels.exchangeBought;
-  let value = template.replace('{{fromAmount}}', record.exchange_from_amount ?? '')
-    .replace('{{from}}', record.exchange_from_currency ?? '').replace('{{toAmount}}', record.exchange_to_amount ?? '')
-    .replace('{{to}}', record.exchange_to_currency ?? '').replace('{{rate}}', record.exchange_rate ?? '');
-  if (record.exchange_commission_amount) value += ` · ${labels.exchangeCommission.replace('{{amount}}', record.exchange_commission_amount).replace('{{currency}}', record.exchange_commission_currency ?? '')}`;
-  return value;
+export function groupReportExchangeRows(
+  records: ReportTransactionRecord[],
+  labels: ReportLabels,
+  locale: SupportedLocale,
+): ReportExchangeRow[] {
+  const byExchange = new Map<string, ReportTransactionRecord[]>();
+  for (const record of records) {
+    if (!record.exchange_id) continue;
+    const rows = byExchange.get(record.exchange_id) ?? [];
+    rows.push(record);
+    byExchange.set(record.exchange_id, rows);
+  }
+  return [...byExchange.entries()].flatMap(([exchangeId, rows]) => {
+    const sold = rows.find((row) => row.exchange_role === 'SOLD');
+    const bought = rows.find((row) => row.exchange_role === 'BOUGHT');
+    if (!sold || !bought) return [];
+    return [{
+      exchangeId,
+      customerName: displayName(sold.customer_name, labels.unnamedCustomer),
+      customerNumber: sold.customer_number?.trim() || '',
+      transactionDate: sold.transaction_date,
+      displayDate: formatDateTimeForLocale(sold.transaction_date, locale),
+      fromCurrency: sold.exchange_from_currency ?? sold.currency_code,
+      fromAmount: sold.exchange_from_amount ?? sold.amount,
+      toCurrency: sold.exchange_to_currency ?? bought.currency_code,
+      toAmount: sold.exchange_to_amount ?? bought.amount,
+      rate: sold.exchange_rate ?? '',
+      commissionAmount: sold.exchange_commission_amount ?? '',
+      commissionCurrency: sold.exchange_commission_currency ?? '',
+      note: sold.note ?? '',
+    }];
+  });
 }
 
 function fillBalances(currencies: Currency[], balances: Record<string, string>): Record<string, string> {

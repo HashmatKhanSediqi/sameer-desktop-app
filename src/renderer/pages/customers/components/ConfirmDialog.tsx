@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ACTION_SUCCESS_DISMISS_MS, ActionSuccessState } from '../../../components/ActionSuccessState';
+import { buildConfirmationAction } from '@shared/confirmationAction';
 
 interface ConfirmDialogProps {
   title: string;
@@ -44,6 +45,7 @@ export function ConfirmDialog({
   }, [successMessage]);
 
   const lockDismiss = isBusy || Boolean(successMessage);
+  const action = buildConfirmationAction(confirmLabel ?? t('delete'), tone);
 
   return (
     <div
@@ -75,11 +77,11 @@ export function ConfirmDialog({
               </button>
               <button
                 type="button"
-                className={tone === 'primary' ? 'button button-primary' : 'button button-danger'}
+                className={action.className}
                 onClick={onConfirm}
                 disabled={isBusy}
               >
-                {confirmLabel ?? t('delete')}
+                {action.label}
               </button>
             </div>
           </>

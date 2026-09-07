@@ -14,6 +14,7 @@
   "success": "گزارش ایجاد شد",
   "copyPath": "کپی مسیر",
   "copied": "کپی شد",
+  "exchangeExport": { "title": "معاملات تبادله اسعار", "question": "معاملات تبادله اسعار در این گزارش شامل شود؟", "include": "شامل تبادلات", "without": "بدون تبادلات" },
   "type": {
     "label": "نوع گزارش",
     "individual": "یک مشتری",
@@ -61,7 +62,8 @@
     "transactionSummary": "خلاصه معاملات",
     "transactions": "تاریخچه معاملات",
     "customers": "مشتریان",
-    "totals": "مجموع دوره"
+    "totals": "مجموع دوره",
+    "exchanges": "تبادلات اسعار"
   },
   "column": {
     "customer": "مشتری",
@@ -76,7 +78,8 @@
     "value": "مقدار",
     "cashIn": "دریافت وجه",
     "cashOut": "پرداخت وجه",
-    "balance": "مانده"
+    "balance": "مانده",
+    "exchangeId": "شناسه تبادله", "fromCurrency": "اسعار مبدأ", "fromAmount": "مبلغ مبدأ", "toCurrency": "اسعار مقصد", "toAmount": "مبلغ مقصد", "rate": "نرخ", "commissionAmount": "مبلغ کمیسیون", "commissionCurrency": "اسعار کمیسیون"
   },
   "errors": {
     "customerRequired": "یک مشتری انتخاب کنید.",

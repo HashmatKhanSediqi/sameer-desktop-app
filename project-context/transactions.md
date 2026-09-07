@@ -110,7 +110,9 @@ The fixed rate convention is `1 destination currency = rate source currency`. De
 
 The repository rechecks the exact source-currency balance inside the write transaction. Source-currency commission is added to the debit; destination-currency commission is subtracted from the credit. Blank/zero commission has no effect. The commission currency must be one side of the exchange and the destination credit must remain positive.
 
-Ledger rows and PDF/XLSX reports retain the two-leg balance model but label both rows as Exchange and describe both gross amounts, currencies, rate, commission, and note. Deleting either displayed leg deletes the complete exchange group.
+Ledger storage retains the two-leg balance model, but Customer Detail presents one grouped record per `exchange_id` in a dedicated exchange-history view. Exchange legs are excluded from the ordinary transaction table and from ordinary Cash In/Cash Out totals and counts; they continue to affect exact per-currency balances. The grouped row is the only deletion entry point and deletes both legs atomically after an exchange-specific confirmation.
+
+Before generating an individual customer PDF or XLSX report, the UI asks whether exchanges should be included. Excluding them leaves ordinary transaction detail only while balances still reflect the ledger. Including them adds a dedicated grouped exchange section (and a separate Excel worksheet) with amounts stored as exact decimal text.
 
 ---
 

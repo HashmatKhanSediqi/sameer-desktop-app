@@ -15,6 +15,7 @@ import type { Currency } from '@shared/types/currency';
 import { randomUUID } from 'node:crypto';
 import type {
   CreateTransactionInput,
+  CustomerCurrencyExchange,
   CustomerTransactionSummary,
   CurrencySummary,
   GlobalCurrencyTotal,
@@ -288,6 +289,7 @@ export class TransactionService {
 
     return {
       transactions: rows.map(toTransaction),
+      exchanges: groupCustomerExchangeRows(this.transactions.listExchangeRowsByCustomer(customerId)),
       totalCount,
       page: pagination.page,
       pageSize: pagination.pageSize,
@@ -302,8 +304,8 @@ export class TransactionService {
     return {
       customerId: id,
       currencies: buildCurrencySummariesFromAggregates(currencies, groups),
-      cashInCount: groups.filter((group) => group.type === 'CASH_IN').reduce((sum, group) => sum + group.tx_count, 0),
-      cashOutCount: groups.filter((group) => group.type === 'CASH_OUT').reduce((sum, group) => sum + group.tx_count, 0),
+      cashInCount: groups.filter((group) => group.type === 'CASH_IN').reduce((sum, group) => sum + group.ordinary_tx_count, 0),
+      cashOutCount: groups.filter((group) => group.type === 'CASH_OUT').reduce((sum, group) => sum + group.ordinary_tx_count, 0),
     };
   }
 
@@ -496,3 +498,32 @@ function buildCurrencySummaries(
 }
 
 export { ZERO_BALANCE, buildCurrencySummaries };
+
+export function groupCustomerExchangeRows(records: TransactionRecord[]): CustomerCurrencyExchange[] {
+  const groups = new Map<string, TransactionRecord[]>();
+  for (const record of records) {
+    if (!record.exchange_id) continue;
+    const rows = groups.get(record.exchange_id) ?? [];
+    rows.push(record);
+    groups.set(record.exchange_id, rows);
+  }
+
+  return [...groups.entries()].flatMap(([exchangeId, rows]) => {
+    const sold = rows.find((row) => row.exchange_role === 'SOLD');
+    const bought = rows.find((row) => row.exchange_role === 'BOUGHT');
+    if (!sold || !bought) return [];
+    return [{
+      exchangeId,
+      transactionId: sold.id,
+      transactionDate: sold.transaction_date,
+      fromCurrency: sold.exchange_from_currency ?? sold.currency_code,
+      fromAmount: sold.exchange_from_amount ?? sold.amount,
+      toCurrency: sold.exchange_to_currency ?? bought.currency_code,
+      toAmount: sold.exchange_to_amount ?? bought.amount,
+      rate: sold.exchange_rate ?? '',
+      commissionCurrency: sold.exchange_commission_currency ?? null,
+      commissionAmount: sold.exchange_commission_amount ?? null,
+      note: sold.note ?? null,
+    }];
+  });
+}

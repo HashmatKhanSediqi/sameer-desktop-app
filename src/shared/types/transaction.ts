@@ -55,10 +55,25 @@ export interface TransactionListQuery {
 
 export interface TransactionListResult {
   transactions: Transaction[];
+  exchanges: CustomerCurrencyExchange[];
   totalCount: number;
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+export interface CustomerCurrencyExchange {
+  exchangeId: string;
+  transactionId: number;
+  transactionDate: string;
+  fromCurrency: string;
+  fromAmount: string;
+  toCurrency: string;
+  toAmount: string;
+  rate: string;
+  commissionCurrency: string | null;
+  commissionAmount: string | null;
+  note: string | null;
 }
 
 export interface CurrencySummary {

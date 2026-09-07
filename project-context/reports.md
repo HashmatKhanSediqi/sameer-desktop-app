@@ -287,6 +287,8 @@ FMT_Customer_{CustomerName}_{CustomerNumber}_{YYYY-MM-DD}.{pdf|xlsx}
 
 Sanitize customer name and number for filesystem.
 
+Individual customer exports prompt for exchange inclusion. The default report path can exclude exchange detail without changing balance calculations. When included, exchanges are grouped one per `exchange_id`; PDF output uses a dedicated exchange section and Excel output uses a dedicated worksheet so the underlying debit/credit legs are never presented as ordinary Cash In/Cash Out activity.
+
 ---
 
 ## 12. Performance

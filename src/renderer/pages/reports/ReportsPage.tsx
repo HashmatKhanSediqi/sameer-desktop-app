@@ -4,6 +4,7 @@ import type { CustomerListItem } from '@shared/types/customer';
 import { normalizeLocale } from '@shared/types/locale';
 import { isReportType, type ReportFormat, type ReportType } from '@shared/types/report';
 import { useAuth } from '../../context/AuthContext';
+import { ExchangeExportDialog } from './ExchangeExportDialog';
 
 interface ReportsPageProps {
   onBack: () => void;
@@ -27,6 +28,7 @@ export function ReportsPage({ onBack, initialCustomerId }: ReportsPageProps): JS
   const [error, setError] = useState<string | null>(null);
   const [successPath, setSuccessPath] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showExchangeOptions, setShowExchangeOptions] = useState(false);
 
   const loadCustomers = useCallback(async (): Promise<void> => {
     if (!sessionId) {
@@ -88,6 +90,17 @@ export function ReportsPage({ onBack, initialCustomerId }: ReportsPageProps): JS
       return;
     }
 
+    if (type === 'customer') {
+      setShowExchangeOptions(true);
+      return;
+    }
+
+    await generateReport(false);
+  }
+
+  async function generateReport(includeExchanges: boolean): Promise<void> {
+    if (!sessionId) return;
+
     setIsGenerating(true);
     setError(null);
     setSuccessPath(null);
@@ -102,6 +115,7 @@ export function ReportsPage({ onBack, initialCustomerId }: ReportsPageProps): JS
         customerId: customerId === '' ? undefined : customerId,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        includeExchanges,
       });
 
       if (!result.ok) {
@@ -259,6 +273,13 @@ export function ReportsPage({ onBack, initialCustomerId }: ReportsPageProps): JS
           </button>
         </div>
       </form>
+      {showExchangeOptions ? (
+        <ExchangeExportDialog
+          onCancel={() => setShowExchangeOptions(false)}
+          onExclude={() => { setShowExchangeOptions(false); void generateReport(false); }}
+          onInclude={() => { setShowExchangeOptions(false); void generateReport(true); }}
+        />
+      ) : null}
     </section>
   );
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Customer } from '@shared/types/customer';
 import type { Currency } from '@shared/types/currency';
-import type { CustomerTransactionSummary, Transaction, TransactionType } from '@shared/types/transaction';
+import type { CustomerCurrencyExchange, CustomerTransactionSummary, Transaction, TransactionType } from '@shared/types/transaction';
 import { normalizeLocale } from '@shared/types/locale';
 import { useAuth } from '../../context/AuthContext';
 import { useLocaleFormat } from '../../hooks/useLocaleFormat';
@@ -14,6 +14,8 @@ import { TransactionForm, mapTransactionError } from './components/TransactionFo
 import { TransactionTable } from './components/TransactionTable';
 import { TransferForm } from './components/TransferForm';
 import { ExchangeForm } from './components/ExchangeForm';
+import { ExchangeHistoryTable } from './components/ExchangeHistoryTable';
+import { ExchangeExportDialog } from '../reports/ExchangeExportDialog';
 
 interface CustomerDetailPageProps {
   customerId: number;
@@ -32,6 +34,8 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [summary, setSummary] = useState<CustomerTransactionSummary | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [exchanges, setExchanges] = useState<CustomerCurrencyExchange[]>([]);
+  const [historyView, setHistoryView] = useState<'transactions' | 'exchanges'>('transactions');
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -46,8 +50,10 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
   const [createType, setCreateType] = useState<TransactionType>('CASH_IN');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [pendingTransactionDelete, setPendingTransactionDelete] = useState<Transaction | null>(null);
+  const [pendingExchangeDelete, setPendingExchangeDelete] = useState<CustomerCurrencyExchange | null>(null);
   const [isDeletingTransaction, setIsDeletingTransaction] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [showExportOptions, setShowExportOptions] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showExchange, setShowExchange] = useState(false);
@@ -91,6 +97,7 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
       setCustomer(customerResult.data);
       setSummary(summaryResult.data);
       setTransactions(listResult.data.transactions);
+      setExchanges(listResult.data.exchanges);
       setTotalPages(listResult.data.totalPages);
       if (listResult.data.page !== page) {
         setPage(listResult.data.page);
@@ -142,7 +149,8 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
   }
 
   async function confirmDeleteTransaction(): Promise<void> {
-    if (!sessionId || !pendingTransactionDelete) {
+    const transactionId = pendingTransactionDelete?.id ?? pendingExchangeDelete?.transactionId;
+    if (!sessionId || !transactionId) {
       return;
     }
 
@@ -150,20 +158,21 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
     try {
       const result = await window.api.transactions.delete({
         sessionId,
-        transactionId: pendingTransactionDelete.id,
+        transactionId,
       });
       if (!result.ok) {
         setError(mapTransactionError((key) => String(tTx(key as never)), result.errorCode, result.message));
         return;
       }
       setPendingTransactionDelete(null);
+      setPendingExchangeDelete(null);
       await load();
     } finally {
       setIsDeletingTransaction(false);
     }
   }
 
-  async function exportCustomerPdf(): Promise<void> {
+  async function exportCustomerPdf(includeExchanges: boolean): Promise<void> {
     if (!sessionId || !customer || isExportingPdf) {
       return;
     }
@@ -179,6 +188,7 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
         format: 'pdf',
         language: normalizeLocale(i18n.language),
         customerId: customer.id,
+        includeExchanges,
       });
 
       if (!result.ok) {
@@ -238,7 +248,7 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
             <button
               type="button"
               className="button button-secondary"
-              onClick={() => void exportCustomerPdf()}
+              onClick={() => setShowExportOptions(true)}
               disabled={isExportingPdf}
             >
               {isExportingPdf ? tReports('generating') : t('exportPdf')}
@@ -322,11 +332,14 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
             ) : null}
 
             <div className="card customer-history-card">
-              <h2 className="visually-hidden">{tTx('history')}</h2>
+              <div className="history-tabs" role="tablist" aria-label={tTx('history')}>
+                <button type="button" role="tab" aria-selected={historyView === 'transactions'} className="button button-secondary history-tab" onClick={() => setHistoryView('transactions')}>{tTx('history')}</button>
+                <button type="button" role="tab" aria-selected={historyView === 'exchanges'} className="button button-secondary history-tab" onClick={() => setHistoryView('exchanges')}>{tTx('exchange.history')}</button>
+              </div>
               <div className="history-scroll">
-                {transactions.length === 0 ? (
+                {historyView === 'transactions' && transactions.length === 0 ? (
                   <p className="subtitle">{tTx('empty')}</p>
-                ) : (
+                ) : historyView === 'transactions' ? (
                   <TransactionTable
                     transactions={transactions}
                     onEdit={(item) => {
@@ -335,10 +348,12 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
                     }}
                     onDelete={setPendingTransactionDelete}
                   />
+                ) : exchanges.length === 0 ? <p className="subtitle">{tTx('exchange.emptyHistory')}</p> : (
+                  <ExchangeHistoryTable exchanges={exchanges} onDelete={setPendingExchangeDelete} />
                 )}
               </div>
 
-              {totalPages > 1 ? (
+              {historyView === 'transactions' && totalPages > 1 ? (
                 <div className="pagination-bar">
                   <button
                     type="button"
@@ -454,6 +469,29 @@ export function CustomerDetailPage({ customerId, onBack, onDeleted }: CustomerDe
           isBusy={isDeletingTransaction}
           onCancel={() => setPendingTransactionDelete(null)}
           onConfirm={() => void confirmDeleteTransaction()}
+        />
+      ) : null}
+
+      {pendingExchangeDelete ? (
+        <ConfirmDialog
+          title={tTx('exchange.deleteTitle')}
+          message={tTx('exchange.deleteConfirm', {
+            fromAmount: formatMoney(pendingExchangeDelete.fromAmount),
+            from: pendingExchangeDelete.fromCurrency,
+            toAmount: formatMoney(pendingExchangeDelete.toAmount),
+            to: pendingExchangeDelete.toCurrency,
+          })}
+          isBusy={isDeletingTransaction}
+          onCancel={() => setPendingExchangeDelete(null)}
+          onConfirm={() => void confirmDeleteTransaction()}
+        />
+      ) : null}
+
+      {showExportOptions ? (
+        <ExchangeExportDialog
+          onCancel={() => setShowExportOptions(false)}
+          onExclude={() => { setShowExportOptions(false); void exportCustomerPdf(false); }}
+          onInclude={() => { setShowExportOptions(false); void exportCustomerPdf(true); }}
         />
       ) : null}
     </section>

@@ -49,6 +49,7 @@ export function parseReportGenerateInput(input: unknown): ReportGenerateInput {
     customerId,
     startDate,
     endDate,
+    includeExchanges: record.includeExchanges === true,
   };
 }
 

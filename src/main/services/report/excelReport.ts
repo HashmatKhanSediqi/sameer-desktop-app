@@ -144,7 +144,48 @@ export async function renderExcelReport(model: ReportModel, filePath: string): P
   );
 
   autosize(sheet);
+  if (model.exchanges.length > 0) {
+    addExchangeWorksheet(workbook, model);
+  }
   await workbook.xlsx.writeFile(filePath);
+}
+
+function addExchangeWorksheet(workbook: ExcelJS.Workbook, model: ReportModel): void {
+  const sheet = workbook.addWorksheet(sheetName(model.labels.sectionExchanges), {
+    views: [{ state: 'frozen', ySplit: 1, rightToLeft: model.direction === 'rtl' }],
+    pageSetup: { orientation: 'landscape', fitToPage: true },
+  });
+  const includeCustomer = model.type !== 'customer';
+  const headers = [
+    ...(includeCustomer ? [model.labels.customer, model.labels.number] : []),
+    model.labels.date,
+    model.labels.fromCurrency,
+    model.labels.fromAmount,
+    model.labels.toCurrency,
+    model.labels.toAmount,
+    model.labels.rate,
+    model.labels.commissionAmount,
+    model.labels.commissionCurrency,
+    model.labels.note,
+    model.labels.exchangeId,
+  ];
+  const data = model.exchanges.map((row) => [
+    ...(includeCustomer ? [row.customerName, row.customerNumber] : []),
+    row.displayDate,
+    row.fromCurrency,
+    row.fromAmount,
+    row.toCurrency,
+    row.toAmount,
+    row.rate,
+    row.commissionAmount,
+    row.commissionCurrency,
+    row.note,
+    row.exchangeId,
+  ]);
+  addTable(sheet, headers, data, 1, model.direction === 'rtl', {
+    wrapColumns: [includeCustomer ? 10 : 8, includeCustomer ? 11 : 9],
+  });
+  autosize(sheet);
 }
 
 function sheetName(title: string): string {

@@ -60,6 +60,8 @@ export function buildGlobalTotalsFromAggregates(
     type: group.type,
     tx_count: group.tx_count,
     total_amount: group.total_amount,
+    ordinary_tx_count: group.ordinary_tx_count,
+    ordinary_total_amount: group.ordinary_total_amount,
   }));
   return buildCurrencySummariesFromAggregates(currencies, pseudoRows).map((summary) => ({
     currencyCode: summary.currencyCode,
@@ -75,23 +77,27 @@ export function buildCurrencySummariesFromAggregates(
 ): CurrencySummary[] {
   const totalsByCurrency = new Map<
     string,
-    { cashIn: Decimal; cashOut: Decimal; cashInCount: number; cashOutCount: number }
+    { cashIn: Decimal; cashOut: Decimal; balance: Decimal; cashInCount: number; cashOutCount: number }
   >();
 
   for (const group of groups) {
     const current = totalsByCurrency.get(group.currency_code) ?? {
       cashIn: new Decimal(0),
       cashOut: new Decimal(0),
+      balance: new Decimal(0),
       cashInCount: 0,
       cashOutCount: 0,
     };
     const amount = new Decimal(group.total_amount);
+    const ordinaryAmount = new Decimal(group.ordinary_total_amount);
     if (group.type === 'CASH_IN') {
-      current.cashIn = current.cashIn.plus(amount);
-      current.cashInCount += group.tx_count;
+      current.cashIn = current.cashIn.plus(ordinaryAmount);
+      current.cashInCount += group.ordinary_tx_count;
+      current.balance = current.balance.plus(amount);
     } else {
-      current.cashOut = current.cashOut.plus(amount);
-      current.cashOutCount += group.tx_count;
+      current.cashOut = current.cashOut.plus(ordinaryAmount);
+      current.cashOutCount += group.ordinary_tx_count;
+      current.balance = current.balance.minus(amount);
     }
     totalsByCurrency.set(group.currency_code, current);
   }
@@ -117,7 +123,7 @@ export function buildCurrencySummariesFromAggregates(
       symbol: currency.symbol,
       cashInTotal: formatBalance(totals.cashIn),
       cashOutTotal: formatBalance(totals.cashOut),
-      balance: formatBalance(totals.cashIn.minus(totals.cashOut)),
+      balance: formatBalance(totals.balance),
       cashInCount: totals.cashInCount,
       cashOutCount: totals.cashOutCount,
     };

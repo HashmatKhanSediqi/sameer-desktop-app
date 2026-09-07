@@ -38,6 +38,11 @@ export function ExchangeForm({ customerId, currencies, summaries, onCancel, onSa
   const finalFrom = driver === 'TO' ? calculated ?? '' : fromAmount;
   const finalTo = driver === 'FROM' ? calculated ?? '' : toAmount;
   const summary = `${formatMoney(finalFrom || '0')} ${fromCurrency} → ${formatMoney(finalTo || '0')} ${toCurrency}`;
+  const confirmation = [
+    summary,
+    t('exchange.rateSummary', { to: toCurrency, from: fromCurrency, rate: rate || '—' }),
+    commissionAmount ? t('exchange.commissionSummary', { amount: formatMoney(commissionAmount), currency: commissionCurrency }) : null,
+  ].filter(Boolean).join('\n');
 
   function submit(e: FormEvent): void {
     e.preventDefault(); setError(null);
@@ -77,6 +82,6 @@ export function ExchangeForm({ customerId, currencies, summaries, onCancel, onSa
       <label className="form-field"><span>{t('note')}</span><textarea value={note} onChange={(e) => setNote(e.target.value)}/></label>
       <div className="exchange-preview" aria-live="polite"><strong>{t('exchange.preview')}</strong><span dir="ltr">{summary}</span><span>{t('exchange.businessSummary', { toAmount: finalTo || '—', to: toCurrency, fromAmount: finalFrom || '—', from: fromCurrency, rate: rate || '—' })}</span>{commissionAmount ? <span>{t('exchange.commissionSummary', { amount: commissionAmount, currency: commissionCurrency })}</span> : null}</div>
     </div><div className="transaction-modal-footer"><button type="button" className="button button-secondary" onClick={onCancel}>{t('cancel')}</button><button type="submit" className="button button-primary" disabled={busy}>{t('exchange.confirm')}</button></div></form>
-    {confirming ? <ConfirmDialog title={t('exchange.confirmTitle')} message={summary} isBusy={busy} onCancel={() => setConfirming(false)} onConfirm={() => void confirm()}/> : null}
+    {confirming ? <ConfirmDialog title={t('exchange.confirmTitle')} message={confirmation} confirmLabel={t('exchange.confirm')} tone="primary" isBusy={busy} onCancel={() => setConfirming(false)} onConfirm={() => void confirm()}/> : null}
   </div></div>;
 }
