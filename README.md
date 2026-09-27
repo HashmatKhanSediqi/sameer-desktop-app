@@ -59,4 +59,4 @@ Do not change these defaults unless explicitly requested.
 
 ## License
 
-UNLICENSED (private).
+MIT License. Copyright (c) 2026 Hashmat Khan Sediqi. See [`LICENSE`](./LICENSE).
